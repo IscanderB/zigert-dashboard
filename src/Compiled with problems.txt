@@ -1,0 +1,67 @@
+Compiled with problems:
+×
+ERROR in ./src/App.js
+Module build failed (from ./node_modules/babel-loader/lib/index.js):
+SyntaxError: C:\Projects\zigert-dashboard\src\App.js: Unexpected token, expected "}" (608:6)
+
+  606 |       '--separator': 'rgba(60, 60, 67, 0.12)',
+  607 |       '--shadow': '0 0 20px rgba(0, 0, 0, 0.05)'
+> 608 |     } as React.CSSProperties}>
+      |       ^
+  609 |       
+  610 |       {/* Status indicator for real-time connection */}
+  611 |       <div style={{
+    at constructor (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:367:19)
+    at FlowParserMixin.raise (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:6630:19)
+    at FlowParserMixin.unexpected (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:6650:16)
+    at FlowParserMixin.expect (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:6930:12)
+    at FlowParserMixin.jsxParseExpressionContainer (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:4670:10)
+    at FlowParserMixin.jsxParseAttributeValue (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:4637:21)
+    at FlowParserMixin.jsxParseAttribute (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:4686:38)
+    at FlowParserMixin.jsxParseOpeningElementAfterName (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:4700:28)
+    at FlowParserMixin.jsxParseOpeningElementAfterName (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:4101:18)
+    at FlowParserMixin.jsxParseOpeningElementAt (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:4695:17)
+    at FlowParserMixin.jsxParseElementAt (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:4719:33)
+    at FlowParserMixin.jsxParseElement (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:4782:17)
+    at FlowParserMixin.parseExprAtom (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:4792:19)
+    at FlowParserMixin.parseExprSubscripts (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:11085:23)
+    at FlowParserMixin.parseUpdate (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:11070:21)
+    at FlowParserMixin.parseMaybeUnary (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:11050:23)
+    at FlowParserMixin.parseMaybeUnaryOrPrivate (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:10903:61)
+    at FlowParserMixin.parseExprOps (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:10908:23)
+    at FlowParserMixin.parseMaybeConditional (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:10885:23)
+    at FlowParserMixin.parseMaybeAssign (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:10835:21)
+    at C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:3531:39
+    at FlowParserMixin.tryParse (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:6938:20)
+    at FlowParserMixin.parseMaybeAssign (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:3531:18)
+    at C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:10804:39
+    at FlowParserMixin.allowInAnd (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:12436:12)
+    at FlowParserMixin.parseMaybeAssignAllowIn (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:10804:17)
+    at FlowParserMixin.parseMaybeAssignAllowInOrVoidPattern (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:12503:17)
+    at FlowParserMixin.parseParenAndDistinguishExpression (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:11683:28)
+    at FlowParserMixin.parseParenAndDistinguishExpression (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:3624:18)
+    at FlowParserMixin.parseExprAtom (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:11335:23)
+    at FlowParserMixin.parseExprAtom (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:4797:20)
+    at FlowParserMixin.parseExprSubscripts (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:11085:23)
+    at FlowParserMixin.parseUpdate (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:11070:21)
+    at FlowParserMixin.parseMaybeUnary (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:11050:23)
+    at FlowParserMixin.parseMaybeUnaryOrPrivate (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:10903:61)
+    at FlowParserMixin.parseExprOps (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:10908:23)
+    at FlowParserMixin.parseMaybeConditional (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:10885:23)
+    at FlowParserMixin.parseMaybeAssign (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:10835:21)
+    at FlowParserMixin.parseMaybeAssign (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:3582:18)
+    at FlowParserMixin.parseExpressionBase (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:10788:23)
+    at C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:10784:39
+    at FlowParserMixin.allowInAnd (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:12431:16)
+    at FlowParserMixin.parseExpression (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:10784:17)
+    at FlowParserMixin.parseReturnStatement (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:13151:28)
+    at FlowParserMixin.parseStatementContent (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:12807:21)
+    at FlowParserMixin.parseStatementLike (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:12776:17)
+    at FlowParserMixin.parseStatementLike (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:2949:24)
+    at FlowParserMixin.parseStatementListItem (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:12756:17)
+    at FlowParserMixin.parseBlockOrModuleBlockBody (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:13325:61)
+    at FlowParserMixin.parseBlockBody (C:\Projects\zigert-dashboard\node_modules\@babel\parser\lib\index.js:13318:10)
+ERROR
+[eslint] 
+src\App.js
+  Line 608:6:  Parsing error: Unexpected token, expected "}" (608:6)
