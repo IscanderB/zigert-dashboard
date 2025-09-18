@@ -45,16 +45,56 @@ const ProjectStatusDashboard = () => {
     return projectColors[index];
   }
 
-  // State management
-  const [state, setState] = useState({
+  // Sample data with real-time simulation
+  const INITIAL_DATA = {
     totalArtists: 6,
-    projects: []
-  });
+    projects: [
+      { 
+        id: 'p1', 
+        name: 'Product Hero Shot', 
+        status: 'In Progress', 
+        startDate: '2025-09-01', 
+        dueDate: '2025-09-12', 
+        busy: 3, 
+        priority: 'High', 
+        comments: [
+          { id: 'c1', text: 'Need to adjust lighting for main shot', ignored: false, deleted: false, ts: new Date().toISOString() }
+        ], 
+        history: [
+          `${new Date().toLocaleString()}: Project created`,
+          `${new Date().toLocaleString()}: Status changed to In Progress`
+        ]
+      },
+      { 
+        id: 'p2', 
+        name: 'Packaging Mockups', 
+        status: 'Waiting', 
+        startDate: '2025-09-05', 
+        dueDate: '2025-09-20', 
+        busy: 1, 
+        priority: 'Medium', 
+        comments: [], 
+        history: [`${new Date().toLocaleString()}: Project created`]
+      },
+      { 
+        id: 'p3', 
+        name: 'Brand Study', 
+        status: 'Hold', 
+        startDate: '2025-08-10', 
+        dueDate: '2025-09-10', 
+        busy: 0, 
+        priority: 'Low', 
+        comments: [], 
+        history: [`${new Date().toLocaleString()}: Project created`]
+      }
+    ]
+  };
+
+  // State management with real-time simulation
+  const [state, setState] = useState(INITIAL_DATA);
   const [isAdmin, setIsAdmin] = useState(false);
   const [connected, setConnected] = useState(true);
   const [lastSync, setLastSync] = useState(new Date());
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   // Modal states
   const [commentsForId, setCommentsForId] = useState(null);
@@ -79,128 +119,7 @@ const ProjectStatusDashboard = () => {
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [projectNameModal, setProjectNameModal] = useState({ open: false, projectId: null, name: '' });
 
-  // Supabase API functions
-  async function loadInitialData() {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Load settings
-      const { data: settings, error: settingsError } = await supabase
-        .from('settings')
-        .select('*');
-      
-      if (settingsError) throw settingsError;
-
-      // Load projects with comments and history
-      const { data: projects, error: projectsError } = await supabase
-        .from('projects')
-        .select(`
-          *,
-          project_comments(*),
-          project_history(*)
-        `)
-        .order('created_at', { ascending: false });
-
-      if (projectsError) throw projectsError;
-
-      // Transform data to match component structure
-      const transformedProjects = projects.map(project => ({
-        id: project.id,
-        name: project.name,
-        status: project.status,
-        startDate: project.start_date,
-        dueDate: project.due_date,
-        busy: project.busy,
-        priority: project.priority,
-        comments: project.project_comments.map(comment => ({
-          id: comment.id,
-          text: comment.text,
-          ignored: comment.ignored,
-          deleted: comment.deleted,
-          ts: comment.created_at
-        })),
-        history: project.project_history
-          .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
-          .map(h => h.entry)
-      }));
-
-      const totalArtists = settings.find(s => s.key === 'totalArtists')?.value || 6;
-
-      setState({
-        totalArtists: parseInt(totalArtists),
-        projects: transformedProjects
-      });
-
-      setLastSync(new Date());
-    } catch (err) {
-      setError(`Failed to load data: ${err.message}`);
-      console.error('Load error:', err);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function saveProject(projectData) {
-    const { data, error } = await supabase
-      .from('projects')
-      .upsert({
-        id: projectData.id,
-        name: projectData.name,
-        status: projectData.status,
-        start_date: projectData.startDate,
-        due_date: projectData.dueDate,
-        busy: projectData.busy,
-        priority: projectData.priority
-      })
-      .select();
-
-    if (error) throw error;
-    return data[0];
-  }
-
-  async function addHistoryEntry(projectId, entry) {
-    const { error } = await supabase
-      .from('project_history')
-      .insert({
-        project_id: projectId,
-        entry
-      });
-
-    if (error) throw error;
-  }
-
-  async function saveComment(projectId, comment) {
-    const { data, error } = await supabase
-      .from('project_comments')
-      .upsert({
-        id: comment.id,
-        project_id: projectId,
-        text: comment.text,
-        ignored: comment.ignored,
-        deleted: comment.deleted
-      })
-      .select();
-
-    if (error) throw error;
-    return data[0];
-  }
-
-  async function deleteProjectFromDB(projectId) {
-    const { error } = await supabase
-      .from('projects')
-      .delete()
-      .eq('id', projectId);
-
-    if (error) throw error;
-  }
-
-  // Load data on component mount
-  useEffect(() => {
-    loadInitialData();
-  }, []);
-
-  // Simulate connection status and periodic sync
+  // Simulate real-time connection and periodic updates
   useEffect(() => {
     const interval = setInterval(() => {
       // Simulate connection status changes
@@ -212,14 +131,95 @@ const ProjectStatusDashboard = () => {
         return true;
       });
 
-      // Update last sync time when connected
+      // Update last sync time
       if (connected) {
         setLastSync(new Date());
+        
+        // Simulate occasional random updates (like other users making changes)
+        if (Math.random() > 0.97) { // 3% chance of simulated external update
+          simulateExternalUpdate();
+        }
       }
-    }, 5000);
+    }, 3000);
 
     return () => clearInterval(interval);
   }, [connected]);
+
+  // Simulate external updates (other users making changes)
+  function simulateExternalUpdate() {
+    const updateTypes = ['comment', 'status', 'priority'];
+    const updateType = updateTypes[Math.floor(Math.random() * updateTypes.length)];
+    
+    setState(prevState => {
+      if (prevState.projects.length === 0) return prevState;
+      
+      const projectIndex = Math.floor(Math.random() * prevState.projects.length);
+      const project = prevState.projects[projectIndex];
+      const updatedProjects = [...prevState.projects];
+      
+      switch (updateType) {
+        case 'comment':
+          if (Math.random() > 0.5) {
+            const newComment = {
+              id: uid('c'),
+              text: `System update: External change detected at ${new Date().toLocaleTimeString()}`,
+              ignored: false,
+              deleted: false,
+              ts: new Date().toISOString()
+            };
+            updatedProjects[projectIndex] = {
+              ...project,
+              comments: [newComment, ...project.comments],
+              history: [...project.history, `${new Date().toLocaleString()}: External comment added`]
+            };
+          }
+          break;
+          
+        case 'status':
+          const statuses = ['Waiting', 'In Progress', 'Queued', 'Hold'];
+          const currentStatusIndex = statuses.indexOf(project.status);
+          const newStatusIndex = (currentStatusIndex + 1) % statuses.length;
+          const newStatus = statuses[newStatusIndex];
+          
+          updatedProjects[projectIndex] = {
+            ...project,
+            status: newStatus,
+            busy: ['Hold', 'Completed', 'Waiting'].includes(newStatus) ? 0 : project.busy,
+            history: [...project.history, `${new Date().toLocaleString()}: Status changed to ${newStatus} (External)`]
+          };
+          break;
+          
+        case 'priority':
+          const priorities = ['Low', 'Medium', 'High'];
+          const currentPriorityIndex = priorities.indexOf(project.priority);
+          const newPriorityIndex = (currentPriorityIndex + 1) % priorities.length;
+          const newPriority = priorities[newPriorityIndex];
+          
+          updatedProjects[projectIndex] = {
+            ...project,
+            priority: newPriority,
+            history: [...project.history, `${new Date().toLocaleString()}: Priority changed to ${newPriority} (External)`]
+          };
+          break;
+      }
+      
+      return {
+        ...prevState,
+        projects: updatedProjects
+      };
+    });
+  }
+
+  // Simulate saving to external database
+  function simulateApiCall(operation, data) {
+    return new Promise((resolve) => {
+      // Simulate network delay
+      setTimeout(() => {
+        console.log(`API Call: ${operation}`, data);
+        resolve({ success: true });
+      }, 100 + Math.random() * 300);
+    });
+  }
 
   // Calculate stats
   const total = state.totalArtists;
@@ -235,139 +235,103 @@ const ProjectStatusDashboard = () => {
   }
 
   async function updateProject(id, changes, historyEntry) {
-    try {
-      const project = state.projects.find(p => p.id === id);
-      if (!project) return;
+    const project = state.projects.find(p => p.id === id);
+    if (!project) return;
 
-      // Business logic validation
-      if (changes.busy !== undefined) {
-        const newBusy = parseInt(changes.busy);
-        if ((project.status === 'Queued' || project.status === 'Waiting') && newBusy > 0) {
-          changes.status = 'In Progress';
-        } else if (project.status === 'In Progress' && newBusy === 0) {
-          changes.status = 'Queued';
-        }
-        if ((project.status === 'Hold' || project.status === 'Completed') && newBusy > 0) {
-          showAlert("Check project status!");
-          return;
-        }
+    // Business logic validation
+    if (changes.busy !== undefined) {
+      const newBusy = parseInt(changes.busy);
+      if ((project.status === 'Queued' || project.status === 'Waiting') && newBusy > 0) {
+        changes.status = 'In Progress';
+      } else if (project.status === 'In Progress' && newBusy === 0) {
+        changes.status = 'Queued';
       }
-
-      if (changes.status !== undefined) {
-        if (changes.status === 'Hold' || changes.status === 'Completed' || changes.status === 'Waiting') {
-          changes.busy = 0;
-        }
-        if (changes.status === 'Queued' && project.status !== 'Queued') {
-          changes.busy = 0;
-        }
-        if (changes.status === 'In Progress' && project.status !== 'In Progress' && project.busy === 0) {
-          changes.busy = 1;
-        }
-      }
-
-      if (changes.busy !== undefined) {
-        const currentBusy = project.busy;
-        const newBusyTotal = busy - currentBusy + parseInt(changes.busy);
-        if (newBusyTotal > total) {
-          showAlert("Not enough artists!");
-          return;
-        }
-      }
-
-      // Save to database
-      const updatedProject = { ...project, ...changes };
-      await saveProject(updatedProject);
-
-      // Add history entry
-      if (historyEntry) {
-        const entry = isAdmin ? `${historyEntry} [Admin]` : historyEntry;
-        await addHistoryEntry(id, entry);
-      }
-
-      // Update local state
-      setState(prev => ({
-        ...prev,
-        projects: prev.projects.map(p => p.id === id ? ({
-          ...p,
-          ...changes,
-          history: historyEntry ? [...(p.history || []), isAdmin ? `${historyEntry} [Admin]` : historyEntry] : p.history
-        }) : p)
-      }));
-
-      setLastSync(new Date());
-      
-    } catch (err) {
-      setError(`Failed to update project: ${err.message}`);
-      console.error('Update error:', err);
-    }
-  }
-
-  async function addProject() {
-    try {
-      if (!newProject.name.trim()) {
-        showAlert("Specify project name!");
+      if ((project.status === 'Hold' || project.status === 'Completed') && newBusy > 0) {
+        showAlert("Check project status!");
         return;
       }
+    }
 
-      const newBusy = parseInt(newProject.busy) || 0;
-      if (busy + newBusy > total) {
+    if (changes.status !== undefined) {
+      if (changes.status === 'Hold' || changes.status === 'Completed' || changes.status === 'Waiting') {
+        changes.busy = 0;
+      }
+      if (changes.status === 'Queued' && project.status !== 'Queued') {
+        changes.busy = 0;
+      }
+      if (changes.status === 'In Progress' && project.status !== 'In Progress' && project.busy === 0) {
+        changes.busy = 1;
+      }
+    }
+
+    if (changes.busy !== undefined) {
+      const currentBusy = project.busy;
+      const newBusyTotal = busy - currentBusy + parseInt(changes.busy);
+      if (newBusyTotal > total) {
         showAlert("Not enough artists!");
         return;
       }
-
-      const newP = {
-        id: uid('p'),
-        name: newProject.name || 'New Project',
-        status: newProject.status,
-        startDate: newProject.startDate,
-        dueDate: newProject.dueDate,
-        busy: newBusy,
-        priority: newProject.priority,
-        comments: [],
-        history: []
-      };
-
-      // Save to database
-      await saveProject(newP);
-      const historyEntry = `${new Date().toLocaleString()}: Project created${isAdmin ? ' [Admin]' : ''}`;
-      await addHistoryEntry(newP.id, historyEntry);
-
-      // Update local state
-      setState(prev => ({ 
-        ...prev, 
-        projects: [{ ...newP, history: [historyEntry] }, ...prev.projects] 
-      }));
-
-      setIsAddModalOpen(false);
-      setNewProject({
-        name: '',
-        status: 'Waiting',
-        startDate: new Date().toISOString().slice(0, 10),
-        dueDate: new Date().toISOString().slice(0, 10),
-        busy: 0,
-        priority: 'Low'
-      });
-
-      setLastSync(new Date());
-
-    } catch (err) {
-      setError(`Failed to add project: ${err.message}`);
-      console.error('Add project error:', err);
     }
+
+    // Simulate API call
+    await simulateApiCall('updateProject', { id, changes });
+
+    // Update state
+    const entry = isAdmin ? `${historyEntry} [Admin]` : historyEntry;
+    setState(prev => ({
+      ...prev,
+      projects: prev.projects.map(p => p.id === id ? ({
+        ...p,
+        ...changes,
+        history: entry ? [...(p.history || []), entry] : p.history
+      }) : p)
+    }));
+  }
+
+  async function addProject() {
+    if (!newProject.name.trim()) {
+      showAlert("Specify project name!");
+      return;
+    }
+
+    const newBusy = parseInt(newProject.busy) || 0;
+    if (busy + newBusy > total) {
+      showAlert("Not enough artists!");
+      return;
+    }
+
+    const newP = {
+      id: uid('p'),
+      name: newProject.name || 'New Project',
+      status: newProject.status,
+      startDate: newProject.startDate,
+      dueDate: newProject.dueDate,
+      busy: newBusy,
+      priority: newProject.priority,
+      comments: [],
+      history: [`${new Date().toLocaleString()}: Project created${isAdmin ? ' [Admin]' : ''}`]
+    };
+
+    // Simulate API call
+    await simulateApiCall('addProject', newP);
+
+    setState(prev => ({ ...prev, projects: [newP, ...prev.projects] }));
+    setIsAddModalOpen(false);
+    setNewProject({
+      name: '',
+      status: 'Waiting',
+      startDate: new Date().toISOString().slice(0, 10),
+      dueDate: new Date().toISOString().slice(0, 10),
+      busy: 0,
+      priority: 'Low'
+    });
   }
 
   async function deleteProject(id) {
-    try {
-      if (!window.confirm('Are you sure you want to delete this project?')) return;
-      
-      await deleteProjectFromDB(id);
-      setState(prev => ({ ...prev, projects: prev.projects.filter(p => p.id !== id) }));
-      setLastSync(new Date());
-
-    } catch (err) {
-      setError(`Failed to delete project: ${err.message}`);
-      console.error('Delete error:', err);
-    }
+    if (!window.confirm('Are you sure you want to delete this project?')) return;
+    
+    await simulateApiCall('deleteProject', { id });
+    setState(prev => ({ ...prev, projects: prev.projects.filter(p => p.id !== id) }));
   }
 
   async function completeProject(id) {
@@ -394,37 +358,29 @@ const ProjectStatusDashboard = () => {
   }
 
   async function addCommentConfirmed() {
-    try {
-      if (!commentsForId || !draft.trim()) return;
-      
-      const comment = {
-        id: uid('c'),
-        text: draft.trim(),
-        ignored: false,
-        deleted: false,
-        ts: new Date().toISOString()
-      };
+    if (!commentsForId || !draft.trim()) return;
+    
+    const comment = {
+      id: uid('c'),
+      text: draft.trim(),
+      ignored: false,
+      deleted: false,
+      ts: new Date().toISOString()
+    };
 
-      await saveComment(commentsForId, comment);
-      await addHistoryEntry(commentsForId, `${new Date().toLocaleString()}: Comment added${isAdmin ? ' [Admin]' : ''}`);
+    await simulateApiCall('addComment', { projectId: commentsForId, comment });
 
-      setState(prev => ({
-        ...prev,
-        projects: prev.projects.map(p => p.id === commentsForId ? ({
-          ...p,
-          comments: [comment, ...p.comments],
-          history: [...(p.history || []), `${new Date().toLocaleString()}: Comment added${isAdmin ? ' [Admin]' : ''}`]
-        }) : p)
-      }));
-      
-      setDraft('');
-      setConfirmAddOpen(false);
-      setLastSync(new Date());
-
-    } catch (err) {
-      setError(`Failed to add comment: ${err.message}`);
-      console.error('Add comment error:', err);
-    }
+    setState(prev => ({
+      ...prev,
+      projects: prev.projects.map(p => p.id === commentsForId ? ({
+        ...p,
+        comments: [comment, ...p.comments],
+        history: [...(p.history || []), `${new Date().toLocaleString()}: Comment added${isAdmin ? ' [Admin]' : ''}`]
+      }) : p)
+    }));
+    
+    setDraft('');
+    setConfirmAddOpen(false);
   }
 
   function startEdit(commentId, text) {
@@ -433,46 +389,31 @@ const ProjectStatusDashboard = () => {
   }
 
   async function saveEdit(commentId) {
-    try {
-      if (!commentsForId) return;
-      
-      const trimmed = editingText.trim();
-      
-      const updatedComment = {
-        id: commentId,
-        text: trimmed,
-        deleted: trimmed === '',
-        ignored: false,
-        ts: new Date().toISOString()
-      };
+    if (!commentsForId) return;
+    
+    const trimmed = editingText.trim();
+    
+    await simulateApiCall('editComment', { commentId, text: trimmed });
 
-      await saveComment(commentsForId, updatedComment);
-      await addHistoryEntry(commentsForId, `${new Date().toLocaleString()}: Comment edited${isAdmin ? ' [Admin]' : ''}`);
-
-      setState(prev => ({
-        ...prev,
-        projects: prev.projects.map(p => {
-          if (p.id !== commentsForId) return p;
-          const newComments = p.comments.map(c => {
-            if (c.id !== commentId) return c;
-            return { ...c, ...updatedComment };
-          });
-          return { 
-            ...p, 
-            comments: newComments, 
-            history: [...(p.history || []), `${new Date().toLocaleString()}: Comment edited${isAdmin ? ' [Admin]' : ''}`] 
-          };
-        })
-      }));
-      
-      setEditingId(null);
-      setEditingText('');
-      setLastSync(new Date());
-
-    } catch (err) {
-      setError(`Failed to edit comment: ${err.message}`);
-      console.error('Edit comment error:', err);
-    }
+    setState(prev => ({
+      ...prev,
+      projects: prev.projects.map(p => {
+        if (p.id !== commentsForId) return p;
+        const newComments = p.comments.map(c => {
+          if (c.id !== commentId) return c;
+          const now = new Date().toISOString();
+          if (trimmed === '') {
+            return { ...c, deleted: true, ignored: false, ts: now };
+          } else {
+            return { ...c, text: trimmed, deleted: false, ignored: false, ts: now };
+          }
+        });
+        return { ...p, comments: newComments, history: [...(p.history || []), `${new Date().toLocaleString()}: Comment edited${isAdmin ? ' [Admin]' : ''}`] };
+      })
+    }));
+    
+    setEditingId(null);
+    setEditingText('');
   }
 
   function confirmIgnoreComment(commentId) {
@@ -481,37 +422,22 @@ const ProjectStatusDashboard = () => {
   }
 
   async function doIgnore() {
-    try {
-      if (!confirmIgnore) return;
-      
-      const { projectId, commentId } = confirmIgnore;
-      
-      const updatedComment = {
-        id: commentId,
-        ignored: true,
-        deleted: false,
-        ts: new Date().toISOString()
-      };
+    if (!confirmIgnore) return;
+    
+    const { projectId, commentId } = confirmIgnore;
+    
+    await simulateApiCall('ignoreComment', { commentId });
 
-      await saveComment(projectId, updatedComment);
-      await addHistoryEntry(projectId, `${new Date().toLocaleString()}: Comment ignored${isAdmin ? ' [Admin]' : ''}`);
-
-      setState(prev => ({
-        ...prev,
-        projects: prev.projects.map(p => {
-          if (p.id !== projectId) return p;
-          const newComments = p.comments.map(c => c.id === commentId ? ({ ...c, ignored: true, deleted: false, ts: new Date().toISOString() }) : c);
-          return { ...p, comments: newComments, history: [...(p.history || []), `${new Date().toLocaleString()}: Comment ignored${isAdmin ? ' [Admin]' : ''}`] };
-        })
-      }));
-      
-      setConfirmIgnore(null);
-      setLastSync(new Date());
-
-    } catch (err) {
-      setError(`Failed to ignore comment: ${err.message}`);
-      console.error('Ignore comment error:', err);
-    }
+    setState(prev => ({
+      ...prev,
+      projects: prev.projects.map(p => {
+        if (p.id !== projectId) return p;
+        const newComments = p.comments.map(c => c.id === commentId ? ({ ...c, ignored: true, deleted: false, ts: new Date().toISOString() }) : c);
+        return { ...p, comments: newComments, history: [...(p.history || []), `${new Date().toLocaleString()}: Comment ignored${isAdmin ? ' [Admin]' : ''}`] };
+      })
+    }));
+    
+    setConfirmIgnore(null);
   }
 
   // History functions
@@ -649,25 +575,6 @@ const ProjectStatusDashboard = () => {
     'Low': '#6BA66B'
   };
 
-  if (loading) {
-    return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif'
-      }}>
-        <div style={{
-          fontSize: '18px',
-          color: '#007AFF'
-        }}>
-          Loading...
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div style={{
       fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif',
@@ -698,40 +605,8 @@ const ProjectStatusDashboard = () => {
       '--bg-tertiary': '#E5E5EA',
       '--separator': 'rgba(60, 60, 67, 0.12)',
       '--shadow': '0 0 20px rgba(0, 0, 0, 0.05)'
-    }}>
+    } as React.CSSProperties}>
       
-      {/* Error notification */}
-      {error && (
-        <div style={{
-          position: 'fixed',
-          top: '10px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: 300,
-          background: '#FF3B30',
-          color: 'white',
-          padding: '12px 20px',
-          borderRadius: '20px',
-          fontSize: '14px',
-          boxShadow: '0 4px 20px rgba(255, 59, 48, 0.3)'
-        }}>
-          {error}
-          <button 
-            onClick={() => setError(null)}
-            style={{
-              marginLeft: '12px',
-              background: 'none',
-              border: 'none',
-              color: 'white',
-              cursor: 'pointer',
-              fontSize: '16px'
-            }}
-          >
-            ×
-          </button>
-        </div>
-      )}
-
       {/* Status indicator for real-time connection */}
       <div style={{
         position: 'fixed',
@@ -751,7 +626,8 @@ const ProjectStatusDashboard = () => {
           width: '8px',
           height: '8px',
           borderRadius: '50%',
-          backgroundColor: connected ? '#34C759' : '#FF3B30'
+          backgroundColor: connected ? '#34C759' : '#FF3B30',
+          animation: connected ? 'none' : 'pulse 1s infinite'
         }}></div>
         {connected ? `Synced ${lastSync.toLocaleTimeString()}` : 'Reconnecting...'}
       </div>
@@ -780,23 +656,6 @@ const ProjectStatusDashboard = () => {
             gap: '12px',
             alignItems: 'center'
           }}>
-            <button
-              onClick={() => loadInitialData()}
-              style={{
-                background: 'var(--bg-secondary)',
-                color: 'var(--primary)',
-                border: 'none',
-                padding: '8px 16px',
-                borderRadius: '18px',
-                fontSize: '15px',
-                fontWeight: 500,
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                outline: 'none'
-              }}
-            >
-              Refresh
-            </button>
             <button
               onClick={() => setIsAdmin(v => !v)}
               style={{
@@ -856,7 +715,7 @@ const ProjectStatusDashboard = () => {
             WebkitTextFillColor: 'transparent',
             marginBottom: '8px'
           }}>
-            Zigert Visuals
+            Zigert Visual
           </div>
           <div style={{
             fontSize: '24px',
@@ -870,7 +729,7 @@ const ProjectStatusDashboard = () => {
             color: 'var(--text-quaternary)',
             marginTop: '8px'
           }}>
-            Real-time collaborative workspace
+            Real-time collaborative workspace • Demo Mode
           </div>
         </div>
 
