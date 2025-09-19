@@ -45,56 +45,16 @@ const ProjectStatusDashboard = () => {
     return projectColors[index];
   }
 
-  // Sample data with real-time simulation
-  const INITIAL_DATA = {
+  // State management
+  const [state, setState] = useState({
     totalArtists: 6,
-    projects: [
-      { 
-        id: 'p1', 
-        name: 'Product Hero Shot', 
-        status: 'In Progress', 
-        startDate: '2025-09-01', 
-        dueDate: '2025-09-12', 
-        busy: 3, 
-        priority: 'High', 
-        comments: [
-          { id: 'c1', text: 'Need to adjust lighting for main shot', ignored: false, deleted: false, ts: new Date().toISOString() }
-        ], 
-        history: [
-          `${new Date().toLocaleString()}: Project created`,
-          `${new Date().toLocaleString()}: Status changed to In Progress`
-        ]
-      },
-      { 
-        id: 'p2', 
-        name: 'Packaging Mockups', 
-        status: 'Waiting', 
-        startDate: '2025-09-05', 
-        dueDate: '2025-09-20', 
-        busy: 1, 
-        priority: 'Medium', 
-        comments: [], 
-        history: [`${new Date().toLocaleString()}: Project created`]
-      },
-      { 
-        id: 'p3', 
-        name: 'Brand Study', 
-        status: 'Hold', 
-        startDate: '2025-08-10', 
-        dueDate: '2025-09-10', 
-        busy: 0, 
-        priority: 'Low', 
-        comments: [], 
-        history: [`${new Date().toLocaleString()}: Project created`]
-      }
-    ]
-  };
-
-  // State management with real-time simulation
-  const [state, setState] = useState(INITIAL_DATA);
+    projects: []
+  });
   const [isAdmin, setIsAdmin] = useState(false);
   const [connected, setConnected] = useState(true);
   const [lastSync, setLastSync] = useState(new Date());
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Modal states
   const [commentsForId, setCommentsForId] = useState(null);
@@ -118,8 +78,131 @@ const ProjectStatusDashboard = () => {
   const [alertMessage, setAlertMessage] = useState('');
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [projectNameModal, setProjectNameModal] = useState({ open: false, projectId: null, name: '' });
+  const [passwordModal, setPasswordModal] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
 
-  // Simulate real-time connection and periodic updates
+  // Supabase API functions
+  async function loadInitialData() {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Load settings
+      const { data: settings, error: settingsError } = await supabase
+        .from('settings')
+        .select('*');
+      
+      if (settingsError) throw settingsError;
+
+      // Load projects with comments and history
+      const { data: projects, error: projectsError } = await supabase
+        .from('projects')
+        .select(`
+          *,
+          project_comments(*),
+          project_history(*)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (projectsError) throw projectsError;
+
+      // Transform data to match component structure
+      const transformedProjects = projects.map(project => ({
+        id: project.id,
+        name: project.name,
+        status: project.status,
+        startDate: project.start_date,
+        dueDate: project.due_date,
+        busy: project.busy,
+        priority: project.priority,
+        comments: project.project_comments.map(comment => ({
+          id: comment.id,
+          text: comment.text,
+          ignored: comment.ignored,
+          deleted: comment.deleted,
+          ts: comment.created_at
+        })),
+        history: project.project_history
+          .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+          .map(h => h.entry)
+      }));
+
+      const totalArtists = settings.find(s => s.key === 'totalArtists')?.value || 6;
+
+      setState({
+        totalArtists: parseInt(totalArtists),
+        projects: transformedProjects
+      });
+
+      setLastSync(new Date());
+    } catch (err) {
+      setError(`Failed to load data: ${err.message}`);
+      console.error('Load error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function saveProject(projectData) {
+    const { data, error } = await supabase
+      .from('projects')
+      .upsert({
+        id: projectData.id,
+        name: projectData.name,
+        status: projectData.status,
+        start_date: projectData.startDate,
+        due_date: projectData.dueDate,
+        busy: projectData.busy,
+        priority: projectData.priority
+      })
+      .select();
+
+    if (error) throw error;
+    return data[0];
+  }
+
+  async function addHistoryEntry(projectId, entry) {
+    const { error } = await supabase
+      .from('project_history')
+      .insert({
+        project_id: projectId,
+        entry
+      });
+
+    if (error) throw error;
+  }
+
+  async function saveComment(projectId, comment) {
+    const { data, error } = await supabase
+      .from('project_comments')
+      .upsert({
+        id: comment.id,
+        project_id: projectId,
+        text: comment.text,
+        ignored: comment.ignored,
+        deleted: comment.deleted
+      })
+      .select();
+
+    if (error) throw error;
+    return data[0];
+  }
+
+  async function deleteProjectFromDB(projectId) {
+    const { error } = await supabase
+      .from('projects')
+      .delete()
+      .eq('id', projectId);
+
+    if (error) throw error;
+  }
+
+  // Load data on component mount
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  // Simulate connection status and periodic sync
   useEffect(() => {
     const interval = setInterval(() => {
       // Simulate connection status changes
@@ -131,95 +214,14 @@ const ProjectStatusDashboard = () => {
         return true;
       });
 
-      // Update last sync time
+      // Update last sync time when connected
       if (connected) {
         setLastSync(new Date());
-        
-        // Simulate occasional random updates (like other users making changes)
-        if (Math.random() > 0.97) { // 3% chance of simulated external update
-          simulateExternalUpdate();
-        }
       }
-    }, 3000);
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [connected]);
-
-  // Simulate external updates (other users making changes)
-  function simulateExternalUpdate() {
-    const updateTypes = ['comment', 'status', 'priority'];
-    const updateType = updateTypes[Math.floor(Math.random() * updateTypes.length)];
-    
-    setState(prevState => {
-      if (prevState.projects.length === 0) return prevState;
-      
-      const projectIndex = Math.floor(Math.random() * prevState.projects.length);
-      const project = prevState.projects[projectIndex];
-      const updatedProjects = [...prevState.projects];
-      
-      switch (updateType) {
-        case 'comment':
-          if (Math.random() > 0.5) {
-            const newComment = {
-              id: uid('c'),
-              text: `System update: External change detected at ${new Date().toLocaleTimeString()}`,
-              ignored: false,
-              deleted: false,
-              ts: new Date().toISOString()
-            };
-            updatedProjects[projectIndex] = {
-              ...project,
-              comments: [newComment, ...project.comments],
-              history: [...project.history, `${new Date().toLocaleString()}: External comment added`]
-            };
-          }
-          break;
-          
-        case 'status':
-          const statuses = ['Waiting', 'In Progress', 'Queued', 'Hold'];
-          const currentStatusIndex = statuses.indexOf(project.status);
-          const newStatusIndex = (currentStatusIndex + 1) % statuses.length;
-          const newStatus = statuses[newStatusIndex];
-          
-          updatedProjects[projectIndex] = {
-            ...project,
-            status: newStatus,
-            busy: ['Hold', 'Completed', 'Waiting'].includes(newStatus) ? 0 : project.busy,
-            history: [...project.history, `${new Date().toLocaleString()}: Status changed to ${newStatus} (External)`]
-          };
-          break;
-          
-        case 'priority':
-          const priorities = ['Low', 'Medium', 'High'];
-          const currentPriorityIndex = priorities.indexOf(project.priority);
-          const newPriorityIndex = (currentPriorityIndex + 1) % priorities.length;
-          const newPriority = priorities[newPriorityIndex];
-          
-          updatedProjects[projectIndex] = {
-            ...project,
-            priority: newPriority,
-            history: [...project.history, `${new Date().toLocaleString()}: Priority changed to ${newPriority} (External)`]
-          };
-          break;
-      }
-      
-      return {
-        ...prevState,
-        projects: updatedProjects
-      };
-    });
-  }
-
-  // Simulate saving to external database
-  function simulateApiCall(operation, data) {
-    return new Promise((resolve) => {
-      // Simulate network delay
-      setTimeout(() => {
-        console.log(`API Call: ${operation}`, data);
-        resolve({ success: true });
-      }, 100 + Math.random() * 300);
-    });
-  }
 
   // Calculate stats
   const total = state.totalArtists;
@@ -234,104 +236,160 @@ const ProjectStatusDashboard = () => {
     setTimeout(() => setIsAlertOpen(false), 3000);
   }
 
+  // Password check for admin
+  function handleAdminToggle() {
+    if (!isAdmin) {
+      setPasswordModal(true);
+    } else {
+      setIsAdmin(false);
+    }
+  }
+
+  function checkPassword() {
+    if (passwordInput === 'Zigert22@') {
+      setIsAdmin(true);
+      setPasswordModal(false);
+      setPasswordInput('');
+    } else {
+      showAlert('Incorrect password!');
+      setPasswordInput('');
+    }
+  }
+
   async function updateProject(id, changes, historyEntry) {
-    const project = state.projects.find(p => p.id === id);
-    if (!project) return;
+    try {
+      const project = state.projects.find(p => p.id === id);
+      if (!project) return;
 
-    // Business logic validation
-    if (changes.busy !== undefined) {
-      const newBusy = parseInt(changes.busy);
-      if ((project.status === 'Queued' || project.status === 'Waiting') && newBusy > 0) {
-        changes.status = 'In Progress';
-      } else if (project.status === 'In Progress' && newBusy === 0) {
-        changes.status = 'Queued';
+      // Business logic validation
+      if (changes.busy !== undefined) {
+        const newBusy = parseInt(changes.busy);
+        if ((project.status === 'Queued' || project.status === 'Waiting') && newBusy > 0) {
+          changes.status = 'In Progress';
+        } else if (project.status === 'In Progress' && newBusy === 0) {
+          changes.status = 'Queued';
+        }
+        if ((project.status === 'Hold' || project.status === 'Completed') && newBusy > 0) {
+          showAlert("Check project status!");
+          return;
+        }
       }
-      if ((project.status === 'Hold' || project.status === 'Completed') && newBusy > 0) {
-        showAlert("Check project status!");
-        return;
+
+      if (changes.status !== undefined) {
+        if (changes.status === 'Hold' || changes.status === 'Completed' || changes.status === 'Waiting') {
+          changes.busy = 0;
+        }
+        if (changes.status === 'Queued' && project.status !== 'Queued') {
+          changes.busy = 0;
+        }
+        if (changes.status === 'In Progress' && project.status !== 'In Progress' && project.busy === 0) {
+          changes.busy = 1;
+        }
       }
+
+      if (changes.busy !== undefined) {
+        const currentBusy = project.busy;
+        const newBusyTotal = busy - currentBusy + parseInt(changes.busy);
+        if (newBusyTotal > total) {
+          showAlert("Not enough artists!");
+          return;
+        }
+      }
+
+      // Save to database
+      const updatedProject = { ...project, ...changes };
+      await saveProject(updatedProject);
+
+      // Add history entry
+      if (historyEntry) {
+        const entry = isAdmin ? `${historyEntry} [Admin]` : historyEntry;
+        await addHistoryEntry(id, entry);
+      }
+
+      // Update local state
+      setState(prev => ({
+        ...prev,
+        projects: prev.projects.map(p => p.id === id ? ({
+          ...p,
+          ...changes,
+          history: historyEntry ? [...(p.history || []), isAdmin ? `${historyEntry} [Admin]` : historyEntry] : p.history
+        }) : p)
+      }));
+
+      setLastSync(new Date());
+      
+    } catch (err) {
+      setError(`Failed to update project: ${err.message}`);
+      console.error('Update error:', err);
     }
-
-    if (changes.status !== undefined) {
-      if (changes.status === 'Hold' || changes.status === 'Completed' || changes.status === 'Waiting') {
-        changes.busy = 0;
-      }
-      if (changes.status === 'Queued' && project.status !== 'Queued') {
-        changes.busy = 0;
-      }
-      if (changes.status === 'In Progress' && project.status !== 'In Progress' && project.busy === 0) {
-        changes.busy = 1;
-      }
-    }
-
-    if (changes.busy !== undefined) {
-      const currentBusy = project.busy;
-      const newBusyTotal = busy - currentBusy + parseInt(changes.busy);
-      if (newBusyTotal > total) {
-        showAlert("Not enough artists!");
-        return;
-      }
-    }
-
-    // Simulate API call
-    await simulateApiCall('updateProject', { id, changes });
-
-    // Update state
-    const entry = isAdmin ? `${historyEntry} [Admin]` : historyEntry;
-    setState(prev => ({
-      ...prev,
-      projects: prev.projects.map(p => p.id === id ? ({
-        ...p,
-        ...changes,
-        history: entry ? [...(p.history || []), entry] : p.history
-      }) : p)
-    }));
   }
 
   async function addProject() {
-    if (!newProject.name.trim()) {
-      showAlert("Specify project name!");
-      return;
+    try {
+      if (!newProject.name.trim()) {
+        showAlert("Specify project name!");
+        return;
+      }
+
+      const newBusy = parseInt(newProject.busy) || 0;
+      if (busy + newBusy > total) {
+        showAlert("Not enough artists!");
+        return;
+      }
+
+      const newP = {
+        id: uid('p'),
+        name: newProject.name || 'New Project',
+        status: newProject.status,
+        startDate: newProject.startDate,
+        dueDate: newProject.dueDate,
+        busy: newBusy,
+        priority: newProject.priority,
+        comments: [],
+        history: []
+      };
+
+      // Save to database
+      await saveProject(newP);
+      const historyEntry = `${new Date().toLocaleString()}: Project created${isAdmin ? ' [Admin]' : ''}`;
+      await addHistoryEntry(newP.id, historyEntry);
+
+      // Update local state
+      setState(prev => ({ 
+        ...prev, 
+        projects: [{ ...newP, history: [historyEntry] }, ...prev.projects] 
+      }));
+
+      setIsAddModalOpen(false);
+      setNewProject({
+        name: '',
+        status: 'Waiting',
+        startDate: new Date().toISOString().slice(0, 10),
+        dueDate: new Date().toISOString().slice(0, 10),
+        busy: 0,
+        priority: 'Low'
+      });
+
+      setLastSync(new Date());
+
+    } catch (err) {
+      setError(`Failed to add project: ${err.message}`);
+      console.error('Add project error:', err);
     }
-
-    const newBusy = parseInt(newProject.busy) || 0;
-    if (busy + newBusy > total) {
-      showAlert("Not enough artists!");
-      return;
-    }
-
-    const newP = {
-      id: uid('p'),
-      name: newProject.name || 'New Project',
-      status: newProject.status,
-      startDate: newProject.startDate,
-      dueDate: newProject.dueDate,
-      busy: newBusy,
-      priority: newProject.priority,
-      comments: [],
-      history: [`${new Date().toLocaleString()}: Project created${isAdmin ? ' [Admin]' : ''}`]
-    };
-
-    // Simulate API call
-    await simulateApiCall('addProject', newP);
-
-    setState(prev => ({ ...prev, projects: [newP, ...prev.projects] }));
-    setIsAddModalOpen(false);
-    setNewProject({
-      name: '',
-      status: 'Waiting',
-      startDate: new Date().toISOString().slice(0, 10),
-      dueDate: new Date().toISOString().slice(0, 10),
-      busy: 0,
-      priority: 'Low'
-    });
   }
 
   async function deleteProject(id) {
-    if (!window.confirm('Are you sure you want to delete this project?')) return;
-    
-    await simulateApiCall('deleteProject', { id });
-    setState(prev => ({ ...prev, projects: prev.projects.filter(p => p.id !== id) }));
+    try {
+      if (!window.confirm('Are you sure you want to delete this project?')) return;
+      
+      await deleteProjectFromDB(id);
+      setState(prev => ({ ...prev, projects: prev.projects.filter(p => p.id !== id) }));
+      setLastSync(new Date());
+
+    } catch (err) {
+      setError(`Failed to delete project: ${err.message}`);
+      console.error('Delete error:', err);
+    }
   }
 
   async function completeProject(id) {
@@ -358,29 +416,37 @@ const ProjectStatusDashboard = () => {
   }
 
   async function addCommentConfirmed() {
-    if (!commentsForId || !draft.trim()) return;
-    
-    const comment = {
-      id: uid('c'),
-      text: draft.trim(),
-      ignored: false,
-      deleted: false,
-      ts: new Date().toISOString()
-    };
+    try {
+      if (!commentsForId || !draft.trim()) return;
+      
+      const comment = {
+        id: uid('c'),
+        text: draft.trim(),
+        ignored: false,
+        deleted: false,
+        ts: new Date().toISOString()
+      };
 
-    await simulateApiCall('addComment', { projectId: commentsForId, comment });
+      await saveComment(commentsForId, comment);
+      await addHistoryEntry(commentsForId, `${new Date().toLocaleString()}: Comment added${isAdmin ? ' [Admin]' : ''}`);
 
-    setState(prev => ({
-      ...prev,
-      projects: prev.projects.map(p => p.id === commentsForId ? ({
-        ...p,
-        comments: [comment, ...p.comments],
-        history: [...(p.history || []), `${new Date().toLocaleString()}: Comment added${isAdmin ? ' [Admin]' : ''}`]
-      }) : p)
-    }));
-    
-    setDraft('');
-    setConfirmAddOpen(false);
+      setState(prev => ({
+        ...prev,
+        projects: prev.projects.map(p => p.id === commentsForId ? ({
+          ...p,
+          comments: [comment, ...p.comments],
+          history: [...(p.history || []), `${new Date().toLocaleString()}: Comment added${isAdmin ? ' [Admin]' : ''}`]
+        }) : p)
+      }));
+      
+      setDraft('');
+      setConfirmAddOpen(false);
+      setLastSync(new Date());
+
+    } catch (err) {
+      setError(`Failed to add comment: ${err.message}`);
+      console.error('Add comment error:', err);
+    }
   }
 
   function startEdit(commentId, text) {
@@ -389,31 +455,46 @@ const ProjectStatusDashboard = () => {
   }
 
   async function saveEdit(commentId) {
-    if (!commentsForId) return;
-    
-    const trimmed = editingText.trim();
-    
-    await simulateApiCall('editComment', { commentId, text: trimmed });
+    try {
+      if (!commentsForId) return;
+      
+      const trimmed = editingText.trim();
+      
+      const updatedComment = {
+        id: commentId,
+        text: trimmed,
+        deleted: trimmed === '',
+        ignored: false,
+        ts: new Date().toISOString()
+      };
 
-    setState(prev => ({
-      ...prev,
-      projects: prev.projects.map(p => {
-        if (p.id !== commentsForId) return p;
-        const newComments = p.comments.map(c => {
-          if (c.id !== commentId) return c;
-          const now = new Date().toISOString();
-          if (trimmed === '') {
-            return { ...c, deleted: true, ignored: false, ts: now };
-          } else {
-            return { ...c, text: trimmed, deleted: false, ignored: false, ts: now };
-          }
-        });
-        return { ...p, comments: newComments, history: [...(p.history || []), `${new Date().toLocaleString()}: Comment edited${isAdmin ? ' [Admin]' : ''}`] };
-      })
-    }));
-    
-    setEditingId(null);
-    setEditingText('');
+      await saveComment(commentsForId, updatedComment);
+      await addHistoryEntry(commentsForId, `${new Date().toLocaleString()}: Comment edited${isAdmin ? ' [Admin]' : ''}`);
+
+      setState(prev => ({
+        ...prev,
+        projects: prev.projects.map(p => {
+          if (p.id !== commentsForId) return p;
+          const newComments = p.comments.map(c => {
+            if (c.id !== commentId) return c;
+            return { ...c, ...updatedComment };
+          });
+          return { 
+            ...p, 
+            comments: newComments, 
+            history: [...(p.history || []), `${new Date().toLocaleString()}: Comment edited${isAdmin ? ' [Admin]' : ''}`] 
+          };
+        })
+      }));
+      
+      setEditingId(null);
+      setEditingText('');
+      setLastSync(new Date());
+
+    } catch (err) {
+      setError(`Failed to edit comment: ${err.message}`);
+      console.error('Edit comment error:', err);
+    }
   }
 
   function confirmIgnoreComment(commentId) {
@@ -422,22 +503,44 @@ const ProjectStatusDashboard = () => {
   }
 
   async function doIgnore() {
-    if (!confirmIgnore) return;
-    
-    const { projectId, commentId } = confirmIgnore;
-    
-    await simulateApiCall('ignoreComment', { commentId });
+    try {
+      if (!confirmIgnore) return;
+      
+      const { projectId, commentId } = confirmIgnore;
+      
+      // Find the current comment to preserve its text
+      const project = state.projects.find(p => p.id === projectId);
+      const comment = project?.comments.find(c => c.id === commentId);
+      
+      if (!comment) return;
+      
+      const updatedComment = {
+        id: commentId,
+        text: comment.text, // Preserve the original text
+        ignored: true,
+        deleted: false,
+        ts: new Date().toISOString()
+      };
 
-    setState(prev => ({
-      ...prev,
-      projects: prev.projects.map(p => {
-        if (p.id !== projectId) return p;
-        const newComments = p.comments.map(c => c.id === commentId ? ({ ...c, ignored: true, deleted: false, ts: new Date().toISOString() }) : c);
-        return { ...p, comments: newComments, history: [...(p.history || []), `${new Date().toLocaleString()}: Comment ignored${isAdmin ? ' [Admin]' : ''}`] };
-      })
-    }));
-    
-    setConfirmIgnore(null);
+      await saveComment(projectId, updatedComment);
+      await addHistoryEntry(projectId, `${new Date().toLocaleString()}: Comment ignored${isAdmin ? ' [Admin]' : ''}`);
+
+      setState(prev => ({
+        ...prev,
+        projects: prev.projects.map(p => {
+          if (p.id !== projectId) return p;
+          const newComments = p.comments.map(c => c.id === commentId ? ({ ...c, ignored: true, deleted: false, ts: new Date().toISOString() }) : c);
+          return { ...p, comments: newComments, history: [...(p.history || []), `${new Date().toLocaleString()}: Comment ignored${isAdmin ? ' [Admin]' : ''}`] };
+        })
+      }));
+      
+      setConfirmIgnore(null);
+      setLastSync(new Date());
+
+    } catch (err) {
+      setError(`Failed to ignore comment: ${err.message}`);
+      console.error('Ignore comment error:', err);
+    }
   }
 
   // History functions
@@ -575,6 +678,25 @@ const ProjectStatusDashboard = () => {
     'Low': '#6BA66B'
   };
 
+  if (loading) {
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif'
+      }}>
+        <div style={{
+          fontSize: '18px',
+          color: '#007AFF'
+        }}>
+          Loading...
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{
       fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif',
@@ -605,8 +727,44 @@ const ProjectStatusDashboard = () => {
       '--bg-tertiary': '#E5E5EA',
       '--separator': 'rgba(60, 60, 67, 0.12)',
       '--shadow': '0 0 20px rgba(0, 0, 0, 0.05)'
-    } as React.CSSProperties}>
+    }}>
       
+      {/* Error notification */}
+      {error && (
+        <div style={{
+          position: 'fixed',
+          top: '10px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 300,
+          background: '#FF3B30',
+          color: 'white',
+          padding: '12px 20px',
+          borderRadius: '20px',
+          fontSize: '14px',
+          boxShadow: '0 4px 20px rgba(255, 59, 48, 0.3)',
+          animation: 'slideIn 0.3s ease-out'
+        }}>
+          {error}
+          <button 
+            onClick={() => setError(null)}
+            style={{
+              marginLeft: '12px',
+              background: 'none',
+              border: 'none',
+              color: 'white',
+              cursor: 'pointer',
+              fontSize: '16px',
+              transition: 'opacity 0.2s ease'
+            }}
+            onMouseEnter={(e) => e.target.style.opacity = '0.7'}
+            onMouseLeave={(e) => e.target.style.opacity = '1'}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {/* Status indicator for real-time connection */}
       <div style={{
         position: 'fixed',
@@ -620,14 +778,15 @@ const ProjectStatusDashboard = () => {
         padding: '8px 12px',
         borderRadius: '20px',
         boxShadow: 'var(--shadow)',
-        fontSize: '12px'
+        fontSize: '12px',
+        transition: 'all 0.3s ease'
       }}>
         <div style={{
           width: '8px',
           height: '8px',
           borderRadius: '50%',
           backgroundColor: connected ? '#34C759' : '#FF3B30',
-          animation: connected ? 'none' : 'pulse 1s infinite'
+          transition: 'background-color 0.3s ease'
         }}></div>
         {connected ? `Synced ${lastSync.toLocaleTimeString()}` : 'Reconnecting...'}
       </div>
@@ -641,7 +800,8 @@ const ProjectStatusDashboard = () => {
         top: 0,
         zIndex: 100,
         borderBottom: '0.5px solid var(--separator)',
-        marginBottom: '24px'
+        marginBottom: '24px',
+        transition: 'all 0.3s ease'
       }}>
         <div style={{
           maxWidth: '1400px',
@@ -657,7 +817,7 @@ const ProjectStatusDashboard = () => {
             alignItems: 'center'
           }}>
             <button
-              onClick={() => setIsAdmin(v => !v)}
+              onClick={() => loadInitialData()}
               style={{
                 background: 'var(--bg-secondary)',
                 color: 'var(--primary)',
@@ -669,6 +829,39 @@ const ProjectStatusDashboard = () => {
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
                 outline: 'none'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = 'var(--gray-3)';
+                e.target.style.transform = 'translateY(-1px)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = 'var(--bg-secondary)';
+                e.target.style.transform = 'translateY(0)';
+              }}
+            >
+              Refresh
+            </button>
+            <button
+              onClick={handleAdminToggle}
+              style={{
+                background: 'var(--bg-secondary)',
+                color: 'var(--primary)',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '18px',
+                fontSize: '15px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                outline: 'none'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = 'var(--gray-3)';
+                e.target.style.transform = 'translateY(-1px)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = 'var(--bg-secondary)';
+                e.target.style.transform = 'translateY(0)';
               }}
             >
               {isAdmin ? 'Partner View' : 'Admin View'}
@@ -688,6 +881,16 @@ const ProjectStatusDashboard = () => {
                   transition: 'all 0.2s ease',
                   outline: 'none'
                 }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = '#0056CC';
+                  e.target.style.transform = 'translateY(-1px)';
+                  e.target.style.boxShadow = '0 4px 12px rgba(0, 122, 255, 0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = 'var(--primary)';
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = 'none';
+                }}
               >
                 + Add
               </button>
@@ -704,8 +907,18 @@ const ProjectStatusDashboard = () => {
           padding: '32px 20px',
           background: 'var(--bg-primary)',
           borderRadius: '20px',
-          boxShadow: 'var(--shadow)'
-        }}>
+          boxShadow: 'var(--shadow)',
+          transition: 'transform 0.3s ease, box-shadow 0.3s ease'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'translateY(-2px)';
+          e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.1)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'translateY(0)';
+          e.currentTarget.style.boxShadow = 'var(--shadow)';
+        }}
+        >
           <div style={{
             fontSize: '32px',
             fontWeight: 700,
@@ -713,23 +926,26 @@ const ProjectStatusDashboard = () => {
             background: 'linear-gradient(135deg, var(--primary), var(--secondary))',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
-            marginBottom: '8px'
+            marginBottom: '8px',
+            animation: 'fadeInUp 0.6s ease-out'
           }}>
-            Zigert Visual
+            Zigert Visuals
           </div>
           <div style={{
             fontSize: '24px',
             fontWeight: 600,
-            color: 'var(--text-primary)'
+            color: 'var(--text-primary)',
+            animation: 'fadeInUp 0.6s ease-out 0.1s both'
           }}>
             Project Status Dashboard
           </div>
           <div style={{
             fontSize: '14px',
             color: 'var(--text-quaternary)',
-            marginTop: '8px'
+            marginTop: '8px',
+            animation: 'fadeInUp 0.6s ease-out 0.2s both'
           }}>
-            Real-time collaborative workspace • Demo Mode
+            Real-time collaborative workspace
           </div>
         </div>
 
@@ -752,8 +968,18 @@ const ProjectStatusDashboard = () => {
               padding: '20px',
               boxShadow: 'var(--shadow)',
               textAlign: 'center',
-              transition: 'all 0.3s ease'
-            }}>
+              transition: 'all 0.3s ease',
+              animation: `fadeInUp 0.6s ease-out ${0.1 * idx}s both`
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)';
+              e.currentTarget.style.boxShadow = '0 12px 30px rgba(0, 0, 0, 0.15)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0) scale(1)';
+              e.currentTarget.style.boxShadow = 'var(--shadow)';
+            }}
+            >
               <div style={{
                 fontSize: '13px',
                 fontWeight: 500,
@@ -768,7 +994,8 @@ const ProjectStatusDashboard = () => {
                 fontSize: '34px',
                 fontWeight: 700,
                 color: stat.alert ? 'var(--danger)' : 'var(--text-primary)',
-                letterSpacing: '-0.024em'
+                letterSpacing: '-0.024em',
+                transition: 'color 0.3s ease'
               }}>
                 {stat.value}
               </div>
@@ -782,7 +1009,9 @@ const ProjectStatusDashboard = () => {
           borderRadius: '20px',
           overflow: 'hidden',
           boxShadow: 'var(--shadow)',
-          marginBottom: '32px'
+          marginBottom: '32px',
+          transition: 'all 0.3s ease',
+          animation: 'fadeInUp 0.6s ease-out 0.4s both'
         }}>
           <div style={{
             padding: '24px',
@@ -811,15 +1040,25 @@ const ProjectStatusDashboard = () => {
                   return a.name.localeCompare(b.name);
                 }
                 return priorityDiff;
-              }).map(project => (
+              }).map((project, index) => (
                 <div key={project.id} style={{
                   background: 'var(--bg-secondary)',
                   borderRadius: '16px',
                   padding: '20px',
                   marginBottom: '16px',
                   transition: 'all 0.3s ease',
-                  borderLeft: `6px solid ${getProjectColor(project.id)}`
-                }}>
+                  borderLeft: `6px solid ${getProjectColor(project.id)}`,
+                  animation: `fadeInUp 0.4s ease-out ${0.1 * index}s both`
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateX(4px)';
+                  e.currentTarget.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateX(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+                >
                   {isAdmin && (
                     <div style={{
                       display: 'flex',
@@ -843,7 +1082,18 @@ const ProjectStatusDashboard = () => {
                             borderRadius: '10px',
                             fontSize: '13px',
                             fontWeight: 500,
-                            cursor: 'pointer'
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.target.style.background = 'var(--primary)';
+                            e.target.style.color = 'white';
+                            e.target.style.transform = 'translateY(-1px)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.background = 'var(--bg-primary)';
+                            e.target.style.color = 'var(--primary)';
+                            e.target.style.transform = 'translateY(0)';
                           }}
                         >
                           Complete
@@ -862,7 +1112,18 @@ const ProjectStatusDashboard = () => {
                             borderRadius: '10px',
                             fontSize: '13px',
                             fontWeight: 500,
-                            cursor: 'pointer'
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.target.style.background = 'var(--danger)';
+                            e.target.style.color = 'white';
+                            e.target.style.transform = 'translateY(-1px)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.background = 'var(--bg-primary)';
+                            e.target.style.color = 'var(--danger)';
+                            e.target.style.transform = 'translateY(0)';
                           }}
                         >
                           Delete
@@ -899,7 +1160,8 @@ const ProjectStatusDashboard = () => {
                           height: '12px',
                           borderRadius: '50%',
                           backgroundColor: getProjectColor(project.id),
-                          flexShrink: 0
+                          flexShrink: 0,
+                          animation: `pulse 2s infinite`
                         }}></div>
                         {isAdmin ? (
                           <div
@@ -919,6 +1181,14 @@ const ProjectStatusDashboard = () => {
                               justifyContent: 'center'
                             }}
                             title="Click to edit"
+                            onMouseEnter={(e) => {
+                              e.target.style.borderColor = 'var(--primary)';
+                              e.target.style.transform = 'scale(1.02)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.target.style.borderColor = 'var(--gray-3)';
+                              e.target.style.transform = 'scale(1)';
+                            }}
                           >
                             {project.name}
                           </div>
@@ -949,14 +1219,23 @@ const ProjectStatusDashboard = () => {
                             padding: '8px 12px',
                             borderRadius: '12px',
                             border: '1px solid transparent',
-                            width: '160px',
+                            width: '120px', // Fixed width based on "In Progress"
                             textAlign: 'center',
                             fontWeight: 600,
                             backgroundColor: statusColors[project.status] || '#e5e5ea',
                             color: '#fff',
                             cursor: 'pointer',
                             height: '34px',
-                            fontSize: '12px'
+                            fontSize: Math.round(12 * 1.15) + 'px', // 15% bigger
+                            transition: 'all 0.2s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.target.style.transform = 'scale(1.05)';
+                            e.target.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.transform = 'scale(1)';
+                            e.target.style.boxShadow = 'none';
                           }}
                         >
                           <option value="Waiting" style={{color: '#000', backgroundColor: '#fff'}}>Waiting</option>
@@ -972,12 +1251,13 @@ const ProjectStatusDashboard = () => {
                           backgroundColor: statusColors[project.status] || '#e5e5ea',
                           color: '#fff',
                           fontWeight: 600,
-                          fontSize: '12px',
+                          fontSize: Math.round(12 * 1.15) + 'px', // 15% bigger
                           height: '34px',
-                          width: '160px',
+                          width: '120px', // Fixed width based on "In Progress"
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center'
+                          justifyContent: 'center',
+                          transition: 'all 0.2s ease'
                         }}>
                           {project.status}
                         </div>
@@ -1019,7 +1299,16 @@ const ProjectStatusDashboard = () => {
                             maxWidth: '120px',
                             textAlign: 'center',
                             cursor: 'pointer',
-                            height: '34px'
+                            height: '34px',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.target.style.borderColor = 'var(--primary)';
+                            e.target.style.transform = 'scale(1.02)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.borderColor = 'transparent';
+                            e.target.style.transform = 'scale(1)';
                           }}
                         />
                       ) : (
@@ -1037,38 +1326,44 @@ const ProjectStatusDashboard = () => {
                       }}>
                         Due
                       </div>
-                      {isAdmin ? (
-                        <input
-                          type='date'
-                          value={project.dueDate}
-                          min={project.startDate}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            if (new Date(val) < new Date(project.startDate)) {
-                              window.alert('Due date cannot be earlier than Start date');
-                              return;
-                            }
-                            updateProject(project.id, { dueDate: val }, `${new Date().toLocaleString()}: Due changed to ${val}`);
-                          }}
-                          style={{
-                            padding: '8px 12px',
-                            borderRadius: '12px',
-                            border: '1px solid transparent',
-                            background: 'var(--bg-primary)',
-                            fontFamily: 'inherit',
-                            fontSize: '14px',
-                            fontWeight: 600,
-                            color: 'var(--text-primary)',
-                            width: '100%',
-                            maxWidth: '120px',
-                            textAlign: 'center',
-                            cursor: 'pointer',
-                            height: '34px'
-                          }}
-                        />
-                      ) : (
-                        <div style={{height: '34px', display: 'flex', alignItems: 'center'}}>{project.dueDate}</div>
-                      )}
+                      {/* Allow both admin and partner to edit due date */}
+                      <input
+                        type='date'
+                        value={project.dueDate}
+                        min={project.startDate}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (new Date(val) < new Date(project.startDate)) {
+                            window.alert('Due date cannot be earlier than Start date');
+                            return;
+                          }
+                          updateProject(project.id, { dueDate: val }, `${new Date().toLocaleString()}: Due changed to ${val}`);
+                        }}
+                        style={{
+                          padding: '8px 12px',
+                          borderRadius: '12px',
+                          border: '1px solid transparent',
+                          background: 'var(--bg-primary)',
+                          fontFamily: 'inherit',
+                          fontSize: '14px',
+                          fontWeight: 600,
+                          color: 'var(--text-primary)',
+                          width: '100%',
+                          maxWidth: '120px',
+                          textAlign: 'center',
+                          cursor: 'pointer',
+                          height: '34px',
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.target.style.borderColor = 'var(--primary)';
+                          e.target.style.transform = 'scale(1.02)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.borderColor = 'transparent';
+                          e.target.style.transform = 'scale(1)';
+                        }}
+                      />
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center', textAlign: 'center' }}>
@@ -1099,7 +1394,16 @@ const ProjectStatusDashboard = () => {
                             textAlign: 'center',
                             margin: '0 auto',
                             cursor: 'pointer',
-                            height: '34px'
+                            height: '34px',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.target.style.borderColor = 'var(--primary)';
+                            e.target.style.transform = 'scale(1.02)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.borderColor = 'transparent';
+                            e.target.style.transform = 'scale(1)';
                           }}
                         />
                       ) : (
@@ -1124,14 +1428,23 @@ const ProjectStatusDashboard = () => {
                           padding: '8px 12px',
                           borderRadius: '12px',
                           border: '1px solid transparent',
-                          width: '160px',
+                          width: '120px', // Same width as Status
                           textAlign: 'center',
                           fontWeight: 600,
                           backgroundColor: priorityColors[project.priority] || '#fff',
                           color: ['High', 'Medium'].includes(project.priority) ? '#fff' : '#000',
                           cursor: 'pointer',
                           height: '34px',
-                          fontSize: '12px'
+                          fontSize: Math.round(12 * 1.15) + 'px', // 15% bigger
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.target.style.transform = 'scale(1.05)';
+                          e.target.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.transform = 'scale(1)';
+                          e.target.style.boxShadow = 'none';
                         }}
                       >
                         <option value="Low" style={{color: '#000', backgroundColor: '#fff'}}>Low</option>
@@ -1161,7 +1474,16 @@ const ProjectStatusDashboard = () => {
                           justifyContent: 'center',
                           gap: '4px',
                           cursor: 'pointer',
-                          fontSize: '18px'
+                          fontSize: '18px',
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.target.style.transform = 'scale(1.1) rotate(5deg)';
+                          e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.transform = 'scale(1) rotate(0deg)';
+                          e.target.style.boxShadow = 'none';
                         }}
                       >
                         💬
@@ -1185,7 +1507,16 @@ const ProjectStatusDashboard = () => {
                           cursor: 'pointer',
                           fontWeight: 700,
                           background: 'var(--bg-primary)',
-                          fontSize: '16px'
+                          fontSize: '16px',
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.target.style.transform = 'scale(1.1) rotate(-5deg)';
+                          e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.transform = 'scale(1) rotate(0deg)';
+                          e.target.style.boxShadow = 'none';
                         }}
                       >
                         📋
@@ -1203,7 +1534,8 @@ const ProjectStatusDashboard = () => {
           background: 'var(--bg-primary)',
           borderRadius: '20px',
           padding: '24px',
-          boxShadow: 'var(--shadow)'
+          boxShadow: 'var(--shadow)',
+          animation: 'fadeInUp 0.6s ease-out 0.6s both'
         }}>
           <div style={{
             padding: '0 0 24px 0',
@@ -1238,7 +1570,18 @@ const ProjectStatusDashboard = () => {
                     borderRadius: '12px',
                     cursor: 'pointer',
                     fontSize: '14px',
-                    fontWeight: 500
+                    fontWeight: 500,
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = 'var(--primary)';
+                    e.target.style.color = 'white';
+                    e.target.style.transform = 'translateX(-2px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'var(--bg-secondary)';
+                    e.target.style.color = 'var(--primary)';
+                    e.target.style.transform = 'translateX(0)';
                   }}
                 >
                   ←
@@ -1253,7 +1596,18 @@ const ProjectStatusDashboard = () => {
                     borderRadius: '12px',
                     cursor: 'pointer',
                     fontSize: '14px',
-                    fontWeight: 500
+                    fontWeight: 500,
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = 'var(--primary)';
+                    e.target.style.color = 'white';
+                    e.target.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'var(--bg-secondary)';
+                    e.target.style.color = 'var(--primary)';
+                    e.target.style.transform = 'translateY(0)';
                   }}
                 >
                   Today
@@ -1268,7 +1622,18 @@ const ProjectStatusDashboard = () => {
                     borderRadius: '12px',
                     cursor: 'pointer',
                     fontSize: '14px',
-                    fontWeight: 500
+                    fontWeight: 500,
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = 'var(--primary)';
+                    e.target.style.color = 'white';
+                    e.target.style.transform = 'translateX(2px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'var(--bg-secondary)';
+                    e.target.style.color = 'var(--primary)';
+                    e.target.style.transform = 'translateX(0)';
                   }}
                 >
                   →
@@ -1336,9 +1701,18 @@ const ProjectStatusDashboard = () => {
                       fontSize: '14px',
                       fontWeight: 500,
                       cursor: 'pointer',
-                      textShadow: projects.length > 0 ? '1px 1px 2px rgba(0,0,0,0.7)' : 'none'
+                      textShadow: projects.length > 0 ? '1px 1px 2px rgba(0,0,0,0.7)' : 'none',
+                      transition: 'all 0.2s ease'
                     }}
                     title={titleAttr}
+                    onMouseEnter={(e) => {
+                      e.target.style.transform = 'scale(1.1)';
+                      e.target.style.zIndex = '10';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.transform = 'scale(1)';
+                      e.target.style.zIndex = '1';
+                    }}
                   >
                     {day.getDate()}
                   </div>
@@ -1349,10 +1723,69 @@ const ProjectStatusDashboard = () => {
         </div>
       </div>
 
-      {/* All Modals */}
-      {/* Alert Modal */}
-      {isAlertOpen && (
-        <div style={{
+      {/* Add CSS animations */}
+      <style>
+        {`
+          @keyframes slideIn {
+            from {
+              opacity: 0;
+              transform: translateX(-50%) translateY(-20px);
+            }
+            to {
+              opacity: 1;
+              transform: translateX(-50%) translateY(0);
+            }
+          }
+          
+          @keyframes fadeInUp {
+            from {
+              opacity: 0;
+              transform: translateY(20px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+          
+          @keyframes pulse {
+            0%, 100% {
+              opacity: 1;
+            }
+            50% {
+              opacity: 0.7;
+            }
+          }
+          
+          .modal-backdrop {
+            animation: fadeIn 0.2s ease-out;
+          }
+          
+          .modal-content {
+            animation: slideInModal 0.3s ease-out;
+          }
+          
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+          
+          @keyframes slideInModal {
+            from {
+              opacity: 0;
+              transform: scale(0.9) translateY(-10px);
+            }
+            to {
+              opacity: 1;
+              transform: scale(1) translateY(0);
+            }
+          }
+        `}
+      </style>
+
+      {/* Password Modal */}
+      {passwordModal && (
+        <div className="modal-backdrop" style={{
           position: 'fixed',
           top: 0,
           left: 0,
@@ -1364,7 +1797,83 @@ const ProjectStatusDashboard = () => {
           alignItems: 'center',
           justifyContent: 'center'
         }}>
-          <div style={{
+          <div className="modal-content" style={{
+            background: 'var(--bg-primary)',
+            borderRadius: '18px',
+            maxWidth: '400px',
+            textAlign: 'center',
+            padding: '24px'
+          }}>
+            <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>Admin Access Required</div>
+            <input
+              type="password"
+              placeholder="Enter admin password"
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && checkPassword()}
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '10px',
+                border: '1px solid var(--gray-4)',
+                marginBottom: '16px',
+                fontSize: '16px'
+              }}
+              autoFocus
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button 
+                onClick={() => {
+                  setPasswordModal(false);
+                  setPasswordInput('');
+                }} 
+                style={{
+                  background: 'var(--bg-secondary)',
+                  color: 'var(--text-primary)',
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={checkPassword} 
+                style={{
+                  background: 'var(--primary)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                Login
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* All Modals */}
+      {/* Alert Modal */}
+      {isAlertOpen && (
+        <div className="modal-backdrop" style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          background: 'rgba(0, 0, 0, 0.4)',
+          zIndex: 1200,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <div className="modal-content" style={{
             background: 'var(--bg-primary)',
             borderRadius: '18px',
             maxWidth: '400px',
@@ -1379,7 +1888,8 @@ const ProjectStatusDashboard = () => {
               border: 'none',
               padding: '10px 20px',
               borderRadius: '10px',
-              cursor: 'pointer'
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
             }}>OK</button>
           </div>
         </div>
@@ -1387,7 +1897,7 @@ const ProjectStatusDashboard = () => {
 
       {/* Comments Modal */}
       {commentsForId && (
-        <div style={{
+        <div className="modal-backdrop" style={{
           position: 'fixed',
           top: 0,
           left: 0,
@@ -1401,7 +1911,7 @@ const ProjectStatusDashboard = () => {
           alignItems: 'center',
           justifyContent: 'center'
         }} onClick={closeComments}>
-          <div style={{
+          <div className="modal-content" style={{
             background: 'var(--bg-primary)',
             borderRadius: '18px',
             width: '92%',
@@ -1433,7 +1943,8 @@ const ProjectStatusDashboard = () => {
                 padding: '8px 16px',
                 borderRadius: '10px',
                 fontSize: '14px',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
               }}>Close</button>
             </div>
             <div style={{ padding: '24px', overflow: 'auto', flex: 1 }}>
@@ -1458,7 +1969,8 @@ const ProjectStatusDashboard = () => {
                     borderRadius: '10px',
                     background: c.deleted || c.ignored ? '#fafafa' : 'var(--bg-primary)',
                     marginBottom: '8px',
-                    border: '1px solid var(--separator)'
+                    border: '1px solid var(--separator)',
+                    transition: 'all 0.2s ease'
                   }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
                       <div style={{ flex: 1 }}>
@@ -1480,7 +1992,8 @@ const ProjectStatusDashboard = () => {
                           padding: '6px 10px',
                           borderRadius: '8px',
                           fontSize: '12px',
-                          cursor: 'pointer'
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease'
                         }}>✏️ Edit</button>
                         <button 
                           disabled={c.ignored} 
@@ -1492,7 +2005,8 @@ const ProjectStatusDashboard = () => {
                             borderRadius: '8px',
                             fontSize: '12px',
                             cursor: c.ignored ? 'not-allowed' : 'pointer',
-                            opacity: c.ignored ? 0.5 : 1
+                            opacity: c.ignored ? 0.5 : 1,
+                            transition: 'all 0.2s ease'
                           }}
                         >{c.ignored ? 'Ignored' : 'Ignore'}</button>
                       </div>
@@ -1507,7 +2021,8 @@ const ProjectStatusDashboard = () => {
                             flex: 1,
                             padding: '8px',
                             borderRadius: '10px',
-                            border: '1px solid var(--gray-4)'
+                            border: '1px solid var(--gray-4)',
+                            transition: 'all 0.2s ease'
                           }}
                         />
                         <button onClick={() => saveEdit(c.id)} style={{
@@ -1516,14 +2031,16 @@ const ProjectStatusDashboard = () => {
                           border: 'none',
                           padding: '8px 16px',
                           borderRadius: '10px',
-                          cursor: 'pointer'
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease'
                         }}>Save</button>
                         <button onClick={() => { setEditingId(null); setEditingText(''); }} style={{
                           background: 'var(--bg-secondary)',
                           border: 'none',
                           padding: '8px 16px',
                           borderRadius: '10px',
-                          cursor: 'pointer'
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease'
                         }}>Cancel</button>
                       </div>
                     )}
@@ -1539,7 +2056,8 @@ const ProjectStatusDashboard = () => {
                     flex: 1,
                     padding: '10px',
                     borderRadius: '12px',
-                    border: '1px solid var(--gray-4)'
+                    border: '1px solid var(--gray-4)',
+                    transition: 'all 0.2s ease'
                   }}
                 />
                 <button
@@ -1552,7 +2070,8 @@ const ProjectStatusDashboard = () => {
                     padding: '10px 20px',
                     borderRadius: '10px',
                     cursor: draft.trim() ? 'pointer' : 'not-allowed',
-                    opacity: draft.trim() ? 1 : 0.5
+                    opacity: draft.trim() ? 1 : 0.5,
+                    transition: 'all 0.2s ease'
                   }}
                 >Add</button>
               </div>
@@ -1563,7 +2082,7 @@ const ProjectStatusDashboard = () => {
 
       {/* History Modal */}
       {historyForId && (
-        <div style={{
+        <div className="modal-backdrop" style={{
           position: 'fixed',
           top: 0,
           left: 0,
@@ -1577,7 +2096,7 @@ const ProjectStatusDashboard = () => {
           alignItems: 'center',
           justifyContent: 'center'
         }} onClick={closeHistory}>
-          <div style={{
+          <div className="modal-content" style={{
             background: 'var(--bg-primary)',
             borderRadius: '18px',
             width: '92%',
@@ -1613,7 +2132,8 @@ const ProjectStatusDashboard = () => {
                   fontSize: '14px',
                   fontWeight: 500,
                   cursor: 'pointer',
-                  color: 'var(--text-primary)'
+                  color: 'var(--text-primary)',
+                  transition: 'all 0.2s ease'
                 }}
               >
                 Close
@@ -1640,7 +2160,9 @@ const ProjectStatusDashboard = () => {
                       background: 'var(--bg-secondary)',
                       borderRadius: '10px',
                       marginBottom: '8px',
-                      border: '1px solid var(--separator)'
+                      border: '1px solid var(--separator)',
+                      transition: 'all 0.2s ease',
+                      animation: `fadeInUp 0.3s ease-out ${0.05 * idx}s both`
                     }}>
                       <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
                         {msgPart}
@@ -1659,7 +2181,7 @@ const ProjectStatusDashboard = () => {
 
       {/* Add Project Modal */}
       {isAddModalOpen && (
-        <div style={{
+        <div className="modal-backdrop" style={{
           position: 'fixed',
           top: 0,
           left: 0,
@@ -1671,7 +2193,7 @@ const ProjectStatusDashboard = () => {
           alignItems: 'center',
           justifyContent: 'center'
         }} onClick={() => setIsAddModalOpen(false)}>
-          <div style={{
+          <div className="modal-content" style={{
             background: 'var(--bg-primary)',
             borderRadius: '18px',
             width: '92%',
@@ -1685,12 +2207,22 @@ const ProjectStatusDashboard = () => {
                 placeholder="Project name"
                 value={newProject.name}
                 onChange={(e) => setNewProject(prev => ({ ...prev, name: e.target.value }))}
-                style={{ padding: '10px', borderRadius: '10px', border: '1px solid var(--gray-4)' }}
+                style={{ 
+                  padding: '10px', 
+                  borderRadius: '10px', 
+                  border: '1px solid var(--gray-4)',
+                  transition: 'all 0.2s ease'
+                }}
               />
               <select
                 value={newProject.status}
                 onChange={(e) => setNewProject(prev => ({ ...prev, status: e.target.value }))}
-                style={{ padding: '10px', borderRadius: '10px', border: '1px solid var(--gray-4)' }}
+                style={{ 
+                  padding: '10px', 
+                  borderRadius: '10px', 
+                  border: '1px solid var(--gray-4)',
+                  transition: 'all 0.2s ease'
+                }}
               >
                 <option value="Waiting">Waiting</option>
                 <option value="In Progress">In Progress</option>
@@ -1702,21 +2234,42 @@ const ProjectStatusDashboard = () => {
                 type="date"
                 value={newProject.startDate}
                 onChange={(e) => setNewProject(prev => ({ ...prev, startDate: e.target.value }))}
-                style={{ padding: '10px', borderRadius: '10px', border: '1px solid var(--gray-4)' }}
+                style={{ 
+                  padding: '10px', 
+                  borderRadius: '10px', 
+                  border: '1px solid var(--gray-4)',
+                  transition: 'all 0.2s ease'
+                }}
               />
               <input
                 type="date"
                 value={newProject.dueDate}
                 onChange={(e) => setNewProject(prev => ({ ...prev, dueDate: e.target.value }))}
-                style={{ padding: '10px', borderRadius: '10px', border: '1px solid var(--gray-4)' }}
+                style={{ 
+                  padding: '10px', 
+                  borderRadius: '10px', 
+                  border: '1px solid var(--gray-4)',
+                  transition: 'all 0.2s ease'
+                }}
               />
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
               <button onClick={() => setIsAddModalOpen(false)} style={{
-                background: 'var(--bg-secondary)', padding: '8px 16px', borderRadius: '10px', border: 'none', cursor: 'pointer'
+                background: 'var(--bg-secondary)', 
+                padding: '8px 16px', 
+                borderRadius: '10px', 
+                border: 'none', 
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
               }}>Cancel</button>
               <button onClick={addProject} style={{
-                background: 'var(--primary)', color: 'white', padding: '8px 16px', borderRadius: '10px', border: 'none', cursor: 'pointer'
+                background: 'var(--primary)', 
+                color: 'white', 
+                padding: '8px 16px', 
+                borderRadius: '10px', 
+                border: 'none', 
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
               }}>Add</button>
             </div>
           </div>
@@ -1725,7 +2278,7 @@ const ProjectStatusDashboard = () => {
 
       {/* Project Name Modal */}
       {projectNameModal.open && (
-        <div style={{
+        <div className="modal-backdrop" style={{
           position: 'fixed',
           top: 0,
           left: 0,
@@ -1737,7 +2290,7 @@ const ProjectStatusDashboard = () => {
           alignItems: 'center',
           justifyContent: 'center'
         }} onClick={closeProjectNameModal}>
-          <div style={{
+          <div className="modal-content" style={{
             background: 'var(--bg-primary)',
             borderRadius: '18px',
             width: '92%',
@@ -1750,14 +2303,32 @@ const ProjectStatusDashboard = () => {
               value={projectNameModal.name}
               onChange={e => setProjectNameModal({ ...projectNameModal, name: e.target.value })}
               placeholder="Project name"
-              style={{ width: '100%', padding: '10px', borderRadius: '10px', border: '1px solid var(--gray-4)', marginBottom: '16px' }}
+              style={{ 
+                width: '100%', 
+                padding: '10px', 
+                borderRadius: '10px', 
+                border: '1px solid var(--gray-4)', 
+                marginBottom: '16px',
+                transition: 'all 0.2s ease'
+              }}
             />
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
               <button onClick={closeProjectNameModal} style={{
-                background: 'var(--bg-secondary)', padding: '8px 16px', borderRadius: '10px', border: 'none', cursor: 'pointer'
+                background: 'var(--bg-secondary)', 
+                padding: '8px 16px', 
+                borderRadius: '10px', 
+                border: 'none', 
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
               }}>Cancel</button>
               <button onClick={saveProjectName} style={{
-                background: 'var(--primary)', color: 'white', padding: '8px 16px', borderRadius: '10px', border: 'none', cursor: 'pointer'
+                background: 'var(--primary)', 
+                color: 'white', 
+                padding: '8px 16px', 
+                borderRadius: '10px', 
+                border: 'none', 
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
               }}>Save</button>
             </div>
           </div>
@@ -1766,7 +2337,7 @@ const ProjectStatusDashboard = () => {
 
       {/* Confirmation Dialogs */}
       {confirmAddOpen && (
-        <div style={{
+        <div className="modal-backdrop" style={{
           position: 'fixed',
           inset: 0,
           display: 'flex',
@@ -1775,7 +2346,7 @@ const ProjectStatusDashboard = () => {
           zIndex: 1100,
           background: 'rgba(0, 0, 0, 0.5)'
         }}>
-          <div style={{
+          <div className="modal-content" style={{
             background: 'var(--bg-primary)',
             padding: '20px',
             borderRadius: '12px',
@@ -1789,7 +2360,8 @@ const ProjectStatusDashboard = () => {
                 border: 'none',
                 padding: '8px 16px',
                 borderRadius: '10px',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
               }}>Cancel</button>
               <button onClick={addCommentConfirmed} style={{
                 background: 'var(--primary)',
@@ -1797,7 +2369,8 @@ const ProjectStatusDashboard = () => {
                 border: 'none',
                 padding: '8px 16px',
                 borderRadius: '10px',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
               }}>Ok</button>
             </div>
           </div>
@@ -1805,7 +2378,7 @@ const ProjectStatusDashboard = () => {
       )}
 
       {confirmIgnore && (
-        <div style={{
+        <div className="modal-backdrop" style={{
           position: 'fixed',
           inset: 0,
           display: 'flex',
@@ -1814,7 +2387,7 @@ const ProjectStatusDashboard = () => {
           zIndex: 1100,
           background: 'rgba(0, 0, 0, 0.5)'
         }}>
-          <div style={{
+          <div className="modal-content" style={{
             background: 'var(--bg-primary)',
             padding: '20px',
             borderRadius: '12px',
@@ -1828,7 +2401,8 @@ const ProjectStatusDashboard = () => {
                 border: 'none',
                 padding: '8px 16px',
                 borderRadius: '10px',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
               }}>No</button>
               <button onClick={doIgnore} style={{
                 background: 'var(--primary)',
@@ -1836,7 +2410,8 @@ const ProjectStatusDashboard = () => {
                 border: 'none',
                 padding: '8px 16px',
                 borderRadius: '10px',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
               }}>Yes</button>
             </div>
           </div>
