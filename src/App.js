@@ -28,6 +28,16 @@ const ProjectStatusDashboard = () => {
     return `${year}-${month}-${day}`;
   }
 
+  // Helper function to format date for display in MM/DD/YYYY format
+  function formatDateForDisplay(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${month}/${day}/${year}`;
+  }
+
   // Calendar project colors
   const projectColors = [
     '#8D6E63', '#5D4037', '#795548', '#6D4C41', '#4E342E',
@@ -70,6 +80,10 @@ const ProjectStatusDashboard = () => {
   const [lastSync, setLastSync] = useState(new Date());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // States for auto-refresh control
+  const [isWindowActive, setIsWindowActive] = useState(true);
+  const [hasUserActivity, setHasUserActivity] = useState(false);
 
   // Modal states
   const [commentsForId, setCommentsForId] = useState(null);
@@ -245,17 +259,47 @@ const ProjectStatusDashboard = () => {
     if (error) throw error;
   }
 
+  // Track window activity for auto-refresh control
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsWindowActive(!document.hidden);
+    };
+
+    const handleUserActivity = () => {
+      setHasUserActivity(true);
+      // Reset user activity flag after a short delay
+      setTimeout(() => setHasUserActivity(false), 5000);
+    };
+
+    // Add event listeners for user activity
+    const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    activityEvents.forEach(event => {
+      document.addEventListener(event, handleUserActivity, true);
+    });
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      activityEvents.forEach(event => {
+        document.removeEventListener(event, handleUserActivity, true);
+      });
+    };
+  }, []);
+
   // Load data on component mount and set up auto-refresh
   useEffect(() => {
     loadInitialData();
     
-    // Auto-refresh every 10 seconds
+    // Auto-refresh every 1 minute, only when window is not active and no user activity
     const autoRefreshInterval = setInterval(() => {
-      loadInitialData();
-    }, 10000);
+      if (!isWindowActive && !hasUserActivity) {
+        loadInitialData();
+      }
+    }, 60000); // 1 minute = 60000ms
     
     return () => clearInterval(autoRefreshInterval);
-  }, []);
+  }, [isWindowActive, hasUserActivity]);
 
   // Simulate connection status and periodic sync
   useEffect(() => {
@@ -291,18 +335,9 @@ const ProjectStatusDashboard = () => {
     setTimeout(() => setIsAlertOpen(false), 3000);
   }
 
-  // Helper function to format date for display
-  function formatDateForDisplay(dateString) {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const year = date.getFullYear();
-    return `${month}/${day}/${year}`;
-  }
-
   // Password check for admin
   function handleAdminToggle() {
+    setHasUserActivity(true); // Mark user activity
     if (!isAdmin) {
       setPasswordModal(true);
     } else {
@@ -311,6 +346,7 @@ const ProjectStatusDashboard = () => {
   }
 
   function checkPassword() {
+    setHasUserActivity(true); // Mark user activity
     if (passwordInput === 'Zigert22@') {
       setIsAdmin(true);
       setPasswordModal(false);
@@ -323,6 +359,7 @@ const ProjectStatusDashboard = () => {
 
   async function updateProject(id, changes, historyEntry) {
     try {
+      setHasUserActivity(true); // Mark user activity
       const project = state.projects.find(p => p.id === id);
       if (!project) return;
 
@@ -391,6 +428,7 @@ const ProjectStatusDashboard = () => {
 
   async function addProject() {
     try {
+      setHasUserActivity(true); // Mark user activity
       if (!newProject.name.trim()) {
         showAlert("Specify project name!");
         return;
@@ -447,6 +485,7 @@ const ProjectStatusDashboard = () => {
 
   async function deleteProject(id) {
     try {
+      setHasUserActivity(true); // Mark user activity
       if (!window.confirm('Are you sure you want to delete this project?')) return;
       
       await deleteProjectFromDB(id);
@@ -460,11 +499,13 @@ const ProjectStatusDashboard = () => {
   }
 
   async function completeProject(id) {
+    setHasUserActivity(true); // Mark user activity
     updateProject(id, { status: 'Completed' }, `${new Date().toLocaleString()}: Marked Completed`);
   }
 
   // Comment functions
   function openComments(projectId) {
+    setHasUserActivity(true); // Mark user activity
     setCommentsForId(projectId);
     setDraft('');
     setEditingId(null);
@@ -484,6 +525,7 @@ const ProjectStatusDashboard = () => {
 
   async function addCommentConfirmed() {
     try {
+      setHasUserActivity(true); // Mark user activity
       if (!commentsForId || !draft.trim()) return;
       
       const comment = {
@@ -517,12 +559,14 @@ const ProjectStatusDashboard = () => {
   }
 
   function startEdit(commentId, text) {
+    setHasUserActivity(true); // Mark user activity
     setEditingId(commentId);
     setEditingText(text || '');
   }
 
   async function saveEdit(commentId) {
     try {
+      setHasUserActivity(true); // Mark user activity
       if (!commentsForId) return;
       
       const trimmed = editingText.trim();
@@ -570,12 +614,14 @@ const ProjectStatusDashboard = () => {
   }
 
   function confirmIgnoreComment(commentId) {
+    setHasUserActivity(true); // Mark user activity
     if (!commentsForId) return;
     setConfirmIgnore({ projectId: commentsForId, commentId });
   }
 
   async function doIgnore() {
     try {
+      setHasUserActivity(true); // Mark user activity
       if (!confirmIgnore) return;
       
       const { projectId, commentId } = confirmIgnore;
@@ -616,12 +662,16 @@ const ProjectStatusDashboard = () => {
   }
 
   // History functions
-  function openHistory(projectId) { setHistoryForId(projectId); }
+  function openHistory(projectId) { 
+    setHasUserActivity(true); // Mark user activity
+    setHistoryForId(projectId); 
+  }
   function closeHistory() { setHistoryForId(null); }
 
   // Clear functions for Admin
   async function clearComments(projectId) {
     try {
+      setHasUserActivity(true); // Mark user activity
       const project = state.projects.find(p => p.id === projectId);
       if (!project) return;
 
@@ -656,6 +706,7 @@ const ProjectStatusDashboard = () => {
 
   async function clearHistory(projectId) {
     try {
+      setHasUserActivity(true); // Mark user activity
       // Delete all history from database
       await supabase
         .from('project_history')
@@ -682,6 +733,7 @@ const ProjectStatusDashboard = () => {
 
   // ИСПРАВЛЕНО: Calendar functions
   function changeMonth(delta) {
+    setHasUserActivity(true); // Mark user activity
     setCurrentDate(prev => {
       let newMonth = prev.month + delta;
       let newYear = prev.year;
@@ -699,6 +751,7 @@ const ProjectStatusDashboard = () => {
   }
 
   function goToToday() {
+    setHasUserActivity(true); // Mark user activity
     const today = new Date();
     setCurrentDate({
       month: today.getMonth(),
@@ -708,6 +761,7 @@ const ProjectStatusDashboard = () => {
 
   // Project name modal
   function openProjectNameModal(projectId, currentName) {
+    setHasUserActivity(true); // Mark user activity
     setProjectNameModal({ open: true, projectId, name: currentName });
   }
 
@@ -716,6 +770,7 @@ const ProjectStatusDashboard = () => {
   }
 
   async function saveProjectName() {
+    setHasUserActivity(true); // Mark user activity
     if (!projectNameModal.name.trim()) {
       showAlert("Specify project name!");
       return;
@@ -732,6 +787,7 @@ const ProjectStatusDashboard = () => {
 
   // Color picker modal functions
   function openColorPickerModal(projectId) {
+    setHasUserActivity(true); // Mark user activity
     const project = state.projects.find(p => p.id === projectId);
     const currentColor = getProjectColor(project);
     setColorPickerModal({ open: true, projectId, currentColor });
@@ -742,6 +798,7 @@ const ProjectStatusDashboard = () => {
   }
 
   async function saveProjectColor() {
+    setHasUserActivity(true); // Mark user activity
     if (!colorPickerModal.projectId) return;
 
     await updateProject(
@@ -974,7 +1031,10 @@ const ProjectStatusDashboard = () => {
             alignItems: 'center'
           }}>
             <button
-              onClick={() => loadInitialData()}
+              onClick={() => {
+                setHasUserActivity(true);
+                loadInitialData();
+              }}
               style={{
                 background: 'var(--bg-secondary)',
                 color: 'var(--primary)',
@@ -1025,7 +1085,10 @@ const ProjectStatusDashboard = () => {
             </button>
             {isAdmin && (
               <button
-                onClick={() => setIsAddModalOpen(true)}
+                onClick={() => {
+                  setHasUserActivity(true);
+                  setIsAddModalOpen(true);
+                }}
                 style={{
                   background: 'var(--primary)',
                   color: 'white',
@@ -1363,29 +1426,6 @@ const ProjectStatusDashboard = () => {
                         width: '100%',
                         justifyContent: 'center'
                       }}>
-                        <div
-                          style={{
-                            width: '12px',
-                            height: '12px',
-                            borderRadius: '50%',
-                            backgroundColor: getProjectColor(project),
-                            flexShrink: 0,
-                            animation: `pulse 2s infinite`,
-                            cursor: isAdmin ? 'pointer' : 'default',
-                            border: isAdmin ? '2px solid rgba(255,255,255,0.8)' : 'none',
-                            transition: 'all 0.2s ease'
-                          }}
-                          title={isAdmin ? "Click to change color" : ""}
-                          onClick={isAdmin ? () => openColorPickerModal(project.id) : undefined}
-                          onMouseEnter={isAdmin ? (e) => {
-                            e.target.style.transform = 'scale(1.2)';
-                            e.target.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
-                          } : undefined}
-                          onMouseLeave={isAdmin ? (e) => {
-                            e.target.style.transform = 'scale(1)';
-                            e.target.style.boxShadow = 'none';
-                          } : undefined}
-                        ></div>
                         {isAdmin ? (
                           <div
                             onClick={() => openProjectNameModal(project.id, project.name)}
@@ -1571,7 +1611,7 @@ const ProjectStatusDashboard = () => {
                           borderRadius: '8px',
                           background: 'var(--bg-primary)',
                           fontWeight: 600
-                        }}>{project.startDate}</div>
+                        }}>{formatDateForDisplay(project.startDate)}</div>
                       )}
                     </div>
 
