@@ -28,16 +28,6 @@ const ProjectStatusDashboard = () => {
     return `${year}-${month}-${day}`;
   }
 
-  // Helper function to format date for display
-  function formatDateForDisplay(dateString) {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const year = date.getFullYear();
-    return `${month}/${day}/${year}`;
-  }
-
   // Calendar project colors
   const projectColors = [
     '#8D6E63', '#5D4037', '#795548', '#6D4C41', '#4E342E',
@@ -52,10 +42,12 @@ const ProjectStatusDashboard = () => {
   ];
 
   function getProjectColor(project) {
+    // Если у проекта есть сохраненный цвет, используем его
     if (project && project.color) {
       return project.color;
     }
     
+    // Иначе генерируем дефолтный цвет по ID
     if (project && project.id) {
       let hash = 0;
       for (let i = 0; i < project.id.length; i++) {
@@ -79,11 +71,6 @@ const ProjectStatusDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // State for tracking user activity and window focus
-  const [isWindowActive, setIsWindowActive] = useState(true);
-  const [lastUserActivity, setLastUserActivity] = useState(Date.now());
-  const [autoRefreshInterval, setAutoRefreshInterval] = useState(null);
-
   // Modal states
   const [commentsForId, setCommentsForId] = useState(null);
   const [draft, setDraft] = useState('');
@@ -93,6 +80,7 @@ const ProjectStatusDashboard = () => {
   const [confirmIgnore, setConfirmIgnore] = useState(null);
   const [historyForId, setHistoryForId] = useState(null);
   
+  // ИСПРАВЛЕНО: Объединили month и year в одно состояние
   const [currentDate, setCurrentDate] = useState({
     month: new Date().getMonth(),
     year: new Date().getFullYear()
@@ -117,23 +105,20 @@ const ProjectStatusDashboard = () => {
   const [clearHistoryModal, setClearHistoryModal] = useState(null);
   const [colorPickerModal, setColorPickerModal] = useState({ open: false, projectId: null, currentColor: '#8D6E63' });
 
-  // Track user activity
-  const trackUserActivity = () => {
-    setLastUserActivity(Date.now());
-  };
-
   // Supabase API functions
   async function loadInitialData() {
     try {
       setLoading(true);
       setError(null);
 
+      // Load settings
       const { data: settings, error: settingsError } = await supabase
         .from('settings')
         .select('*');
       
       if (settingsError) throw settingsError;
 
+      // Load projects with comments and history
       const { data: projects, error: projectsError } = await supabase
         .from('projects')
         .select(`
@@ -145,6 +130,7 @@ const ProjectStatusDashboard = () => {
 
       if (projectsError) throw projectsError;
 
+      // Transform data to match component structure
       const transformedProjects = (projects || []).map(project => ({
         id: project.id,
         name: project.name,
@@ -153,7 +139,7 @@ const ProjectStatusDashboard = () => {
         dueDate: project.due_date,
         busy: project.busy,
         priority: project.priority,
-        color: project.color || null,
+        color: project.color || null, // Handle missing color column gracefully
         comments: (project.project_comments || []).map(comment => ({
           id: comment.id,
           text: comment.text,
@@ -182,71 +168,6 @@ const ProjectStatusDashboard = () => {
     }
   }
 
-  // Load data on component mount and set up smart auto-refresh
-  useEffect(() => {
-    loadInitialData();
-    
-    const handleVisibilityChange = () => {
-      setIsWindowActive(!document.hidden);
-    };
-
-    const handleWindowFocus = () => {
-      setIsWindowActive(true);
-    };
-
-    const handleWindowBlur = () => {
-      setIsWindowActive(false);
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleWindowFocus);
-    window.addEventListener('blur', handleWindowBlur);
-
-    const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
-    activityEvents.forEach(event => {
-      document.addEventListener(event, trackUserActivity, true);
-    });
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleWindowFocus);
-      window.removeEventListener('blur', handleWindowBlur);
-      
-      activityEvents.forEach(event => {
-        document.removeEventListener(event, trackUserActivity, true);
-      });
-      
-      if (autoRefreshInterval) {
-        clearInterval(autoRefreshInterval);
-      }
-    };
-  }, []);
-
-  // Smart auto-refresh logic
-  useEffect(() => {
-    if (autoRefreshInterval) {
-      clearInterval(autoRefreshInterval);
-    }
-
-    const smartRefresh = setInterval(() => {
-      const timeSinceLastActivity = Date.now() - lastUserActivity;
-      const inactivityThreshold = 30000;
-      
-      if (!isWindowActive && timeSinceLastActivity > inactivityThreshold) {
-        console.log('Auto-refreshing data (window inactive, no recent activity)');
-        loadInitialData();
-      }
-    }, 60000);
-
-    setAutoRefreshInterval(smartRefresh);
-
-    return () => {
-      if (smartRefresh) {
-        clearInterval(smartRefresh);
-      }
-    };
-  }, [isWindowActive, lastUserActivity]);
-
   async function saveProject(projectData) {
     try {
       const { data, error } = await supabase
@@ -259,13 +180,14 @@ const ProjectStatusDashboard = () => {
           due_date: projectData.dueDate,
           busy: projectData.busy,
           priority: projectData.priority,
-          ...(projectData.color && { color: projectData.color })
+          ...(projectData.color && { color: projectData.color }) // Only include color if it exists
         })
         .select();
 
       if (error) throw error;
       return data[0];
     } catch (err) {
+      // If color column doesn't exist yet, save without it
       if (err.message?.includes("color")) {
         const { data, error } = await supabase
           .from('projects')
@@ -323,17 +245,31 @@ const ProjectStatusDashboard = () => {
     if (error) throw error;
   }
 
+  // Load data on component mount and set up auto-refresh
+  useEffect(() => {
+    loadInitialData();
+    
+    // Auto-refresh every 10 seconds
+    const autoRefreshInterval = setInterval(() => {
+      loadInitialData();
+    }, 10000);
+    
+    return () => clearInterval(autoRefreshInterval);
+  }, []);
+
   // Simulate connection status and periodic sync
   useEffect(() => {
     const interval = setInterval(() => {
+      // Simulate connection status changes
       setConnected(prev => {
-        if (Math.random() > 0.98) {
+        if (Math.random() > 0.98) { // 2% chance to disconnect
           setTimeout(() => setConnected(true), 1000 + Math.random() * 2000);
           return false;
         }
         return true;
       });
 
+      // Update last sync time when connected
       if (connected) {
         setLastSync(new Date());
       }
@@ -355,6 +291,17 @@ const ProjectStatusDashboard = () => {
     setTimeout(() => setIsAlertOpen(false), 3000);
   }
 
+  // Helper function to format date for display
+  function formatDateForDisplay(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${month}/${day}/${year}`;
+  }
+
+  // Password check for admin
   function handleAdminToggle() {
     if (!isAdmin) {
       setPasswordModal(true);
@@ -379,6 +326,7 @@ const ProjectStatusDashboard = () => {
       const project = state.projects.find(p => p.id === id);
       if (!project) return;
 
+      // Business logic validation
       if (changes.busy !== undefined) {
         const newBusy = parseInt(changes.busy);
         if ((project.status === 'Queued' || project.status === 'Waiting') && newBusy > 0) {
@@ -413,14 +361,17 @@ const ProjectStatusDashboard = () => {
         }
       }
 
+      // Save to database
       const updatedProject = { ...project, ...changes };
       await saveProject(updatedProject);
 
+      // Add history entry
       if (historyEntry) {
         const entry = isAdmin ? `${historyEntry} [Admin]` : historyEntry;
         await addHistoryEntry(id, entry);
       }
 
+      // Update local state
       setState(prev => ({
         ...prev,
         projects: prev.projects.map(p => p.id === id ? ({
@@ -464,10 +415,12 @@ const ProjectStatusDashboard = () => {
         history: []
       };
 
+      // Save to database
       await saveProject(newP);
       const historyEntry = `${new Date().toLocaleString()}: Project created${isAdmin ? ' [Admin]' : ''}`;
       await addHistoryEntry(newP.id, historyEntry);
 
+      // Update local state
       setState(prev => ({ 
         ...prev, 
         projects: [{ ...newP, history: [historyEntry] }, ...prev.projects] 
@@ -510,7 +463,224 @@ const ProjectStatusDashboard = () => {
     updateProject(id, { status: 'Completed' }, `${new Date().toLocaleString()}: Marked Completed`);
   }
 
-  // Calendar functions
+  // Comment functions
+  function openComments(projectId) {
+    setCommentsForId(projectId);
+    setDraft('');
+    setEditingId(null);
+    setEditingText('');
+    setConfirmAddOpen(false);
+    setConfirmIgnore(null);
+  }
+
+  function closeComments() {
+    setCommentsForId(null);
+    setDraft('');
+    setEditingId(null);
+    setEditingText('');
+    setConfirmAddOpen(false);
+    setConfirmIgnore(null);
+  }
+
+  async function addCommentConfirmed() {
+    try {
+      if (!commentsForId || !draft.trim()) return;
+      
+      const comment = {
+        id: uid('c'),
+        text: draft.trim(),
+        ignored: false,
+        deleted: false,
+        ts: new Date().toISOString()
+      };
+
+      await saveComment(commentsForId, comment);
+      await addHistoryEntry(commentsForId, `${new Date().toLocaleString()}: Comment added${isAdmin ? ' [Admin]' : ''}`);
+
+      setState(prev => ({
+        ...prev,
+        projects: prev.projects.map(p => p.id === commentsForId ? ({
+          ...p,
+          comments: [comment, ...p.comments],
+          history: [...(p.history || []), `${new Date().toLocaleString()}: Comment added${isAdmin ? ' [Admin]' : ''}`]
+        }) : p)
+      }));
+      
+      setDraft('');
+      setConfirmAddOpen(false);
+      setLastSync(new Date());
+
+    } catch (err) {
+      setError(`Failed to add comment: ${err.message}`);
+      console.error('Add comment error:', err);
+    }
+  }
+
+  function startEdit(commentId, text) {
+    setEditingId(commentId);
+    setEditingText(text || '');
+  }
+
+  async function saveEdit(commentId) {
+    try {
+      if (!commentsForId) return;
+      
+      const trimmed = editingText.trim();
+      
+      // Find the current comment to preserve original text
+      const project = state.projects.find(p => p.id === commentsForId);
+      const comment = project?.comments.find(c => c.id === commentId);
+      
+      const updatedComment = {
+        id: commentId,
+        text: trimmed === '' ? comment?.text || '' : trimmed, // Keep original if empty
+        deleted: false,
+        ignored: trimmed === '', // Mark as ignored if empty text
+        ts: new Date().toISOString()
+      };
+
+      await saveComment(commentsForId, updatedComment);
+      const historyMessage = trimmed === '' ? 'Comment ignored' : 'Comment edited';
+      await addHistoryEntry(commentsForId, `${new Date().toLocaleString()}: ${historyMessage}${isAdmin ? ' [Admin]' : ''}`);
+
+      setState(prev => ({
+        ...prev,
+        projects: prev.projects.map(p => {
+          if (p.id !== commentsForId) return p;
+          const newComments = p.comments.map(c => {
+            if (c.id !== commentId) return c;
+            return { ...c, ...updatedComment };
+          });
+          return { 
+            ...p, 
+            comments: newComments, 
+            history: [...(p.history || []), `${new Date().toLocaleString()}: ${historyMessage}${isAdmin ? ' [Admin]' : ''}`] 
+          };
+        })
+      }));
+      
+      setEditingId(null);
+      setEditingText('');
+      setLastSync(new Date());
+
+    } catch (err) {
+      setError(`Failed to edit comment: ${err.message}`);
+      console.error('Edit comment error:', err);
+    }
+  }
+
+  function confirmIgnoreComment(commentId) {
+    if (!commentsForId) return;
+    setConfirmIgnore({ projectId: commentsForId, commentId });
+  }
+
+  async function doIgnore() {
+    try {
+      if (!confirmIgnore) return;
+      
+      const { projectId, commentId } = confirmIgnore;
+      
+      // Find the current comment to preserve its text
+      const project = state.projects.find(p => p.id === projectId);
+      const comment = project?.comments.find(c => c.id === commentId);
+      
+      if (!comment) return;
+      
+      const updatedComment = {
+        id: commentId,
+        text: comment.text, // Preserve the original text
+        ignored: true,
+        deleted: false,
+        ts: new Date().toISOString()
+      };
+
+      await saveComment(projectId, updatedComment);
+      await addHistoryEntry(projectId, `${new Date().toLocaleString()}: Comment ignored${isAdmin ? ' [Admin]' : ''}`);
+
+      setState(prev => ({
+        ...prev,
+        projects: prev.projects.map(p => {
+          if (p.id !== projectId) return p;
+          const newComments = p.comments.map(c => c.id === commentId ? ({ ...c, ignored: true, deleted: false, ts: new Date().toISOString() }) : c);
+          return { ...p, comments: newComments, history: [...(p.history || []), `${new Date().toLocaleString()}: Comment ignored${isAdmin ? ' [Admin]' : ''}`] };
+        })
+      }));
+      
+      setConfirmIgnore(null);
+      setLastSync(new Date());
+
+    } catch (err) {
+      setError(`Failed to ignore comment: ${err.message}`);
+      console.error('Ignore comment error:', err);
+    }
+  }
+
+  // History functions
+  function openHistory(projectId) { setHistoryForId(projectId); }
+  function closeHistory() { setHistoryForId(null); }
+
+  // Clear functions for Admin
+  async function clearComments(projectId) {
+    try {
+      const project = state.projects.find(p => p.id === projectId);
+      if (!project) return;
+
+      // Delete all comments from database
+      for (const comment of project.comments) {
+        await supabase
+          .from('project_comments')
+          .delete()
+          .eq('id', comment.id);
+      }
+
+      await addHistoryEntry(projectId, `${new Date().toLocaleString()}: All comments cleared [Admin]`);
+
+      // Update local state
+      setState(prev => ({
+        ...prev,
+        projects: prev.projects.map(p => p.id === projectId ? ({
+          ...p,
+          comments: [],
+          history: [...(p.history || []), `${new Date().toLocaleString()}: All comments cleared [Admin]`]
+        }) : p)
+      }));
+
+      setLastSync(new Date());
+      setClearCommentsModal(null);
+
+    } catch (err) {
+      setError(`Failed to clear comments: ${err.message}`);
+      console.error('Clear comments error:', err);
+    }
+  }
+
+  async function clearHistory(projectId) {
+    try {
+      // Delete all history from database
+      await supabase
+        .from('project_history')
+        .delete()
+        .eq('project_id', projectId);
+
+      // Update local state
+      setState(prev => ({
+        ...prev,
+        projects: prev.projects.map(p => p.id === projectId ? ({
+          ...p,
+          history: []
+        }) : p)
+      }));
+
+      setLastSync(new Date());
+      setClearHistoryModal(null);
+
+    } catch (err) {
+      setError(`Failed to clear history: ${err.message}`);
+      console.error('Clear history error:', err);
+    }
+  }
+
+  // ИСПРАВЛЕНО: Calendar functions
   function changeMonth(delta) {
     setCurrentDate(prev => {
       let newMonth = prev.month + delta;
@@ -536,28 +706,7 @@ const ProjectStatusDashboard = () => {
     });
   }
 
-  function openColorPickerModal(projectId) {
-    const project = state.projects.find(p => p.id === projectId);
-    const currentColor = getProjectColor(project);
-    setColorPickerModal({ open: true, projectId, currentColor });
-  }
-
-  function closeColorPickerModal() {
-    setColorPickerModal({ open: false, projectId: null, currentColor: '#8D6E63' });
-  }
-
-  async function saveProjectColor() {
-    if (!colorPickerModal.projectId) return;
-
-    await updateProject(
-      colorPickerModal.projectId,
-      { color: colorPickerModal.currentColor },
-      `${new Date().toLocaleString()}: Color changed`
-    );
-
-    closeColorPickerModal();
-  }
-
+  // Project name modal
   function openProjectNameModal(projectId, currentName) {
     setProjectNameModal({ open: true, projectId, name: currentName });
   }
@@ -581,34 +730,30 @@ const ProjectStatusDashboard = () => {
     closeProjectNameModal();
   }
 
-  // Comment functions
-  function openComments(projectId) {
-    setCommentsForId(projectId);
-    setDraft('');
-    setEditingId(null);
-    setEditingText('');
-    setConfirmAddOpen(false);
-    setConfirmIgnore(null);
+  // Color picker modal functions
+  function openColorPickerModal(projectId) {
+    const project = state.projects.find(p => p.id === projectId);
+    const currentColor = getProjectColor(project);
+    setColorPickerModal({ open: true, projectId, currentColor });
   }
 
-  function closeComments() {
-    setCommentsForId(null);
-    setDraft('');
-    setEditingId(null);
-    setEditingText('');
-    setConfirmAddOpen(false);
-    setConfirmIgnore(null);
+  function closeColorPickerModal() {
+    setColorPickerModal({ open: false, projectId: null, currentColor: '#8D6E63' });
   }
 
-  function openHistory(projectId) { 
-    setHistoryForId(projectId); 
-  }
-  
-  function closeHistory() { 
-    setHistoryForId(null); 
+  async function saveProjectColor() {
+    if (!colorPickerModal.projectId) return;
+
+    await updateProject(
+      colorPickerModal.projectId,
+      { color: colorPickerModal.currentColor },
+      `${new Date().toLocaleString()}: Color changed`
+    );
+
+    closeColorPickerModal();
   }
 
-  // Timeline helpers
+  // ИСПРАВЛЕНО: Timeline helpers - используем currentDate вместо currentMonth/currentYear
   const monthDays = getMonthDays(currentDate.year, currentDate.month);
   const firstDayIndex = monthDays.length ? monthDays[0].getDay() : 0;
   const todayKey = formatDateToYYYYMMDD(new Date());
@@ -777,7 +922,7 @@ const ProjectStatusDashboard = () => {
         </div>
       )}
 
-      {/* Status indicator */}
+      {/* Status indicator for real-time connection */}
       <div style={{
         position: 'fixed',
         top: '10px',
@@ -842,6 +987,14 @@ const ProjectStatusDashboard = () => {
                 transition: 'all 0.2s ease',
                 outline: 'none'
               }}
+              onMouseEnter={(e) => {
+                e.target.style.background = 'var(--gray-3)';
+                e.target.style.transform = 'translateY(-1px)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = 'var(--bg-secondary)';
+                e.target.style.transform = 'translateY(0)';
+              }}
             >
               Refresh
             </button>
@@ -858,6 +1011,14 @@ const ProjectStatusDashboard = () => {
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
                 outline: 'none'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = 'var(--gray-3)';
+                e.target.style.transform = 'translateY(-1px)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = 'var(--bg-secondary)';
+                e.target.style.transform = 'translateY(0)';
               }}
             >
               {isAdmin ? 'Partner View' : 'Admin View'}
@@ -877,6 +1038,16 @@ const ProjectStatusDashboard = () => {
                   transition: 'all 0.2s ease',
                   outline: 'none'
                 }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = '#0056CC';
+                  e.target.style.transform = 'translateY(-1px)';
+                  e.target.style.boxShadow = '0 4px 12px rgba(0, 122, 255, 0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = 'var(--primary)';
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = 'none';
+                }}
               >
                 + Add
               </button>
@@ -895,7 +1066,16 @@ const ProjectStatusDashboard = () => {
           borderRadius: '20px',
           boxShadow: 'var(--shadow)',
           transition: 'transform 0.3s ease, box-shadow 0.3s ease'
-        }}>
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'translateY(-2px)';
+          e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.1)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'translateY(0)';
+          e.currentTarget.style.boxShadow = 'var(--shadow)';
+        }}
+        >
           <div style={{
             fontSize: '32px',
             fontWeight: 700,
@@ -903,21 +1083,24 @@ const ProjectStatusDashboard = () => {
             background: 'linear-gradient(135deg, var(--primary), var(--secondary))',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
-            marginBottom: '8px'
+            marginBottom: '8px',
+            animation: 'fadeInUp 0.6s ease-out'
           }}>
             Zigert Visuals
           </div>
           <div style={{
             fontSize: '24px',
             fontWeight: 600,
-            color: 'var(--text-primary)'
+            color: 'var(--text-primary)',
+            animation: 'fadeInUp 0.6s ease-out 0.1s both'
           }}>
             Project Status Dashboard
           </div>
           <div style={{
             fontSize: '14px',
             color: 'var(--text-quaternary)',
-            marginTop: '8px'
+            marginTop: '8px',
+            animation: 'fadeInUp 0.6s ease-out 0.2s both'
           }}>
             Real-time collaborative workspace
           </div>
@@ -934,7 +1117,7 @@ const ProjectStatusDashboard = () => {
             { label: 'Total Artists', value: total },
             { label: 'Busy', value: busy },
             { label: 'Free', value: free },
-            { label: '% Free', value: freePct + '%' }
+            { label: '% Free', value: freePct + '%', alert: freePct >= 50 }
           ].map((stat, idx) => (
             <div key={idx} style={{
               background: 'var(--bg-primary)',
@@ -942,8 +1125,18 @@ const ProjectStatusDashboard = () => {
               padding: '20px',
               boxShadow: 'var(--shadow)',
               textAlign: 'center',
-              transition: 'all 0.3s ease'
-            }}>
+              transition: 'all 0.3s ease',
+              animation: `fadeInUp 0.6s ease-out ${0.1 * idx}s both`
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)';
+              e.currentTarget.style.boxShadow = '0 12px 30px rgba(0, 0, 0, 0.15)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0) scale(1)';
+              e.currentTarget.style.boxShadow = 'var(--shadow)';
+            }}
+            >
               <div style={{
                 fontSize: '13px',
                 fontWeight: 500,
@@ -957,8 +1150,9 @@ const ProjectStatusDashboard = () => {
               <div style={{
                 fontSize: '34px',
                 fontWeight: 700,
-                color: 'var(--text-primary)',
-                letterSpacing: '-0.024em'
+                color: stat.alert ? 'var(--danger)' : 'var(--text-primary)',
+                letterSpacing: '-0.024em',
+                transition: 'color 0.3s ease'
               }}>
                 {stat.value}
               </div>
@@ -972,7 +1166,9 @@ const ProjectStatusDashboard = () => {
           borderRadius: '20px',
           overflow: 'hidden',
           boxShadow: 'var(--shadow)',
-          marginBottom: '32px'
+          marginBottom: '32px',
+          transition: 'all 0.3s ease',
+          animation: 'fadeInUp 0.6s ease-out 0.4s both'
         }}>
           <div style={{
             padding: '24px',
@@ -1008,9 +1204,19 @@ const ProjectStatusDashboard = () => {
                   padding: '20px',
                   marginBottom: '16px',
                   transition: 'all 0.3s ease',
+                  animation: `fadeInUp 0.4s ease-out ${0.1 * index}s both`,
                   position: 'relative'
-                }}>
-                  {/* Color Bar - Left Side */}
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateX(4px)';
+                  e.currentTarget.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateX(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+                >
+                  {/* Color Bar - Left Side (Clickable in Admin) */}
                   <div style={{
                     position: 'absolute',
                     top: '0',
@@ -1026,9 +1232,11 @@ const ProjectStatusDashboard = () => {
                   onClick={isAdmin ? () => openColorPickerModal(project.id) : undefined}
                   onMouseEnter={isAdmin ? (e) => {
                     e.target.style.width = '24px';
+                    e.target.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
                   } : undefined}
                   onMouseLeave={isAdmin ? (e) => {
                     e.target.style.width = '12px';
+                    e.target.style.boxShadow = 'none';
                   } : undefined}
                   ></div>
 
@@ -1058,7 +1266,16 @@ const ProjectStatusDashboard = () => {
                           justifyContent: 'center',
                           cursor: 'pointer',
                           fontSize: '14px',
-                          fontWeight: 700
+                          fontWeight: 700,
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.target.style.transform = 'scale(1.1)';
+                          e.target.style.boxShadow = '0 2px 8px rgba(255, 59, 48, 0.3)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.transform = 'scale(1)';
+                          e.target.style.boxShadow = 'none';
                         }}
                         title="Delete project"
                       >
@@ -1090,6 +1307,7 @@ const ProjectStatusDashboard = () => {
                     }}
                     onMouseEnter={(e) => {
                       e.target.style.width = '24px';
+                      e.target.style.boxShadow = '0 2px 8px rgba(0, 122, 255, 0.3)';
                       const checkmark = e.target.querySelector('.checkmark');
                       if (checkmark) {
                         checkmark.style.fontSize = '18px';
@@ -1097,6 +1315,7 @@ const ProjectStatusDashboard = () => {
                     }}
                     onMouseLeave={(e) => {
                       e.target.style.width = '12px';
+                      e.target.style.boxShadow = 'none';
                       const checkmark = e.target.querySelector('.checkmark');
                       if (checkmark) {
                         checkmark.style.fontSize = '14px';
@@ -1115,19 +1334,20 @@ const ProjectStatusDashboard = () => {
                     </div>
                   )}
 
-                  {/* Project Details Grid */}
+                  {/* Project Details Grid - NO COLOR DOT */}
                   <div style={{
                     display: 'grid',
                     gridTemplateColumns: 'repeat(7, 1fr)',
                     gap: '16px',
                     alignItems: 'center'
                   }}>
-                    {/* Project Name */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', textAlign: 'center' }}>
                       <div style={{
                         fontSize: '12px',
                         color: 'var(--text-quaternary)',
                         fontWeight: 500,
+                        letterSpacing: '0.06em',
+                        textAlign: 'center',
                         height: '16px',
                         display: 'flex',
                         alignItems: 'center',
@@ -1165,6 +1385,14 @@ const ProjectStatusDashboard = () => {
                               whiteSpace: 'nowrap'
                             }}
                             title="Click to edit"
+                            onMouseEnter={(e) => {
+                              e.target.style.borderColor = 'var(--primary)';
+                              e.target.style.transform = 'scale(1.02)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.target.style.borderColor = 'var(--gray-3)';
+                              e.target.style.transform = 'scale(1)';
+                            }}
                           >
                             {project.name}
                           </div>
@@ -1186,12 +1414,13 @@ const ProjectStatusDashboard = () => {
                       </div>
                     </div>
 
-                    {/* Status */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', textAlign: 'center' }}>
                       <div style={{
                         fontSize: '12px',
                         color: 'var(--text-quaternary)',
                         fontWeight: 500,
+                        letterSpacing: '0.06em',
+                        textAlign: 'center',
                         height: '16px',
                         display: 'flex',
                         alignItems: 'center',
@@ -1217,14 +1446,23 @@ const ProjectStatusDashboard = () => {
                             backgroundColor: statusColors[project.status] || '#e5e5ea',
                             color: '#fff',
                             cursor: 'pointer',
-                            fontSize: '14px'
+                            fontSize: '14px',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.target.style.transform = 'scale(1.02)';
+                            e.target.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.transform = 'scale(1)';
+                            e.target.style.boxShadow = 'none';
                           }}
                         >
-                          <option value="Waiting">Waiting</option>
-                          <option value="In Progress">In Progress</option>
-                          <option value="Queued">Queued</option>
-                          <option value="Hold">Hold</option>
-                          <option value="Completed">Completed</option>
+                          <option value="Waiting" style={{color: '#000', backgroundColor: '#fff'}}>Waiting</option>
+                          <option value="In Progress" style={{color: '#000', backgroundColor: '#fff'}}>In Progress</option>
+                          <option value="Queued" style={{color: '#000', backgroundColor: '#fff'}}>Queued</option>
+                          <option value="Hold" style={{color: '#000', backgroundColor: '#fff'}}>Hold</option>
+                          <option value="Completed" style={{color: '#000', backgroundColor: '#fff'}}>Completed</option>
                         </select>
                       ) : (
                         <div style={{
@@ -1238,19 +1476,21 @@ const ProjectStatusDashboard = () => {
                           width: '140px',
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center'
+                          justifyContent: 'center',
+                          transition: 'all 0.2s ease'
                         }}>
                           {project.status}
                         </div>
                       )}
                     </div>
 
-                    {/* Start Date */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', textAlign: 'center' }}>
                       <div style={{
                         fontSize: '12px',
                         color: 'var(--text-quaternary)',
                         fontWeight: 500,
+                        letterSpacing: '0.06em',
+                        textAlign: 'center',
                         height: '16px',
                         display: 'flex',
                         alignItems: 'center',
@@ -1275,13 +1515,23 @@ const ProjectStatusDashboard = () => {
                             borderRadius: '8px',
                             border: '1px solid var(--gray-3)',
                             background: 'var(--bg-primary)',
+                            fontFamily: 'inherit',
                             fontSize: '14px',
                             fontWeight: 600,
                             color: 'var(--text-primary)',
                             width: '140px',
                             height: '29px',
                             textAlign: 'center',
-                            cursor: 'pointer'
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.target.style.borderColor = 'var(--primary)';
+                            e.target.style.transform = 'scale(1.02)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.borderColor = 'var(--gray-3)';
+                            e.target.style.transform = 'scale(1)';
                           }}
                         />
                       ) : (
@@ -1301,12 +1551,13 @@ const ProjectStatusDashboard = () => {
                       )}
                     </div>
 
-                    {/* Due Date */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', textAlign: 'center' }}>
                       <div style={{
                         fontSize: '12px',
                         color: 'var(--text-quaternary)',
                         fontWeight: 500,
+                        letterSpacing: '0.06em',
+                        textAlign: 'center',
                         height: '16px',
                         display: 'flex',
                         alignItems: 'center',
@@ -1331,23 +1582,34 @@ const ProjectStatusDashboard = () => {
                           borderRadius: '8px',
                           border: '1px solid var(--gray-3)',
                           background: 'var(--bg-primary)',
+                          fontFamily: 'inherit',
                           fontSize: '14px',
                           fontWeight: 600,
                           color: 'var(--text-primary)',
                           width: '140px',
                           height: '29px',
                           textAlign: 'center',
-                          cursor: 'pointer'
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.target.style.borderColor = 'var(--primary)';
+                          e.target.style.transform = 'scale(1.02)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.borderColor = 'var(--gray-3)';
+                          e.target.style.transform = 'scale(1)';
                         }}
                       />
                     </div>
 
-                    {/* Busy */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', textAlign: 'center' }}>
                       <div style={{
                         fontSize: '12px',
                         color: 'var(--text-quaternary)',
                         fontWeight: 500,
+                        letterSpacing: '0.06em',
+                        textAlign: 'center',
                         height: '16px',
                         display: 'flex',
                         alignItems: 'center',
@@ -1365,13 +1627,23 @@ const ProjectStatusDashboard = () => {
                             borderRadius: '8px',
                             border: '1px solid var(--gray-3)',
                             background: 'var(--bg-primary)',
+                            fontFamily: 'inherit',
                             fontSize: '14px',
                             fontWeight: 600,
                             color: 'var(--text-primary)',
                             width: '140px',
                             height: '29px',
                             textAlign: 'center',
-                            cursor: 'pointer'
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.target.style.borderColor = 'var(--primary)';
+                            e.target.style.transform = 'scale(1.02)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.borderColor = 'var(--gray-3)';
+                            e.target.style.transform = 'scale(1)';
                           }}
                         />
                       ) : (
@@ -1391,12 +1663,13 @@ const ProjectStatusDashboard = () => {
                       )}
                     </div>
 
-                    {/* Priority */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', textAlign: 'center' }}>
                       <div style={{
                         fontSize: '12px',
                         color: 'var(--text-quaternary)',
                         fontWeight: 500,
+                        letterSpacing: '0.06em',
+                        textAlign: 'center',
                         height: '16px',
                         display: 'flex',
                         alignItems: 'center',
@@ -1418,16 +1691,24 @@ const ProjectStatusDashboard = () => {
                           backgroundColor: priorityColors[project.priority] || '#fff',
                           color: ['High', 'Medium'].includes(project.priority) ? '#fff' : '#000',
                           cursor: 'pointer',
-                          fontSize: '14px'
+                          fontSize: '14px',
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.target.style.transform = 'scale(1.02)';
+                          e.target.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.transform = 'scale(1)';
+                          e.target.style.boxShadow = 'none';
                         }}
                       >
-                        <option value="Low">Low</option>
-                        <option value="Medium">Medium</option>
-                        <option value="High">High</option>
+                        <option value="Low" style={{color: '#000', backgroundColor: '#fff'}}>Low</option>
+                        <option value="Medium" style={{color: '#000', backgroundColor: '#fff'}}>Medium</option>
+                        <option value="High" style={{color: '#000', backgroundColor: '#fff'}}>High</option>
                       </select>
                     </div>
 
-                    {/* Actions */}
                     <div style={{
                       display: 'flex',
                       gap: '8px',
@@ -1449,9 +1730,22 @@ const ProjectStatusDashboard = () => {
                           justifyContent: 'center',
                           cursor: 'pointer',
                           fontSize: '16px',
+                          transition: 'all 0.2s ease',
                           position: 'relative'
                         }}
-                        title="Comments"
+                        title={isAdmin && project.comments.length > 0 ? "Comments (Right-click to clear)" : "Comments"}
+                        onMouseEnter={(e) => {
+                          e.target.style.transform = 'scale(1.1) rotate(5deg)';
+                          e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.transform = 'scale(1) rotate(0deg)';
+                          e.target.style.boxShadow = 'none';
+                        }}
+                        onContextMenu={isAdmin && project.comments.length > 0 ? (e) => {
+                          e.preventDefault();
+                          setClearCommentsModal(project.id);
+                        } : undefined}
                       >
                         💬
                         {project.comments.length > 0 && (
@@ -1475,7 +1769,12 @@ const ProjectStatusDashboard = () => {
                         )}
                       </div>
                       <div
+                        title={isAdmin && project.history && project.history.length > 0 ? "History (Right-click to clear)" : "History"}
                         onClick={() => openHistory(project.id)}
+                        onContextMenu={isAdmin && project.history && project.history.length > 0 ? (e) => {
+                          e.preventDefault();
+                          setClearHistoryModal(project.id);
+                        } : undefined}
                         style={{
                           width: '40px',
                           height: '40px',
@@ -1485,10 +1784,19 @@ const ProjectStatusDashboard = () => {
                           alignItems: 'center',
                           justifyContent: 'center',
                           cursor: 'pointer',
+                          fontWeight: 700,
                           background: 'var(--bg-primary)',
-                          fontSize: '16px'
+                          fontSize: '16px',
+                          transition: 'all 0.2s ease'
                         }}
-                        title="History"
+                        onMouseEnter={(e) => {
+                          e.target.style.transform = 'scale(1.1) rotate(-5deg)';
+                          e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.transform = 'scale(1) rotate(0deg)';
+                          e.target.style.boxShadow = 'none';
+                        }}
                       >
                         📋
                       </div>
@@ -1505,7 +1813,8 @@ const ProjectStatusDashboard = () => {
           background: 'var(--bg-primary)',
           borderRadius: '20px',
           padding: '24px',
-          boxShadow: 'var(--shadow)'
+          boxShadow: 'var(--shadow)',
+          animation: 'fadeInUp 0.6s ease-out 0.6s both'
         }}>
           <div style={{
             padding: '0 0 24px 0',
@@ -1514,6 +1823,7 @@ const ProjectStatusDashboard = () => {
             <h3 style={{
               fontSize: '28px',
               fontWeight: 700,
+              letterSpacing: '-0.024em',
               color: 'var(--text-primary)',
               margin: 0
             }}>
@@ -1539,7 +1849,18 @@ const ProjectStatusDashboard = () => {
                     borderRadius: '12px',
                     cursor: 'pointer',
                     fontSize: '14px',
-                    fontWeight: 500
+                    fontWeight: 500,
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = 'var(--primary)';
+                    e.target.style.color = 'white';
+                    e.target.style.transform = 'translateX(-2px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'var(--bg-secondary)';
+                    e.target.style.color = 'var(--primary)';
+                    e.target.style.transform = 'translateX(0)';
                   }}
                 >
                   ←
@@ -1554,7 +1875,18 @@ const ProjectStatusDashboard = () => {
                     borderRadius: '12px',
                     cursor: 'pointer',
                     fontSize: '14px',
-                    fontWeight: 500
+                    fontWeight: 500,
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = 'var(--primary)';
+                    e.target.style.color = 'white';
+                    e.target.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'var(--bg-secondary)';
+                    e.target.style.color = 'var(--primary)';
+                    e.target.style.transform = 'translateY(0)';
                   }}
                 >
                   Today
@@ -1569,7 +1901,18 @@ const ProjectStatusDashboard = () => {
                     borderRadius: '12px',
                     cursor: 'pointer',
                     fontSize: '14px',
-                    fontWeight: 500
+                    fontWeight: 500,
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = 'var(--primary)';
+                    e.target.style.color = 'white';
+                    e.target.style.transform = 'translateX(2px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'var(--bg-secondary)';
+                    e.target.style.color = 'var(--primary)';
+                    e.target.style.transform = 'translateX(0)';
                   }}
                 >
                   →
@@ -1633,12 +1976,22 @@ const ProjectStatusDashboard = () => {
                       color: projects.length > 0 ? '#fff' : '#000',
                       textAlign: 'center',
                       border: dayBorder(key),
+                      position: 'relative',
                       fontSize: '14px',
                       fontWeight: 500,
                       cursor: 'pointer',
-                      textShadow: projects.length > 0 ? '1px 1px 2px rgba(0,0,0,0.7)' : 'none'
+                      textShadow: projects.length > 0 ? '1px 1px 2px rgba(0,0,0,0.7)' : 'none',
+                      transition: 'all 0.2s ease'
                     }}
                     title={titleAttr}
+                    onMouseEnter={(e) => {
+                      e.target.style.transform = 'scale(1.1)';
+                      e.target.style.zIndex = '10';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.transform = 'scale(1)';
+                      e.target.style.zIndex = '1';
+                    }}
                   >
                     {day.getDate()}
                   </div>
@@ -1649,9 +2002,69 @@ const ProjectStatusDashboard = () => {
         </div>
       </div>
 
+      {/* Add CSS animations */}
+      <style>
+        {`
+          @keyframes slideIn {
+            from {
+              opacity: 0;
+              transform: translateX(-50%) translateY(-20px);
+            }
+            to {
+              opacity: 1;
+              transform: translateX(-50%) translateY(0);
+            }
+          }
+          
+          @keyframes fadeInUp {
+            from {
+              opacity: 0;
+              transform: translateY(20px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+          
+          @keyframes pulse {
+            0%, 100% {
+              opacity: 1;
+            }
+            50% {
+              opacity: 0.7;
+            }
+          }
+          
+          .modal-backdrop {
+            animation: fadeIn 0.2s ease-out;
+          }
+          
+          .modal-content {
+            animation: slideInModal 0.3s ease-out;
+          }
+          
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+          
+          @keyframes slideInModal {
+            from {
+              opacity: 0;
+              transform: scale(0.9) translateY(-10px);
+            }
+            to {
+              opacity: 1;
+              transform: scale(1) translateY(0);
+            }
+          }
+        `}
+      </style>
+
       {/* Password Modal */}
       {passwordModal && (
-        <div style={{
+        <div className="modal-backdrop" style={{
           position: 'fixed',
           top: 0,
           left: 0,
@@ -1663,7 +2076,7 @@ const ProjectStatusDashboard = () => {
           alignItems: 'center',
           justifyContent: 'center'
         }}>
-          <div style={{
+          <div className="modal-content" style={{
             background: 'var(--bg-primary)',
             borderRadius: '18px',
             maxWidth: '400px',
@@ -1699,7 +2112,8 @@ const ProjectStatusDashboard = () => {
                   border: 'none',
                   padding: '10px 20px',
                   borderRadius: '10px',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
                 }}
               >
                 Cancel
@@ -1712,7 +2126,8 @@ const ProjectStatusDashboard = () => {
                   border: 'none',
                   padding: '10px 20px',
                   borderRadius: '10px',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
                 }}
               >
                 Login
@@ -1724,7 +2139,7 @@ const ProjectStatusDashboard = () => {
 
       {/* Color Picker Modal */}
       {colorPickerModal.open && (
-        <div style={{
+        <div className="modal-backdrop" style={{
           position: 'fixed',
           top: 0,
           left: 0,
@@ -1736,7 +2151,7 @@ const ProjectStatusDashboard = () => {
           alignItems: 'center',
           justifyContent: 'center'
         }} onClick={closeColorPickerModal}>
-          <div style={{
+          <div className="modal-content" style={{
             background: 'var(--bg-primary)',
             borderRadius: '18px',
             width: '92%',
@@ -1744,26 +2159,101 @@ const ProjectStatusDashboard = () => {
             padding: '24px'
           }} onClick={e => e.stopPropagation()}>
             <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>Choose Project Color</div>
-            <input
-              type="color"
-              value={colorPickerModal.currentColor}
-              onChange={(e) => setColorPickerModal(prev => ({ ...prev, currentColor: e.target.value }))}
-              style={{
-                width: '100%',
+            
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ fontSize: '14px', marginBottom: '8px', color: 'var(--text-secondary)' }}>Current Color:</div>
+              <div style={{
+                width: '40px',
                 height: '40px',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                marginBottom: '16px'
-              }}
-            />
+                borderRadius: '50%',
+                backgroundColor: colorPickerModal.currentColor,
+                margin: '0 auto',
+                marginBottom: '16px',
+                border: '3px solid #fff',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+              }}></div>
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ fontSize: '14px', marginBottom: '8px', color: 'var(--text-secondary)' }}>Select New Color:</div>
+              <input
+                type="color"
+                value={colorPickerModal.currentColor}
+                onChange={(e) => setColorPickerModal(prev => ({ ...prev, currentColor: e.target.value }))}
+                style={{
+                  width: '100%',
+                  height: '40px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ fontSize: '14px', marginBottom: '8px', color: 'var(--text-secondary)' }}>Standard Color Palette:</div>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(8, 1fr)',
+                gap: '6px'
+              }}>
+                {[
+                  // Reds
+                  '#FF0000', '#FF3333', '#FF6666', '#FF9999',
+                  // Oranges  
+                  '#FF8C00', '#FFA500', '#FFB84D', '#FFCC80',
+                  // Yellows
+                  '#FFD700', '#FFFF00', '#FFFF66', '#FFFF99',
+                  // Greens
+                  '#008000', '#32CD32', '#90EE90', '#98FB98',
+                  // Blues
+                  '#0000FF', '#4169E1', '#87CEEB', '#ADD8E6',
+                  // Purples
+                  '#800080', '#9932CC', '#DDA0DD', '#E6E6FA',
+                  // Pinks
+                  '#FF1493', '#FF69B4', '#FFB6C1', '#FFC0CB',
+                  // Browns
+                  '#8B4513', '#A0522D', '#CD853F', '#D2B48C',
+                  // Grays
+                  '#000000', '#404040', '#808080', '#C0C0C0',
+                  // Additional colors
+                  '#FFFFFF', '#00FFFF', '#FF00FF', '#00FF00',
+                  '#FFE4E1', '#F0E68C', '#E0FFFF', '#F5F5DC',
+                  '#FF4500', '#DC143C', '#00CED1', '#9370DB',
+                  '#228B22', '#B22222', '#4682B4', '#D2691E'
+                ].map((color, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => setColorPickerModal(prev => ({ ...prev, currentColor: color }))}
+                    style={{
+                      width: '28px',
+                      height: '28px',
+                      borderRadius: '4px',
+                      backgroundColor: color,
+                      cursor: 'pointer',
+                      border: colorPickerModal.currentColor === color ? '3px solid var(--primary)' : color === '#FFFFFF' ? '2px solid #ddd' : '2px solid transparent',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.transform = 'scale(1.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.transform = 'scale(1)';
+                    }}
+                  ></div>
+                ))}
+              </div>
+            </div>
+
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
               <button onClick={closeColorPickerModal} style={{
                 background: 'var(--bg-secondary)', 
                 padding: '8px 16px', 
                 borderRadius: '10px', 
                 border: 'none', 
-                cursor: 'pointer'
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
               }}>Cancel</button>
               <button onClick={saveProjectColor} style={{
                 background: 'var(--primary)', 
@@ -1771,155 +2261,9 @@ const ProjectStatusDashboard = () => {
                 padding: '8px 16px', 
                 borderRadius: '10px', 
                 border: 'none', 
-                cursor: 'pointer'
-              }}>Save</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add Project Modal */}
-      {isAddModalOpen && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          background: 'rgba(0, 0, 0, 0.4)',
-          zIndex: 1000,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }} onClick={() => setIsAddModalOpen(false)}>
-          <div style={{
-            background: 'var(--bg-primary)',
-            borderRadius: '18px',
-            width: '92%',
-            maxWidth: '500px',
-            padding: '24px'
-          }} onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>Add New Project</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <input
-                type="text"
-                placeholder="Project name"
-                value={newProject.name}
-                onChange={(e) => setNewProject(prev => ({ ...prev, name: e.target.value }))}
-                style={{ 
-                  padding: '10px', 
-                  borderRadius: '10px', 
-                  border: '1px solid var(--gray-4)'
-                }}
-              />
-              <select
-                value={newProject.status}
-                onChange={(e) => setNewProject(prev => ({ ...prev, status: e.target.value }))}
-                style={{ 
-                  padding: '10px', 
-                  borderRadius: '10px', 
-                  border: '1px solid var(--gray-4)'
-                }}
-              >
-                <option value="Waiting">Waiting</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Queued">Queued</option>
-                <option value="Hold">Hold</option>
-                <option value="Completed">Completed</option>
-              </select>
-              <input
-                type="date"
-                value={newProject.startDate}
-                onChange={(e) => setNewProject(prev => ({ ...prev, startDate: e.target.value }))}
-                style={{ 
-                  padding: '10px', 
-                  borderRadius: '10px', 
-                  border: '1px solid var(--gray-4)'
-                }}
-              />
-              <input
-                type="date"
-                value={newProject.dueDate}
-                onChange={(e) => setNewProject(prev => ({ ...prev, dueDate: e.target.value }))}
-                style={{ 
-                  padding: '10px', 
-                  borderRadius: '10px', 
-                  border: '1px solid var(--gray-4)'
-                }}
-              />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
-              <button onClick={() => setIsAddModalOpen(false)} style={{
-                background: 'var(--bg-secondary)', 
-                padding: '8px 16px', 
-                borderRadius: '10px', 
-                border: 'none', 
-                cursor: 'pointer'
-              }}>Cancel</button>
-              <button onClick={addProject} style={{
-                background: 'var(--primary)', 
-                color: 'white', 
-                padding: '8px 16px', 
-                borderRadius: '10px', 
-                border: 'none', 
-                cursor: 'pointer'
-              }}>Add</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Project Name Modal */}
-      {projectNameModal.open && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          background: 'rgba(0, 0, 0, 0.4)',
-          zIndex: 1000,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }} onClick={closeProjectNameModal}>
-          <div style={{
-            background: 'var(--bg-primary)',
-            borderRadius: '18px',
-            width: '92%',
-            maxWidth: '400px',
-            padding: '24px'
-          }} onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>Edit Project Name</div>
-            <input
-              type="text"
-              value={projectNameModal.name}
-              onChange={e => setProjectNameModal({ ...projectNameModal, name: e.target.value })}
-              placeholder="Project name"
-              style={{ 
-                width: '100%', 
-                padding: '10px', 
-                borderRadius: '10px', 
-                border: '1px solid var(--gray-4)', 
-                marginBottom: '16px'
-              }}
-            />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              <button onClick={closeProjectNameModal} style={{
-                background: 'var(--bg-secondary)', 
-                padding: '8px 16px', 
-                borderRadius: '10px', 
-                border: 'none', 
-                cursor: 'pointer'
-              }}>Cancel</button>
-              <button onClick={saveProjectName} style={{
-                background: 'var(--primary)', 
-                color: 'white', 
-                padding: '8px 16px', 
-                borderRadius: '10px', 
-                border: 'none', 
-                cursor: 'pointer'
-              }}>Save</button>
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}>Save Color</button>
             </div>
           </div>
         </div>
@@ -1927,7 +2271,7 @@ const ProjectStatusDashboard = () => {
 
       {/* Alert Modal */}
       {isAlertOpen && (
-        <div style={{
+        <div className="modal-backdrop" style={{
           position: 'fixed',
           top: 0,
           left: 0,
@@ -1939,7 +2283,7 @@ const ProjectStatusDashboard = () => {
           alignItems: 'center',
           justifyContent: 'center'
         }}>
-          <div style={{
+          <div className="modal-content" style={{
             background: 'var(--bg-primary)',
             borderRadius: '18px',
             maxWidth: '400px',
@@ -1954,28 +2298,61 @@ const ProjectStatusDashboard = () => {
               border: 'none',
               padding: '10px 20px',
               borderRadius: '10px',
-              cursor: 'pointer'
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
             }}>OK</button>
           </div>
         </div>
       )}
 
-      <style>
-        {`
-          @keyframes slideIn {
-            from {
-              opacity: 0;
-              transform: translateX(-50%) translateY(-20px);
-            }
-            to {
-              opacity: 1;
-              transform: translateX(-50%) translateY(0);
-            }
-          }
-        `}
-      </style>
-    </div>
-  );
-};
-
-export default ProjectStatusDashboard;
+      {/* Comments Modal */}
+      {commentsForId && (
+        <div className="modal-backdrop" style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          background: 'rgba(0, 0, 0, 0.4)',
+          backdropFilter: 'blur(40px)',
+          WebkitBackdropFilter: 'blur(40px)',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }} onClick={closeComments}>
+          <div className="modal-content" style={{
+            background: 'var(--bg-primary)',
+            borderRadius: '18px',
+            width: '92%',
+            maxWidth: '920px',
+            maxHeight: '86vh',
+            overflow: 'hidden',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+            display: 'flex',
+            flexDirection: 'column'
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{
+              padding: '18px 24px',
+              borderBottom: '0.5px solid var(--separator)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div>
+                <div style={{ fontSize: '18px', fontWeight: 700 }}>
+                  Comments — {state.projects.find(p => p.id === commentsForId)?.name}
+                </div>
+                <div style={{ fontSize: '12px', color: 'var(--text-quaternary)' }}>
+                  {state.projects.find(p => p.id === commentsForId)?.comments?.length || 0} comment(s)
+                </div>
+              </div>
+              <button onClick={closeComments} style={{
+                background: 'var(--bg-tertiary)',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '10px',
+                fontSize: '14px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }
