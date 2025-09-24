@@ -245,17 +245,87 @@ const ProjectStatusDashboard = () => {
     if (error) throw error;
   }
 
-  // Load data on component mount and set up auto-refresh
+  // State for tracking user activity and window focus
+  const [isWindowActive, setIsWindowActive] = useState(true);
+  const [lastUserActivity, setLastUserActivity] = useState(Date.now());
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState(null);
+
+  // Track user activity
+  const trackUserActivity = () => {
+    setLastUserActivity(Date.now());
+  };
+
+  // Load data on component mount and set up smart auto-refresh
   useEffect(() => {
     loadInitialData();
     
-    // Auto-refresh every 10 seconds
-    const autoRefreshInterval = setInterval(() => {
-      loadInitialData();
-    }, 10000);
-    
-    return () => clearInterval(autoRefreshInterval);
+    // Track window visibility
+    const handleVisibilityChange = () => {
+      setIsWindowActive(!document.hidden);
+    };
+
+    const handleWindowFocus = () => {
+      setIsWindowActive(true);
+    };
+
+    const handleWindowBlur = () => {
+      setIsWindowActive(false);
+    };
+
+    // Add event listeners for window focus/blur
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleWindowFocus);
+    window.addEventListener('blur', handleWindowBlur);
+
+    // Track user activity events
+    const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+    activityEvents.forEach(event => {
+      document.addEventListener(event, trackUserActivity, true);
+    });
+
+    return () => {
+      // Cleanup event listeners
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleWindowFocus);
+      window.removeEventListener('blur', handleWindowBlur);
+      
+      activityEvents.forEach(event => {
+        document.removeEventListener(event, trackUserActivity, true);
+      });
+      
+      if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+      }
+    };
   }, []);
+
+  // Smart auto-refresh logic
+  useEffect(() => {
+    if (autoRefreshInterval) {
+      clearInterval(autoRefreshInterval);
+    }
+
+    const smartRefresh = setInterval(() => {
+      const timeSinceLastActivity = Date.now() - lastUserActivity;
+      const inactivityThreshold = 30000; // 30 seconds of inactivity required
+      
+      // Only auto-refresh if:
+      // 1. Window is not active (user switched tabs/minimized)
+      // 2. No user activity for at least 30 seconds
+      if (!isWindowActive && timeSinceLastActivity > inactivityThreshold) {
+        console.log('Auto-refreshing data (window inactive, no recent activity)');
+        loadInitialData();
+      }
+    }, 60000); // Check every 1 minute
+
+    setAutoRefreshInterval(smartRefresh);
+
+    return () => {
+      if (smartRefresh) {
+        clearInterval(smartRefresh);
+      }
+    };
+  }, [isWindowActive, lastUserActivity]);
 
   // Simulate connection status and periodic sync
   useEffect(() => {
