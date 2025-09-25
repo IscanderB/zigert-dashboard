@@ -1108,7 +1108,7 @@ const ProjectStatusDashboard = () => {
             animation: 'fadeInUp 0.6s ease-out'
           }}>
             <img 
-              src="zigert-logo.png"
+              src="/zigert-logo.png"
               alt="Zigert Logo"
               style={{
                 width: '280px',
@@ -1367,7 +1367,7 @@ const ProjectStatusDashboard = () => {
                   {/* Project Details Grid */}
                   <div style={{
                     display: 'grid',
-                    gridTemplateColumns: '2.2fr 1.4fr 1.2fr 1.2fr 0.8fr 1.2fr 1fr',
+                    gridTemplateColumns: 'repeat(7, 1fr)',
                     gap: '16px',
                     alignItems: 'center'
                   }}>
@@ -1405,7 +1405,7 @@ const ProjectStatusDashboard = () => {
                               cursor: 'pointer',
                               background: 'var(--bg-primary)',
                               transition: 'all 0.2s ease',
-                              width: '100%',
+                              width: '200px',
                               height: '40px',
                               display: 'flex',
                               alignItems: 'center',
@@ -1432,7 +1432,7 @@ const ProjectStatusDashboard = () => {
                           <div style={{ 
                             fontWeight: 600, 
                             fontSize: '14px',
-                            width: '100%',
+                            width: '200px',
                             height: '40px',
                             display: 'flex',
                             alignItems: 'center',
@@ -1473,7 +1473,7 @@ const ProjectStatusDashboard = () => {
                             padding: '8px 12px',
                             borderRadius: '8px',
                             border: '1px solid transparent',
-                            width: '100%',
+                            width: '120px',
                             height: '40px',
                             textAlign: 'center',
                             fontWeight: 600,
@@ -1507,7 +1507,7 @@ const ProjectStatusDashboard = () => {
                           fontWeight: 600,
                           fontSize: '14px',
                           height: '40px',
-                          width: '100%',
+                          width: '120px',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -1553,7 +1553,7 @@ const ProjectStatusDashboard = () => {
                             fontSize: '14px',
                             fontWeight: 600,
                             color: 'var(--text-primary)',
-                            width: '100%',
+                            width: '120px',
                             height: '40px',
                             textAlign: 'center',
                             cursor: 'pointer',
@@ -1571,7 +1571,7 @@ const ProjectStatusDashboard = () => {
                       ) : (
                         <div style={{
                           height: '40px', 
-                          width: '100%',
+                          width: '120px',
                           display: 'flex', 
                           alignItems: 'center', 
                           justifyContent: 'center',
@@ -1620,7 +1620,7 @@ const ProjectStatusDashboard = () => {
                           fontSize: '14px',
                           fontWeight: 600,
                           color: 'var(--text-primary)',
-                          width: '100%',
+                          width: '120px',
                           height: '40px',
                           textAlign: 'center',
                           cursor: 'pointer',
@@ -1665,7 +1665,7 @@ const ProjectStatusDashboard = () => {
                             fontSize: '14px',
                             fontWeight: 600,
                             color: 'var(--text-primary)',
-                            width: '100%',
+                            width: '80px',
                             height: '40px',
                             textAlign: 'center',
                             cursor: 'pointer',
@@ -1682,7 +1682,7 @@ const ProjectStatusDashboard = () => {
                         />
                       ) : (
                         <div style={{ 
-                          width: '100%', 
+                          width: '80px', 
                           height: '40px', 
                           display: 'flex', 
                           alignItems: 'center', 
@@ -1718,7 +1718,7 @@ const ProjectStatusDashboard = () => {
                           padding: '8px 12px',
                           borderRadius: '8px',
                           border: '1px solid var(--gray-3)',
-                          width: '100%',
+                          width: '100px',
                           height: '40px',
                           textAlign: 'center',
                           fontWeight: 600,
@@ -2349,20 +2349,6 @@ const ProjectStatusDashboard = () => {
           }} onClick={e => e.stopPropagation()}>
             <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>Choose Project Color</div>
             
-            <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontSize: '14px', marginBottom: '8px', color: 'var(--text-secondary)' }}>Current Color:</div>
-              <div style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '50%',
-                backgroundColor: colorPickerModal.currentColor,
-                margin: '0 auto',
-                marginBottom: '16px',
-                border: '3px solid #fff',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-              }}></div>
-            </div>
-
             <div style={{ marginBottom: '16px' }}>
               <div style={{ fontSize: '14px', marginBottom: '8px', color: 'var(--text-secondary)' }}>Select New Color:</div>
               <input
@@ -3119,4 +3105,18 @@ const ProjectStatusDashboard = () => {
   );
 };
 
-export default ProjectStatusDashboard;
+export default ProjectStatusDashboard;px', color: 'var(--text-secondary)' }}>Current Color:</div>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                backgroundColor: colorPickerModal.currentColor,
+                margin: '0 auto',
+                marginBottom: '16px',
+                border: '3px solid #fff',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+              }}></div>
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ fontSize: '14px', marginBottom: '8
