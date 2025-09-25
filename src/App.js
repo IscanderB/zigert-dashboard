@@ -115,6 +115,11 @@ const ProjectStatusDashboard = () => {
   const [clearHistoryModal, setClearHistoryModal] = useState(null);
   const [colorPickerModal, setColorPickerModal] = useState({ open: false, projectId: null, currentColor: '#8D6E63' });
 
+  // New custom modal states
+  const [confirmDeleteModal, setConfirmDeleteModal] = useState({ open: false, projectId: null });
+  const [confirmCompleteModal, setConfirmCompleteModal] = useState({ open: false, projectId: null });
+  const [dateValidationModal, setDateValidationModal] = useState({ open: false, message: '', callback: null });
+
   // Supabase API functions
   async function loadInitialData() {
     try {
@@ -294,6 +299,31 @@ const ProjectStatusDashboard = () => {
     setTimeout(() => setIsAlertOpen(false), 3000);
   }
 
+  // Custom modal functions
+  function showDateValidationModal(message, callback) {
+    setDateValidationModal({ open: true, message, callback });
+  }
+
+  function closeDateValidationModal() {
+    setDateValidationModal({ open: false, message: '', callback: null });
+  }
+
+  function showConfirmDeleteModal(projectId) {
+    setConfirmDeleteModal({ open: true, projectId });
+  }
+
+  function closeConfirmDeleteModal() {
+    setConfirmDeleteModal({ open: false, projectId: null });
+  }
+
+  function showConfirmCompleteModal(projectId) {
+    setConfirmCompleteModal({ open: true, projectId });
+  }
+
+  function closeConfirmCompleteModal() {
+    setConfirmCompleteModal({ open: false, projectId: null });
+  }
+
   // Password check for admin
   function handleAdminToggle() {
     if (!isAdmin) {
@@ -440,12 +470,10 @@ const ProjectStatusDashboard = () => {
 
   async function deleteProject(id) {
     try {
-      if (!window.confirm('Are you sure you want to delete this project?')) return;
-      
       await deleteProjectFromDB(id);
       setState(prev => ({ ...prev, projects: prev.projects.filter(p => p.id !== id) }));
       setLastSync(new Date());
-
+      closeConfirmDeleteModal();
     } catch (err) {
       setError(`Failed to delete project: ${err.message}`);
       console.error('Delete error:', err);
@@ -454,6 +482,7 @@ const ProjectStatusDashboard = () => {
 
   async function completeProject(id) {
     updateProject(id, { status: 'Completed' }, `${new Date().toLocaleString()}: Marked Completed`);
+    closeConfirmCompleteModal();
   }
 
   // Comment functions
@@ -1244,11 +1273,7 @@ const ProjectStatusDashboard = () => {
                       zIndex: 10
                     }}>
                       <button
-                        onClick={() => {
-                          if (window.confirm('Are you sure you want to delete this project?')) {
-                            deleteProject(project.id);
-                          }
-                        }}
+                        onClick={() => showConfirmDeleteModal(project.id)}
                         style={{
                           width: '24px',
                           height: '24px',
@@ -1295,11 +1320,7 @@ const ProjectStatusDashboard = () => {
                       cursor: 'pointer',
                       transition: 'all 0.2s ease'
                     }}
-                    onClick={() => {
-                      if (window.confirm("Are you sure you want to mark the project as completed?")) {
-                        completeProject(project.id);
-                      }
-                    }}
+                    onClick={() => showConfirmCompleteModal(project.id)}
                     onMouseEnter={(e) => {
                       e.target.style.width = '24px';
                       e.target.style.boxShadow = '0 2px 8px rgba(0, 122, 255, 0.3)';
@@ -1376,9 +1397,10 @@ const ProjectStatusDashboard = () => {
                               alignItems: 'center',
                               justifyContent: 'center',
                               fontSize: '14px',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap'
+                              overflowWrap: 'break-word',
+                              wordBreak: 'break-word',
+                              whiteSpace: 'normal',
+                              lineHeight: '1.2'
                             }}
                             title="Click to edit"
                             onMouseEnter={(e) => {
@@ -1402,9 +1424,11 @@ const ProjectStatusDashboard = () => {
                             alignItems: 'center',
                             justifyContent: 'center',
                             padding: '8px 12px',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
+                            overflowWrap: 'break-word',
+                            wordBreak: 'break-word',
+                            whiteSpace: 'normal',
+                            lineHeight: '1.2',
+                            textAlign: 'center'
                           }}>{project.name}</div>
                         )}
                       </div>
@@ -1501,7 +1525,7 @@ const ProjectStatusDashboard = () => {
                           onChange={(e) => {
                             const val = e.target.value;
                             if (new Date(val) > new Date(project.dueDate)) {
-                              window.alert('Start date cannot be later than Due date');
+                              showDateValidationModal('Start date cannot be later than Due date', null);
                               return;
                             }
                             updateProject(project.id, { startDate: val }, `${new Date().toLocaleString()}: Start changed to ${val}`);
@@ -1568,7 +1592,7 @@ const ProjectStatusDashboard = () => {
                         onChange={(e) => {
                           const val = e.target.value;
                           if (new Date(val) < new Date(project.startDate)) {
-                            window.alert('Due date cannot be earlier than Start date');
+                            showDateValidationModal('Due date cannot be earlier than Start date', null);
                             return;
                           }
                           updateProject(project.id, { dueDate: val }, `${new Date().toLocaleString()}: Due changed to ${val}`);
@@ -2127,6 +2151,161 @@ const ProjectStatusDashboard = () => {
                 }}
               >
                 Login
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Date Validation Modal */}
+      {dateValidationModal.open && (
+        <div className="modal-backdrop" style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          background: 'rgba(0, 0, 0, 0.4)',
+          zIndex: 1200,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <div className="modal-content" style={{
+            background: 'var(--bg-primary)',
+            borderRadius: '18px',
+            maxWidth: '400px',
+            textAlign: 'center',
+            padding: '24px'
+          }}>
+            <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>Attention</div>
+            <div style={{ marginBottom: '20px' }}>{dateValidationModal.message}</div>
+            <button 
+              onClick={closeDateValidationModal} 
+              style={{
+                background: 'var(--primary)',
+                color: 'white',
+                border: 'none',
+                padding: '10px 20px',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Delete Modal */}
+      {confirmDeleteModal.open && (
+        <div className="modal-backdrop" style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          background: 'rgba(0, 0, 0, 0.4)',
+          zIndex: 1200,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <div className="modal-content" style={{
+            background: 'var(--bg-primary)',
+            borderRadius: '18px',
+            maxWidth: '400px',
+            textAlign: 'center',
+            padding: '24px'
+          }}>
+            <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>Attention</div>
+            <div style={{ marginBottom: '20px' }}>Are you sure you want to delete this project?</div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button 
+                onClick={closeConfirmDeleteModal} 
+                style={{
+                  background: 'var(--bg-secondary)',
+                  color: 'var(--text-primary)',
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => deleteProject(confirmDeleteModal.projectId)} 
+                style={{
+                  background: 'var(--danger)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Complete Modal */}
+      {confirmCompleteModal.open && (
+        <div className="modal-backdrop" style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          background: 'rgba(0, 0, 0, 0.4)',
+          zIndex: 1200,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <div className="modal-content" style={{
+            background: 'var(--bg-primary)',
+            borderRadius: '18px',
+            maxWidth: '400px',
+            textAlign: 'center',
+            padding: '24px'
+          }}>
+            <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>Attention</div>
+            <div style={{ marginBottom: '20px' }}>Are you sure you want to mark the project as completed?</div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button 
+                onClick={closeConfirmCompleteModal} 
+                style={{
+                  background: 'var(--bg-secondary)',
+                  color: 'var(--text-primary)',
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => completeProject(confirmCompleteModal.projectId)} 
+                style={{
+                  background: 'var(--primary)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                Complete
               </button>
             </div>
           </div>
