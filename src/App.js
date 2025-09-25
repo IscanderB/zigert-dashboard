@@ -1371,7 +1371,7 @@ const ProjectStatusDashboard = () => {
                       gridTemplateColumns: 'minmax(200px, 2fr) auto auto auto minmax(60px, auto) auto minmax(100px, auto)', // Автоматические размеры под контент
                       gap: '8px', // Уменьшен gap в 2 раза
                       alignItems: 'stretch', // Одинаковая высота для всех элементов
-                      paddingLeft: '10px', // Уменьшен отступ от цветной полосы в 2 раза
+                      paddingLeft: '5px', // Минимальный отступ от цветной полосы
                       paddingRight: '20px' // Отступ от кнопки Complete
                     }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', textAlign: 'center', minHeight: '64px', justifyContent: 'center' }}>
