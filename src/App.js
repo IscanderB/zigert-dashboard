@@ -1365,16 +1365,16 @@ const ProjectStatusDashboard = () => {
                       </div>
                     )}
 
-                    {/* Project Details Grid - ИСПРАВЛЕНО: изменена структура колонок */}
+                    {/* Project Details Grid - ИСПРАВЛЕНО: автоматические размеры под контент */}
                     <div style={{
                       display: 'grid',
-                      gridTemplateColumns: '2fr 1.5fr 1.5fr 1.5fr 0.8fr 1.5fr 1fr', // Project получает больше места, Busy меньше
-                      gap: '12px', // Уменьшен gap для предотвращения наложения
-                      alignItems: 'center',
+                      gridTemplateColumns: 'minmax(200px, 2fr) auto auto auto minmax(60px, auto) auto minmax(100px, auto)', // Автоматические размеры под контент
+                      gap: '16px', // Увеличен gap для предотвращения наложения
+                      alignItems: 'stretch', // Одинаковая высота для всех элементов
                       paddingLeft: '20px', // Отступ от цветной полосы
                       paddingRight: '20px' // Отступ от кнопки Complete
                     }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', textAlign: 'center' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', textAlign: 'center', minHeight: '64px', justifyContent: 'center' }}>
                         <div style={{
                           fontSize: '12px',
                           color: 'var(--text-quaternary)',
@@ -1384,7 +1384,8 @@ const ProjectStatusDashboard = () => {
                           height: '16px',
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center'
+                          justifyContent: 'center',
+                          whiteSpace: 'nowrap'
                         }}>
                           Project
                         </div>
@@ -1393,7 +1394,7 @@ const ProjectStatusDashboard = () => {
                           alignItems: 'center',
                           gap: '8px',
                           height: '40px',
-                          width: '100%',
+                          minWidth: '160px',
                           justifyContent: 'center'
                         }}>
                           {isAdmin ? (
@@ -1408,7 +1409,8 @@ const ProjectStatusDashboard = () => {
                                 cursor: 'pointer',
                                 background: 'var(--bg-primary)',
                                 transition: 'all 0.2s ease',
-                                width: '100%', // Использует всю доступную ширину колонки
+                                minWidth: '160px',
+                                maxWidth: '200px',
                                 height: '40px',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -1417,8 +1419,7 @@ const ProjectStatusDashboard = () => {
                                 overflowWrap: 'break-word',
                                 wordBreak: 'break-word',
                                 whiteSpace: 'normal',
-                                lineHeight: '1.2',
-                                minWidth: 0 // Позволяет тексту сжиматься
+                                lineHeight: '1.2'
                               }}
                               title="Click to edit"
                               onMouseEnter={(e) => {
@@ -1436,7 +1437,8 @@ const ProjectStatusDashboard = () => {
                             <div style={{ 
                               fontWeight: 600, 
                               fontSize: '14px',
-                              width: '100%',
+                              minWidth: '160px',
+                              maxWidth: '200px',
                               height: '40px',
                               display: 'flex',
                               alignItems: 'center',
@@ -1446,14 +1448,13 @@ const ProjectStatusDashboard = () => {
                               wordBreak: 'break-word',
                               whiteSpace: 'normal',
                               lineHeight: '1.2',
-                              textAlign: 'center',
-                              minWidth: 0
+                              textAlign: 'center'
                             }}>{project.name}</div>
                           )}
                         </div>
                       </div>
 
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', textAlign: 'center' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', textAlign: 'center', minHeight: '64px', justifyContent: 'center' }}>
                         <div style={{
                           fontSize: '12px',
                           color: 'var(--text-quaternary)',
@@ -1463,7 +1464,8 @@ const ProjectStatusDashboard = () => {
                           height: '16px',
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center'
+                          justifyContent: 'center',
+                          whiteSpace: 'nowrap'
                         }}>
                           Status
                         </div>
@@ -1478,7 +1480,7 @@ const ProjectStatusDashboard = () => {
                               padding: '8px 12px',
                               borderRadius: '8px',
                               border: '1px solid transparent',
-                              width: '100%',
+                              minWidth: '120px',
                               height: '40px',
                               textAlign: 'center',
                               fontWeight: 600,
@@ -1486,7 +1488,8 @@ const ProjectStatusDashboard = () => {
                               color: '#fff',
                               cursor: 'pointer',
                               fontSize: '14px',
-                              transition: 'all 0.2s ease'
+                              transition: 'all 0.2s ease',
+                              whiteSpace: 'nowrap'
                             }}
                             onMouseEnter={(e) => {
                               e.target.style.transform = 'scale(1.02)';
@@ -1512,18 +1515,19 @@ const ProjectStatusDashboard = () => {
                             fontWeight: 600,
                             fontSize: '14px',
                             height: '40px',
-                            width: '100%',
+                            minWidth: '120px',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            transition: 'all 0.2s ease'
+                            transition: 'all 0.2s ease',
+                            whiteSpace: 'nowrap'
                           }}>
                             {project.status}
                           </div>
                         )}
                       </div>
 
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', textAlign: 'center' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', textAlign: 'center', minHeight: '64px', justifyContent: 'center' }}>
                         <div style={{
                           fontSize: '12px',
                           color: 'var(--text-quaternary)',
@@ -1533,7 +1537,8 @@ const ProjectStatusDashboard = () => {
                           height: '16px',
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center'
+                          justifyContent: 'center',
+                          whiteSpace: 'nowrap'
                         }}>
                           Start
                         </div>
@@ -1558,7 +1563,7 @@ const ProjectStatusDashboard = () => {
                               fontSize: '14px',
                               fontWeight: 600,
                               color: 'var(--text-primary)',
-                              width: '100%',
+                              width: '140px',
                               height: '40px',
                               textAlign: 'center',
                               cursor: 'pointer',
@@ -1576,7 +1581,7 @@ const ProjectStatusDashboard = () => {
                         ) : (
                           <div style={{
                             height: '40px', 
-                            width: '100%',
+                            width: '140px',
                             display: 'flex', 
                             alignItems: 'center', 
                             justifyContent: 'center',
@@ -1585,12 +1590,13 @@ const ProjectStatusDashboard = () => {
                             border: '1px solid var(--gray-3)',
                             borderRadius: '8px',
                             background: 'var(--bg-primary)',
-                            fontWeight: 600
+                            fontWeight: 600,
+                            whiteSpace: 'nowrap'
                           }}>{formatDateForDisplay(project.startDate)}</div>
                         )}
                       </div>
 
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', textAlign: 'center' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', textAlign: 'center', minHeight: '64px', justifyContent: 'center' }}>
                         <div style={{
                           fontSize: '12px',
                           color: 'var(--text-quaternary)',
@@ -1600,7 +1606,8 @@ const ProjectStatusDashboard = () => {
                           height: '16px',
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center'
+                          justifyContent: 'center',
+                          whiteSpace: 'nowrap'
                         }}>
                           Due
                         </div>
@@ -1625,7 +1632,7 @@ const ProjectStatusDashboard = () => {
                             fontSize: '14px',
                             fontWeight: 600,
                             color: 'var(--text-primary)',
-                            width: '100%',
+                            width: '140px',
                             height: '40px',
                             textAlign: 'center',
                             cursor: 'pointer',
@@ -1642,7 +1649,7 @@ const ProjectStatusDashboard = () => {
                         />
                       </div>
 
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', textAlign: 'center' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', textAlign: 'center', minHeight: '64px', justifyContent: 'center' }}>
                         <div style={{
                           fontSize: '12px',
                           color: 'var(--text-quaternary)',
@@ -1652,7 +1659,8 @@ const ProjectStatusDashboard = () => {
                           height: '16px',
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center'
+                          justifyContent: 'center',
+                          whiteSpace: 'nowrap'
                         }}>
                           Busy
                         </div>
@@ -1670,7 +1678,7 @@ const ProjectStatusDashboard = () => {
                               fontSize: '14px',
                               fontWeight: 600,
                               color: 'var(--text-primary)',
-                              width: '100%',
+                              width: '70px',
                               height: '40px',
                               textAlign: 'center',
                               cursor: 'pointer',
@@ -1687,7 +1695,7 @@ const ProjectStatusDashboard = () => {
                           />
                         ) : (
                           <div style={{ 
-                            width: '100%', 
+                            width: '70px', 
                             height: '40px', 
                             display: 'flex', 
                             alignItems: 'center', 
@@ -1702,7 +1710,7 @@ const ProjectStatusDashboard = () => {
                         )}
                       </div>
 
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', textAlign: 'center' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', textAlign: 'center', minHeight: '64px', justifyContent: 'center' }}>
                         <div style={{
                           fontSize: '12px',
                           color: 'var(--text-quaternary)',
@@ -1712,7 +1720,8 @@ const ProjectStatusDashboard = () => {
                           height: '16px',
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center'
+                          justifyContent: 'center',
+                          whiteSpace: 'nowrap'
                         }}>
                           Priority
                         </div>
@@ -1723,7 +1732,7 @@ const ProjectStatusDashboard = () => {
                             padding: '8px 12px',
                             borderRadius: '8px',
                             border: '1px solid var(--gray-3)',
-                            width: '100%',
+                            width: '100px',
                             height: '40px',
                             textAlign: 'center',
                             fontWeight: 600,
@@ -1731,7 +1740,8 @@ const ProjectStatusDashboard = () => {
                             color: ['High', 'Medium'].includes(project.priority) ? '#fff' : '#000',
                             cursor: 'pointer',
                             fontSize: '14px',
-                            transition: 'all 0.2s ease'
+                            transition: 'all 0.2s ease',
+                            whiteSpace: 'nowrap'
                           }}
                           onMouseEnter={(e) => {
                             e.target.style.transform = 'scale(1.02)';
@@ -1750,11 +1760,10 @@ const ProjectStatusDashboard = () => {
 
                       <div style={{
                         display: 'flex',
-                        gap: '6px', // Уменьшен gap между кнопками
+                        gap: '6px',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        height: '40px',
-                        marginTop: '24px'
+                        minHeight: '64px'
                       }}>
                         <div
                           onClick={() => openComments(project.id)}
