@@ -2360,4 +2360,570 @@ const ProjectStatusDashboard = () => {
                 padding: '12px',
                 minHeight: '200px',
                 maxHeight: '400px',
-                overflowY:
+                overflowY: 'auto',
+                background: 'var(--bg-secondary)',
+                marginBottom: '16px'
+              }}>
+                {state.projects.find(p => p.id === commentsForId)?.comments?.length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-quaternary)' }}>
+                    No comments yet
+                  </div>
+                )}
+                {state.projects.find(p => p.id === commentsForId)?.comments?.map(c => (
+                  <div key={c.id} style={{
+                    padding: '12px',
+                    borderRadius: '10px',
+                    background: c.deleted || c.ignored ? '#fafafa' : 'var(--bg-primary)',
+                    marginBottom: '8px',
+                    border: '1px solid var(--separator)',
+                    transition: 'all 0.2s ease'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{
+                          fontSize: '14px',
+                          color: (c.deleted || c.ignored) ? 'var(--text-quaternary)' : 'var(--text-primary)',
+                          textDecoration: (c.deleted || c.ignored) ? 'line-through' : 'none'
+                        }}>
+                          {c.text || (c.deleted ? '(deleted)' : '')}
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-quaternary)', marginTop: '6px' }}>
+                          {c.ts ? new Date(c.ts).toLocaleString() : ''}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <button onClick={() => startEdit(c.id, c.text)} style={{
+                          background: 'var(--bg-secondary)',
+                          border: 'none',
+                          padding: '6px 10px',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease'
+                        }}>✏️ Edit</button>
+                        <button 
+                          disabled={c.ignored} 
+                          onClick={() => confirmIgnoreComment(c.id)} 
+                          style={{
+                            background: 'var(--bg-secondary)',
+                            border: 'none',
+                            padding: '6px 10px',
+                            borderRadius: '8px',
+                            fontSize: '12px',
+                            cursor: c.ignored ? 'not-allowed' : 'pointer',
+                            opacity: c.ignored ? 0.5 : 1,
+                            transition: 'all 0.2s ease'
+                          }}
+                        >{c.ignored ? 'Ignored' : 'Ignore'}</button>
+                      </div>
+                    </div>
+                    {editingId === c.id && (
+                      <div style={{ marginTop: '8px', display: 'flex', gap: '8px' }}>
+                        <input
+                          value={editingText}
+                          onChange={e => setEditingText(e.target.value)}
+                          placeholder='Edit comment...'
+                          style={{
+                            flex: 1,
+                            padding: '8px',
+                            borderRadius: '10px',
+                            border: '1px solid var(--gray-4)',
+                            transition: 'all 0.2s ease'
+                          }}
+                        />
+                        <button onClick={() => saveEdit(c.id)} style={{
+                          background: 'var(--primary)',
+                          color: 'white',
+                          border: 'none',
+                          padding: '8px 16px',
+                          borderRadius: '10px',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease'
+                        }}>Save</button>
+                        <button onClick={() => { setEditingId(null); setEditingText(''); }} style={{
+                          background: 'var(--bg-secondary)',
+                          border: 'none',
+                          padding: '8px 16px',
+                          borderRadius: '10px',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease'
+                        }}>Cancel</button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <input
+                  value={draft}
+                  onChange={e => setDraft(e.target.value)}
+                  placeholder='Write a comment...'
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    borderRadius: '12px',
+                    border: '1px solid var(--gray-4)',
+                    transition: 'all 0.2s ease'
+                  }}
+                />
+                <button
+                  disabled={!draft.trim()}
+                  onClick={() => setConfirmAddOpen(true)}
+                  style={{
+                    background: 'var(--primary)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '10px',
+                    cursor: draft.trim() ? 'pointer' : 'not-allowed',
+                    opacity: draft.trim() ? 1 : 0.5,
+                    transition: 'all 0.2s ease'
+                  }}
+                >Add</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* History Modal */}
+      {historyForId && (
+        <div className="modal-backdrop" style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          background: 'rgba(0, 0, 0, 0.4)',
+          backdropFilter: 'blur(40px)',
+          WebkitBackdropFilter: 'blur(40px)',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }} onClick={closeHistory}>
+          <div className="modal-content" style={{
+            background: 'var(--bg-primary)',
+            borderRadius: '18px',
+            width: '92%',
+            maxWidth: '920px',
+            maxHeight: '86vh',
+            overflow: 'hidden',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+            display: 'flex',
+            flexDirection: 'column'
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{
+              padding: '18px 24px',
+              borderBottom: '0.5px solid var(--separator)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div>
+                <div style={{ fontSize: '18px', fontWeight: 700 }}>
+                  History — {state.projects.find(p => p.id === historyForId)?.name}
+                </div>
+                <div style={{ fontSize: '12px', color: 'var(--text-quaternary)' }}>
+                  {(state.projects.find(p => p.id === historyForId)?.history || []).length} record(s)
+                </div>
+              </div>
+              <button
+                onClick={closeHistory}
+                style={{
+                  background: 'var(--bg-tertiary)',
+                  border: 'none',
+                  padding: '8px 16px',
+                  borderRadius: '10px',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  color: 'var(--text-primary)',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                Close
+              </button>
+            </div>
+            <div style={{ padding: '24px', overflow: 'auto', flex: 1 }}>
+              <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                {(state.projects.find(p => p.id === historyForId)?.history || []).length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-quaternary)' }}>
+                    No history yet
+                  </div>
+                )}
+                {(state.projects.find(p => p.id === historyForId)?.history || []).slice().reverse().map((h, idx) => {
+                  const sep = h.lastIndexOf(': ');
+                  let datePart = '';
+                  let msgPart = h;
+                  if (sep !== -1) {
+                    datePart = h.slice(0, sep);
+                    msgPart = h.slice(sep + 2);
+                  }
+                  return (
+                    <div key={idx} style={{
+                      padding: '12px',
+                      background: 'var(--bg-secondary)',
+                      borderRadius: '10px',
+                      marginBottom: '8px',
+                      border: '1px solid var(--separator)',
+                      transition: 'all 0.2s ease',
+                      animation: `fadeInUp 0.3s ease-out ${0.05 * idx}s both`
+                    }}>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {msgPart}
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-quaternary)', marginTop: '6px' }}>
+                        {datePart}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Project Modal */}
+      {isAddModalOpen && (
+        <div className="modal-backdrop" style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          background: 'rgba(0, 0, 0, 0.4)',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }} onClick={() => setIsAddModalOpen(false)}>
+          <div className="modal-content" style={{
+            background: 'var(--bg-primary)',
+            borderRadius: '18px',
+            width: '92%',
+            maxWidth: '500px',
+            padding: '24px'
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>Add New Project</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <input
+                type="text"
+                placeholder="Project name"
+                value={newProject.name}
+                onChange={(e) => setNewProject(prev => ({ ...prev, name: e.target.value }))}
+                style={{ 
+                  padding: '10px', 
+                  borderRadius: '10px', 
+                  border: '1px solid var(--gray-4)',
+                  transition: 'all 0.2s ease'
+                }}
+              />
+              <select
+                value={newProject.status}
+                onChange={(e) => setNewProject(prev => ({ ...prev, status: e.target.value }))}
+                style={{ 
+                  padding: '10px', 
+                  borderRadius: '10px', 
+                  border: '1px solid var(--gray-4)',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <option value="Waiting">Waiting</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Queued">Queued</option>
+                <option value="Hold">Hold</option>
+                <option value="Completed">Completed</option>
+              </select>
+              <input
+                type="date"
+                value={newProject.startDate}
+                onChange={(e) => setNewProject(prev => ({ ...prev, startDate: e.target.value }))}
+                style={{ 
+                  padding: '10px', 
+                  borderRadius: '10px', 
+                  border: '1px solid var(--gray-4)',
+                  transition: 'all 0.2s ease'
+                }}
+              />
+              <input
+                type="date"
+                value={newProject.dueDate}
+                onChange={(e) => setNewProject(prev => ({ ...prev, dueDate: e.target.value }))}
+                style={{ 
+                  padding: '10px', 
+                  borderRadius: '10px', 
+                  border: '1px solid var(--gray-4)',
+                  transition: 'all 0.2s ease'
+                }}
+              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <label style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Project Color:</label>
+                <input
+                  type="color"
+                  value={newProject.color}
+                  onChange={(e) => setNewProject(prev => ({ ...prev, color: e.target.value }))}
+                  style={{ 
+                    width: '40px', 
+                    height: '30px', 
+                    border: 'none', 
+                    borderRadius: '6px', 
+                    cursor: 'pointer' 
+                  }}
+                />
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
+              <button onClick={() => setIsAddModalOpen(false)} style={{
+                background: 'var(--bg-secondary)', 
+                padding: '8px 16px', 
+                borderRadius: '10px', 
+                border: 'none', 
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}>Cancel</button>
+              <button onClick={addProject} style={{
+                background: 'var(--primary)', 
+                color: 'white', 
+                padding: '8px 16px', 
+                borderRadius: '10px', 
+                border: 'none', 
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}>Add</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Project Name Modal */}
+      {projectNameModal.open && (
+        <div className="modal-backdrop" style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          background: 'rgba(0, 0, 0, 0.4)',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }} onClick={closeProjectNameModal}>
+          <div className="modal-content" style={{
+            background: 'var(--bg-primary)',
+            borderRadius: '18px',
+            width: '92%',
+            maxWidth: '400px',
+            padding: '24px'
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>Edit Project Name</div>
+            <input
+              type="text"
+              value={projectNameModal.name}
+              onChange={e => setProjectNameModal({ ...projectNameModal, name: e.target.value })}
+              placeholder="Project name"
+              style={{ 
+                width: '100%', 
+                padding: '10px', 
+                borderRadius: '10px', 
+                border: '1px solid var(--gray-4)', 
+                marginBottom: '16px',
+                transition: 'all 0.2s ease'
+              }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button onClick={closeProjectNameModal} style={{
+                background: 'var(--bg-secondary)', 
+                padding: '8px 16px', 
+                borderRadius: '10px', 
+                border: 'none', 
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}>Cancel</button>
+              <button onClick={saveProjectName} style={{
+                background: 'var(--primary)', 
+                color: 'white', 
+                padding: '8px 16px', 
+                borderRadius: '10px', 
+                border: 'none', 
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Dialogs */}
+      {confirmAddOpen && (
+        <div className="modal-backdrop" style={{
+          position: 'fixed',
+          inset: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1100,
+          background: 'rgba(0, 0, 0, 0.5)'
+        }}>
+          <div className="modal-content" style={{
+            background: 'var(--bg-primary)',
+            padding: '20px',
+            borderRadius: '12px',
+            maxWidth: '400px'
+          }}>
+            <div style={{ fontWeight: 700, marginBottom: '8px' }}>Are you sure?</div>
+            <div style={{ marginBottom: '16px' }}>Add this comment to the project?</div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button onClick={() => setConfirmAddOpen(false)} style={{
+                background: 'var(--bg-secondary)',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}>Cancel</button>
+              <button onClick={addCommentConfirmed} style={{
+                background: 'var(--primary)',
+                color: 'white',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}>Ok</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmIgnore && (
+        <div className="modal-backdrop" style={{
+          position: 'fixed',
+          inset: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1100,
+          background: 'rgba(0, 0, 0, 0.5)'
+        }}>
+          <div className="modal-content" style={{
+            background: 'var(--bg-primary)',
+            padding: '20px',
+            borderRadius: '12px',
+            maxWidth: '400px'
+          }}>
+            <div style={{ fontWeight: 700, marginBottom: '8px' }}>Ignore comment?</div>
+            <div style={{ marginBottom: '16px' }}>Are you sure you want to ignore this comment?</div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button onClick={() => setConfirmIgnore(null)} style={{
+                background: 'var(--bg-secondary)',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}>No</button>
+              <button onClick={doIgnore} style={{
+                background: 'var(--primary)',
+                color: 'white',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}>Yes</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Clear Comments Confirmation Modal */}
+      {clearCommentsModal && (
+        <div className="modal-backdrop" style={{
+          position: 'fixed',
+          inset: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1100,
+          background: 'rgba(0, 0, 0, 0.5)'
+        }}>
+          <div className="modal-content" style={{
+            background: 'var(--bg-primary)',
+            padding: '20px',
+            borderRadius: '12px',
+            maxWidth: '400px'
+          }}>
+            <div style={{ fontWeight: 700, marginBottom: '8px' }}>Clear All Comments?</div>
+            <div style={{ marginBottom: '16px' }}>Are you sure you want to permanently delete all comments for this project? This action cannot be undone.</div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button onClick={() => setClearCommentsModal(null)} style={{
+                background: 'var(--bg-secondary)',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}>Cancel</button>
+              <button onClick={() => clearComments(clearCommentsModal)} style={{
+                background: 'var(--danger)',
+                color: 'white',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}>Clear All</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Clear History Confirmation Modal */}
+      {clearHistoryModal && (
+        <div className="modal-backdrop" style={{
+          position: 'fixed',
+          inset: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1100,
+          background: 'rgba(0, 0, 0, 0.5)'
+        }}>
+          <div className="modal-content" style={{
+            background: 'var(--bg-primary)',
+            padding: '20px',
+            borderRadius: '12px',
+            maxWidth: '400px'
+          }}>
+            <div style={{ fontWeight: 700, marginBottom: '8px' }}>Clear All History?</div>
+            <div style={{ marginBottom: '16px' }}>Are you sure you want to permanently delete all history records for this project? This action cannot be undone.</div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button onClick={() => setClearHistoryModal(null)} style={{
+                background: 'var(--bg-secondary)',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}>Cancel</button>
+              <button onClick={() => clearHistory(clearHistoryModal)} style={{
+                background: 'var(--danger)',
+                color: 'white',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}>Clear All</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default ProjectStatusDashboard;
