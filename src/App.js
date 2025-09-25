@@ -1111,7 +1111,7 @@ const ProjectStatusDashboard = () => {
               src="/zigert-logo.png"
               alt="Zigert Logo"
               style={{
-                height: '60px',
+                height: '100px',
                 width: 'auto',
                 filter: 'grayscale(0)',
                 transition: 'all 0.3s ease'
