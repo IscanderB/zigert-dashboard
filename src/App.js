@@ -115,6 +115,9 @@ const ProjectStatusDashboard = () => {
   const [clearHistoryModal, setClearHistoryModal] = useState(null);
   const [colorPickerModal, setColorPickerModal] = useState({ open: false, projectId: null, currentColor: '#8D6E63' });
 
+  // Custom confirm/alert modals
+  const [confirmModal, setConfirmModal] = useState({ open: false, message: '', onConfirm: null });
+
   // Supabase API functions
   async function loadInitialData() {
     try {
@@ -294,6 +297,14 @@ const ProjectStatusDashboard = () => {
     setTimeout(() => setIsAlertOpen(false), 3000);
   }
 
+  function showConfirm(message, onConfirm) {
+    setConfirmModal({ open: true, message, onConfirm });
+  }
+
+  function closeConfirm() {
+    setConfirmModal({ open: false, message: '', onConfirm: null });
+  }
+
   // Password check for admin
   function handleAdminToggle() {
     if (!isAdmin) {
@@ -440,12 +451,9 @@ const ProjectStatusDashboard = () => {
 
   async function deleteProject(id) {
     try {
-      if (!window.confirm('Are you sure you want to delete this project?')) return;
-      
       await deleteProjectFromDB(id);
       setState(prev => ({ ...prev, projects: prev.projects.filter(p => p.id !== id) }));
       setLastSync(new Date());
-
     } catch (err) {
       setError(`Failed to delete project: ${err.message}`);
       console.error('Delete error:', err);
@@ -1245,9 +1253,7 @@ const ProjectStatusDashboard = () => {
                     }}>
                       <button
                         onClick={() => {
-                          if (window.confirm('Are you sure you want to delete this project?')) {
-                            deleteProject(project.id);
-                          }
+                          showConfirm('Are you sure you want to delete this project?', () => deleteProject(project.id));
                         }}
                         style={{
                           width: '24px',
@@ -1296,9 +1302,7 @@ const ProjectStatusDashboard = () => {
                       transition: 'all 0.2s ease'
                     }}
                     onClick={() => {
-                      if (window.confirm("Are you sure you want to mark the project as completed?")) {
-                        completeProject(project.id);
-                      }
+                      showConfirm("Are you sure you want to mark the project as completed?", () => completeProject(project.id));
                     }}
                     onMouseEnter={(e) => {
                       e.target.style.width = '24px';
@@ -1371,14 +1375,14 @@ const ProjectStatusDashboard = () => {
                               background: 'var(--bg-primary)',
                               transition: 'all 0.2s ease',
                               width: '140px',
-                              height: '40px',
+                              minHeight: '40px',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
                               fontSize: '14px',
                               overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap'
+                              wordWrap: 'break-word',
+                              hyphens: 'auto'
                             }}
                             title="Click to edit"
                             onMouseEnter={(e) => {
@@ -1397,14 +1401,15 @@ const ProjectStatusDashboard = () => {
                             fontWeight: 600, 
                             fontSize: '14px',
                             width: '140px',
-                            height: '40px',
+                            minHeight: '40px',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             padding: '8px 12px',
                             overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
+                            wordWrap: 'break-word',
+                            hyphens: 'auto',
+                            textAlign: 'center'
                           }}>{project.name}</div>
                         )}
                       </div>
@@ -1501,7 +1506,7 @@ const ProjectStatusDashboard = () => {
                           onChange={(e) => {
                             const val = e.target.value;
                             if (new Date(val) > new Date(project.dueDate)) {
-                              window.alert('Start date cannot be later than Due date');
+                              showAlert('Start date cannot be later than Due date');
                               return;
                             }
                             updateProject(project.id, { startDate: val }, `${new Date().toLocaleString()}: Start changed to ${val}`);
@@ -1568,7 +1573,7 @@ const ProjectStatusDashboard = () => {
                         onChange={(e) => {
                           const val = e.target.value;
                           if (new Date(val) < new Date(project.startDate)) {
-                            window.alert('Due date cannot be earlier than Start date');
+                            showAlert('Due date cannot be earlier than Start date');
                             return;
                           }
                           updateProject(project.id, { dueDate: val }, `${new Date().toLocaleString()}: Due changed to ${val}`);
@@ -2058,215 +2063,8 @@ const ProjectStatusDashboard = () => {
         `}
       </style>
 
-      {/* Password Modal */}
-      {passwordModal && (
-        <div className="modal-backdrop" style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          background: 'rgba(0, 0, 0, 0.4)',
-          zIndex: 1200,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <div className="modal-content" style={{
-            background: 'var(--bg-primary)',
-            borderRadius: '18px',
-            maxWidth: '400px',
-            textAlign: 'center',
-            padding: '24px'
-          }}>
-            <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>Admin Access Required</div>
-            <input
-              type="password"
-              placeholder="Enter admin password"
-              value={passwordInput}
-              onChange={(e) => setPasswordInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && checkPassword()}
-              style={{
-                width: '100%',
-                padding: '10px',
-                borderRadius: '10px',
-                border: '1px solid var(--gray-4)',
-                marginBottom: '16px',
-                fontSize: '16px'
-              }}
-              autoFocus
-            />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              <button 
-                onClick={() => {
-                  setPasswordModal(false);
-                  setPasswordInput('');
-                }} 
-                style={{
-                  background: 'var(--bg-secondary)',
-                  color: 'var(--text-primary)',
-                  border: 'none',
-                  padding: '10px 20px',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={checkPassword} 
-                style={{
-                  background: 'var(--primary)',
-                  color: 'white',
-                  border: 'none',
-                  padding: '10px 20px',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                Login
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Color Picker Modal */}
-      {colorPickerModal.open && (
-        <div className="modal-backdrop" style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          background: 'rgba(0, 0, 0, 0.4)',
-          zIndex: 1000,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }} onClick={closeColorPickerModal}>
-          <div className="modal-content" style={{
-            background: 'var(--bg-primary)',
-            borderRadius: '18px',
-            width: '92%',
-            maxWidth: '400px',
-            padding: '24px'
-          }} onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>Choose Project Color</div>
-            
-            <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontSize: '14px', marginBottom: '8px', color: 'var(--text-secondary)' }}>Current Color:</div>
-              <div style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '50%',
-                backgroundColor: colorPickerModal.currentColor,
-                margin: '0 auto',
-                marginBottom: '16px',
-                border: '3px solid #fff',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-              }}></div>
-            </div>
-
-            <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontSize: '14px', marginBottom: '8px', color: 'var(--text-secondary)' }}>Select New Color:</div>
-              <input
-                type="color"
-                value={colorPickerModal.currentColor}
-                onChange={(e) => setColorPickerModal(prev => ({ ...prev, currentColor: e.target.value }))}
-                style={{
-                  width: '100%',
-                  height: '40px',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer'
-                }}
-              />
-            </div>
-
-            <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontSize: '14px', marginBottom: '8px', color: 'var(--text-secondary)' }}>Standard Color Palette:</div>
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(8, 1fr)',
-                gap: '6px'
-              }}>
-                {[
-                  // Reds
-                  '#FF0000', '#FF3333', '#FF6666', '#FF9999',
-                  // Oranges  
-                  '#FF8C00', '#FFA500', '#FFB84D', '#FFCC80',
-                  // Yellows
-                  '#FFD700', '#FFFF00', '#FFFF66', '#FFFF99',
-                  // Greens
-                  '#008000', '#32CD32', '#90EE90', '#98FB98',
-                  // Blues
-                  '#0000FF', '#4169E1', '#87CEEB', '#ADD8E6',
-                  // Purples
-                  '#800080', '#9932CC', '#DDA0DD', '#E6E6FA',
-                  // Pinks
-                  '#FF1493', '#FF69B4', '#FFB6C1', '#FFC0CB',
-                  // Browns
-                  '#8B4513', '#A0522D', '#CD853F', '#D2B48C',
-                  // Grays
-                  '#000000', '#404040', '#808080', '#C0C0C0',
-                  // Additional colors
-                  '#FFFFFF', '#00FFFF', '#FF00FF', '#00FF00',
-                  '#FFE4E1', '#F0E68C', '#E0FFFF', '#F5F5DC',
-                  '#FF4500', '#DC143C', '#00CED1', '#9370DB',
-                  '#228B22', '#B22222', '#4682B4', '#D2691E'
-                ].map((color, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => setColorPickerModal(prev => ({ ...prev, currentColor: color }))}
-                    style={{
-                      width: '28px',
-                      height: '28px',
-                      borderRadius: '4px',
-                      backgroundColor: color,
-                      cursor: 'pointer',
-                      border: colorPickerModal.currentColor === color ? '3px solid var(--primary)' : color === '#FFFFFF' ? '2px solid #ddd' : '2px solid transparent',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.target.style.transform = 'scale(1.1)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.style.transform = 'scale(1)';
-                    }}
-                  ></div>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              <button onClick={closeColorPickerModal} style={{
-                background: 'var(--bg-secondary)', 
-                padding: '8px 16px', 
-                borderRadius: '10px', 
-                border: 'none', 
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
-              }}>Cancel</button>
-              <button onClick={saveProjectColor} style={{
-                background: 'var(--primary)', 
-                color: 'white', 
-                padding: '8px 16px', 
-                borderRadius: '10px', 
-                border: 'none', 
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
-              }}>Save Color</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Alert Modal */}
-      {isAlertOpen && (
+      {/* Custom Confirm Modal */}
+      {confirmModal.open && (
         <div className="modal-backdrop" style={{
           position: 'fixed',
           top: 0,
@@ -2926,4 +2724,271 @@ const ProjectStatusDashboard = () => {
   );
 };
 
-export default ProjectStatusDashboard;
+export default ProjectStatusDashboard;, marginBottom: '16px' }}>Attention</div>
+            <div style={{ marginBottom: '20px' }}>{confirmModal.message}</div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button 
+                onClick={closeConfirm}
+                style={{
+                  background: 'var(--bg-secondary)',
+                  color: 'var(--text-primary)',
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  confirmModal.onConfirm();
+                  closeConfirm();
+                }}
+                style={{
+                  background: 'var(--primary)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Password Modal */}
+      {passwordModal && (
+        <div className="modal-backdrop" style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          background: 'rgba(0, 0, 0, 0.4)',
+          zIndex: 1200,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <div className="modal-content" style={{
+            background: 'var(--bg-primary)',
+            borderRadius: '18px',
+            maxWidth: '400px',
+            textAlign: 'center',
+            padding: '24px'
+          }}>
+            <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>Admin Access Required</div>
+            <input
+              type="password"
+              placeholder="Enter admin password"
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && checkPassword()}
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '10px',
+                border: '1px solid var(--gray-4)',
+                marginBottom: '16px',
+                fontSize: '16px'
+              }}
+              autoFocus
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button 
+                onClick={() => {
+                  setPasswordModal(false);
+                  setPasswordInput('');
+                }} 
+                style={{
+                  background: 'var(--bg-secondary)',
+                  color: 'var(--text-primary)',
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={checkPassword} 
+                style={{
+                  background: 'var(--primary)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                Login
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Color Picker Modal */}
+      {colorPickerModal.open && (
+        <div className="modal-backdrop" style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          background: 'rgba(0, 0, 0, 0.4)',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }} onClick={closeColorPickerModal}>
+          <div className="modal-content" style={{
+            background: 'var(--bg-primary)',
+            borderRadius: '18px',
+            width: '92%',
+            maxWidth: '400px',
+            padding: '24px'
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>Choose Project Color</div>
+            
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ fontSize: '14px', marginBottom: '8px', color: 'var(--text-secondary)' }}>Current Color:</div>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                backgroundColor: colorPickerModal.currentColor,
+                margin: '0 auto',
+                marginBottom: '16px',
+                border: '3px solid #fff',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+              }}></div>
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ fontSize: '14px', marginBottom: '8px', color: 'var(--text-secondary)' }}>Select New Color:</div>
+              <input
+                type="color"
+                value={colorPickerModal.currentColor}
+                onChange={(e) => setColorPickerModal(prev => ({ ...prev, currentColor: e.target.value }))}
+                style={{
+                  width: '100%',
+                  height: '40px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ fontSize: '14px', marginBottom: '8px', color: 'var(--text-secondary)' }}>Standard Color Palette:</div>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(8, 1fr)',
+                gap: '6px'
+              }}>
+                {[
+                  // Reds
+                  '#FF0000', '#FF3333', '#FF6666', '#FF9999',
+                  // Oranges  
+                  '#FF8C00', '#FFA500', '#FFB84D', '#FFCC80',
+                  // Yellows
+                  '#FFD700', '#FFFF00', '#FFFF66', '#FFFF99',
+                  // Greens
+                  '#008000', '#32CD32', '#90EE90', '#98FB98',
+                  // Blues
+                  '#0000FF', '#4169E1', '#87CEEB', '#ADD8E6',
+                  // Purples
+                  '#800080', '#9932CC', '#DDA0DD', '#E6E6FA',
+                  // Pinks
+                  '#FF1493', '#FF69B4', '#FFB6C1', '#FFC0CB',
+                  // Browns
+                  '#8B4513', '#A0522D', '#CD853F', '#D2B48C',
+                  // Grays
+                  '#000000', '#404040', '#808080', '#C0C0C0',
+                  // Additional colors
+                  '#FFFFFF', '#00FFFF', '#FF00FF', '#00FF00',
+                  '#FFE4E1', '#F0E68C', '#E0FFFF', '#F5F5DC',
+                  '#FF4500', '#DC143C', '#00CED1', '#9370DB',
+                  '#228B22', '#B22222', '#4682B4', '#D2691E'
+                ].map((color, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => setColorPickerModal(prev => ({ ...prev, currentColor: color }))}
+                    style={{
+                      width: '28px',
+                      height: '28px',
+                      borderRadius: '4px',
+                      backgroundColor: color,
+                      cursor: 'pointer',
+                      border: colorPickerModal.currentColor === color ? '3px solid var(--primary)' : color === '#FFFFFF' ? '2px solid #ddd' : '2px solid transparent',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.transform = 'scale(1.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.transform = 'scale(1)';
+                    }}
+                  ></div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button onClick={closeColorPickerModal} style={{
+                background: 'var(--bg-secondary)', 
+                padding: '8px 16px', 
+                borderRadius: '10px', 
+                border: 'none', 
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}>Cancel</button>
+              <button onClick={saveProjectColor} style={{
+                background: 'var(--primary)', 
+                color: 'white', 
+                padding: '8px 16px', 
+                borderRadius: '10px', 
+                border: 'none', 
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}>Save Color</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Alert Modal */}
+      {isAlertOpen && (
+        <div className="modal-backdrop" style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          background: 'rgba(0, 0, 0, 0.4)',
+          zIndex: 1200,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <div className="modal-content" style={{
+            background: 'var(--bg-primary)',
+            borderRadius: '18px',
+            maxWidth: '400px',
+            textAlign: 'center',
+            padding: '24px'
+          }}>
+            <div style={{ fontSize: '18px', fontWeight: 700
