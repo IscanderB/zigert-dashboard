@@ -1101,16 +1101,30 @@ const ProjectStatusDashboard = () => {
         }}
         >
           <div style={{
-            fontSize: '32px',
-            fontWeight: 700,
-            letterSpacing: '-0.024em',
-            background: 'linear-gradient(135deg, var(--primary), var(--secondary))',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
             marginBottom: '8px',
             animation: 'fadeInUp 0.6s ease-out'
           }}>
-            Zigert Visuals
+            <img 
+              src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDQwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGQ9Ik0yMCA4MEw4MCAyMEw2MCAyMEwyMCA2MEwyMCA4MFoiIGZpbGw9IiM5OTk5OTkiLz4KPHA+CjxwYXRoIGQ9Ik05MCAyMFY4MEg5NVY4MEgxMDBWMjBIOTVWMjBIOTBaIiBmaWxsPSIjOTk5OTk5Ii8+CjxwYXRoIGQ9Ik0xMzAgMjBIMTgwVjI1SDE2MFY4MEgxNTVWMjVIMTM1VjIwSDEzMFoiIGZpbGw9IiM5OTk5OTkiLz4KPHA+CjxjaXJjbGUgY3g9IjIxNSIgY3k9IjUwIiByPSIzMCIgc3Ryb2tlPSIjOTk5OTk5IiBzdHJva2Utd2lkdGg9IjUiIGZpbGw9Im5vbmUiLz4KPHA+CjxwYXRoIGQ9Ik0yNzUgMjBIMzI1VjI1SDMwNVY0NUgzMjBWNTBIMzA1Vjc1SDMyNVY4MEgyNzVWNzVIMzAwVjUwSDI4MFY0NUgzMDBWMjVIMjc1VjIwWiIgZmlsbD0iIzk5OTk5OSIvPgo8cGF0aCBkPSJNMzQ1IDIwSDM4NUw0MCA2MUw0NTAgNjFMMzk1IDgwSDM0NUwyODAiIDNtPSMiOTk5OTk5Ii8+Cjwvc3ZnPgo="
+              alt="Zigert Logo"
+              style={{
+                height: '60px',
+                width: 'auto',
+                filter: 'grayscale(0)',
+                transition: 'all 0.3s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'scale(1.05)';
+                e.target.style.filter = 'grayscale(0) brightness(1.1)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'scale(1)';
+                e.target.style.filter = 'grayscale(0)';
+              }}
+            />
           </div>
           <div style={{
             fontSize: '24px',
