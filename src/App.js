@@ -137,7 +137,7 @@ const ProjectStatusDashboard = () => {
 
       // Load holiday days
       const { data: holidays, error: holidaysError } = await supabase
-        .from('holidays')
+        .from('holiday_days')
         .select('*');
       
       if (holidaysError && holidaysError.code !== 'PGRST116') {
@@ -264,20 +264,20 @@ const ProjectStatusDashboard = () => {
     try {
       if (isHoliday) {
         const { error } = await supabase
-          .from('holidays')
+          .from('holiday_days')
           .upsert({ date });
         if (error) throw error;
       } else {
         const { error } = await supabase
-          .from('holidays')
+          .from('holiday_days')
           .delete()
           .eq('date', date);
         if (error) throw error;
       }
     } catch (err) {
-      // If table doesn't exist, create it first (this would need to be done manually in Supabase)
-      console.warn('Holiday days table might not exist:', err);
-      throw err;
+      // If table doesn't exist, just show error and continue
+      console.warn('Holiday days table not found. Please create it in Supabase first.');
+      throw new Error('Holiday days table not found. Please create the table first in Supabase.');
     }
   }
 
@@ -1201,13 +1201,13 @@ const ProjectStatusDashboard = () => {
             justifyContent: 'center',
             alignItems: 'center',
             marginBottom: '8px',
-
+            animation: 'fadeInUp 0.6s ease-out'
           }}>
             <img 
               src="/zigert-logo.png"
               alt="Zigert Logo"
               style={{
-                width: '392px',
+                width: '560px',
                 height: 'auto',
                 filter: 'grayscale(0)',
                 transition: 'all 0.3s ease'
@@ -1226,7 +1226,7 @@ const ProjectStatusDashboard = () => {
             fontSize: '24px',
             fontWeight: 600,
             color: 'var(--text-primary)',
-
+            animation: 'fadeInUp 0.6s ease-out 0.1s both'
           }}>
             Project Status Dashboard
           </div>
@@ -1234,7 +1234,7 @@ const ProjectStatusDashboard = () => {
             fontSize: '14px',
             color: 'var(--text-quaternary)',
             marginTop: '8px',
-
+            animation: 'fadeInUp 0.6s ease-out 0.2s both'
           }}>
             Real-time collaborative workspace
           </div>
@@ -1253,93 +1253,13 @@ const ProjectStatusDashboard = () => {
               padding: '20px',
               borderRadius: '20px',
               boxShadow: 'var(--shadow)',
-              textAlign: 'center'
+              textAlign: 'center',
+              cursor: isAdmin ? 'pointer' : 'default'
             }}
+            onClick={isAdmin ? openTotalArtistsModal : undefined}
           >
-            <div style={{ fontSize: '14px', color: 'var(--text-tertiary)', marginBottom: '4px' }}>Total Artists</div>
-            {isAdmin ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                <button
-                  onClick={() => {
-                    const newValue = Math.max(1, total - 1);
-                    setState(prev => ({ ...prev, totalArtists: newValue }));
-                    saveTotalArtists(newValue);
-                  }}
-                  disabled={total <= 1}
-                  style={{
-                    background: total <= 1 ? 'var(--gray-4)' : 'var(--bg-secondary)',
-                    border: 'none',
-                    width: '28px',
-                    height: '28px',
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: total <= 1 ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.2s ease',
-                    opacity: total <= 1 ? 0.5 : 1
-                  }}
-                  onMouseEnter={(e) => {
-                    if (total > 1) {
-                      e.target.style.background = 'var(--gray-3)';
-                      e.target.style.transform = 'translateY(-1px)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (total > 1) {
-                      e.target.style.background = 'var(--bg-secondary)';
-                      e.target.style.transform = 'translateY(0)';
-                    }
-                  }}
-                >
-                  <svg width="12" height="2" viewBox="0 0 12 2" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M1 1h10"/>
-                  </svg>
-                </button>
-                <span style={{
-                  fontSize: '32px',
-                  fontWeight: '600',
-                  color: 'var(--text-primary)',
-                  minWidth: '60px',
-                  textAlign: 'center'
-                }}>
-                  {total}
-                </span>
-                <button
-                  onClick={() => {
-                    const newValue = total + 1;
-                    setState(prev => ({ ...prev, totalArtists: newValue }));
-                    saveTotalArtists(newValue);
-                  }}
-                  style={{
-                    background: 'var(--bg-secondary)',
-                    border: 'none',
-                    width: '28px',
-                    height: '28px',
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = 'var(--gray-3)';
-                    e.target.style.transform = 'translateY(-1px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = 'var(--bg-secondary)';
-                    e.target.style.transform = 'translateY(0)';
-                  }}
-                >
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M6 1v10M1 6h10"/>
-                  </svg>
-                </button>
-              </div>
-            ) : (
-              <div style={{ fontSize: '32px', fontWeight: '600', color: 'var(--text-primary)' }}>{total}</div>
-            )}
+            <div style={{ fontSize: '14px', color: 'var(--text-tertiary)', marginBottom: '4px' }}>Total Artists{isAdmin ? ' (click to edit)' : ''}</div>
+            <div style={{ fontSize: '32px', fontWeight: '600', color: 'var(--text-primary)' }}>{total}</div>
           </div>
           <div style={{
             background: 'var(--bg-primary)',
@@ -2371,9 +2291,8 @@ const ProjectStatusDashboard = () => {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <button
                       onClick={() => setNewProject({ ...newProject, busy: Math.max(0, newProject.busy - 1) })}
-                      disabled={newProject.busy <= 0}
                       style={{
-                        background: newProject.busy <= 0 ? 'var(--gray-4)' : 'var(--bg-secondary)',
+                        background: 'var(--bg-secondary)',
                         border: 'none',
                         width: '32px',
                         height: '32px',
@@ -2381,35 +2300,29 @@ const ProjectStatusDashboard = () => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        cursor: newProject.busy <= 0 ? 'not-allowed' : 'pointer',
-                        transition: 'all 0.2s ease',
-                        opacity: newProject.busy <= 0 ? 0.5 : 1
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
                       }}
                       onMouseEnter={(e) => {
-                        if (newProject.busy > 0) {
-                          e.target.style.background = 'var(--gray-3)';
-                          e.target.style.transform = 'translateY(-1px)';
-                        }
+                        e.target.style.background = 'var(--gray-3)';
+                        e.target.style.transform = 'translateY(-1px)';
                       }}
                       onMouseLeave={(e) => {
-                        if (newProject.busy > 0) {
-                          e.target.style.background = 'var(--bg-secondary)';
-                          e.target.style.transform = 'translateY(0)';
-                        }
+                        e.target.style.background = 'var(--bg-secondary)';
+                        e.target.style.transform = 'translateY(0)';
                       }}
                     >
                       <svg width="14" height="2" viewBox="0 0 14 2" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M1 1h12"/>
                       </svg>
                     </button>
-                    <span style={{ fontSize: '18px', fontWeight: '600', minWidth: '40px', textAlign: 'center' }}>
+                    <span style={{ fontSize: '18px', fontWeight: '600', minWidth: '30px', textAlign: 'center' }}>
                       {newProject.busy}
                     </span>
                     <button
                       onClick={() => setNewProject({ ...newProject, busy: newProject.busy + 1 })}
-                      disabled={busy >= total}
                       style={{
-                        background: busy >= total ? 'var(--gray-4)' : 'var(--bg-secondary)',
+                        background: 'var(--bg-secondary)',
                         border: 'none',
                         width: '32px',
                         height: '32px',
@@ -2417,21 +2330,16 @@ const ProjectStatusDashboard = () => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        cursor: busy >= total ? 'not-allowed' : 'pointer',
-                        transition: 'all 0.2s ease',
-                        opacity: busy >= total ? 0.5 : 1
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
                       }}
                       onMouseEnter={(e) => {
-                        if (busy < total) {
-                          e.target.style.background = 'var(--gray-3)';
-                          e.target.style.transform = 'translateY(-1px)';
-                        }
+                        e.target.style.background = 'var(--gray-3)';
+                        e.target.style.transform = 'translateY(-1px)';
                       }}
                       onMouseLeave={(e) => {
-                        if (busy < total) {
-                          e.target.style.background = 'var(--bg-secondary)';
-                          e.target.style.transform = 'translateY(0)';
-                        }
+                        e.target.style.background = 'var(--bg-secondary)';
+                        e.target.style.transform = 'translateY(0)';
                       }}
                     >
                       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2">
@@ -2442,17 +2350,27 @@ const ProjectStatusDashboard = () => {
                 </div>
               </div>
               
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '20px' }}>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
                 <button
                   onClick={() => setIsAddModalOpen(false)}
                   style={{
                     background: 'var(--bg-secondary)',
                     color: 'var(--text-primary)',
                     border: 'none',
-                    padding: '12px 24px',
+                    padding: '10px 20px',
                     borderRadius: '14px',
                     fontSize: '16px',
-                    cursor: 'pointer'
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = 'var(--gray-3)';
+                    e.target.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'var(--bg-secondary)';
+                    e.target.style.transform = 'translateY(0)';
                   }}
                 >
                   Cancel
@@ -2463,10 +2381,20 @@ const ProjectStatusDashboard = () => {
                     background: 'var(--primary)',
                     color: 'white',
                     border: 'none',
-                    padding: '12px 24px',
+                    padding: '10px 20px',
                     borderRadius: '14px',
                     fontSize: '16px',
-                    cursor: 'pointer'
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = '#0056CC';
+                    e.target.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'var(--primary)';
+                    e.target.style.transform = 'translateY(0)';
                   }}
                 >
                   Add Project
@@ -2476,468 +2404,480 @@ const ProjectStatusDashboard = () => {
           </div>
         )}
 
-        {/* Alert Notification */}
-        {isAlertOpen && (
+        {/* Comments Modal */}
+        {commentsForId && (
           <div style={{
             position: 'fixed',
-            top: '50px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 1000,
-            background: '#FF9500',
-            color: 'white',
-            padding: '12px 20px',
-            borderRadius: '20px',
-            fontSize: '14px',
-            boxShadow: '0 4px 20px rgba(255, 149, 0, 0.3)'
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
           }}>
-            {alertMessage}
-          </div>
-        )}
-
-        {/* Comments Modal */}
-        {commentsForId && (() => {
-          const project = state.projects.find(p => p.id === commentsForId);
-          if (!project) return null;
-          
-          const visibleComments = project.comments.filter(c => !c.deleted);
-          const activeComments = visibleComments.filter(c => !c.ignored);
-          const ignoredComments = visibleComments.filter(c => c.ignored);
-
-          return (
             <div style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'rgba(0, 0, 0, 0.5)',
+              background: 'var(--bg-primary)',
+              borderRadius: '20px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '500px',
+              maxHeight: '80vh',
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 1000
+              flexDirection: 'column',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.2)'
             }}>
               <div style={{
-                background: 'var(--bg-primary)',
-                borderRadius: '20px',
-                width: '90%',
-                maxWidth: '600px',
-                maxHeight: '80vh',
-                overflow: 'hidden',
                 display: 'flex',
-                flexDirection: 'column'
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '20px'
               }}>
-                {/* Header */}
-                <div style={{
-                  padding: '20px 24px',
-                  borderBottom: '0.5px solid var(--separator)',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}>
-                  <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '600' }}>
-                    Comments for {project.name}
-                  </h3>
-                  <button
-                    onClick={() => setCommentsForId(null)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      fontSize: '24px',
-                      cursor: 'pointer',
-                      color: 'var(--text-tertiary)'
-                    }}
-                  >
-                    ×
-                  </button>
-                </div>
+                <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '600' }}>
+                  Comments for {state.projects.find(p => p.id === commentsForId)?.name}
+                </h3>
+                <button
+                  onClick={closeComments}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '24px',
+                    cursor: 'pointer',
+                    color: 'var(--text-tertiary)',
+                    transition: 'color 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => e.target.style.color = 'var(--text-primary)'}
+                  onMouseLeave={(e) => e.target.style.color = 'var(--text-tertiary)'}
+                >
+                  ×
+                </button>
+              </div>
 
-                {/* Comments List */}
-                <div style={{
-                  flex: 1,
-                  overflow: 'auto',
-                  padding: '16px 24px'
-                }}>
-                  {/* Active Comments */}
-                  {activeComments.length > 0 && (
-                    <div style={{ marginBottom: '20px' }}>
-                      <h4 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px', color: 'var(--success)' }}>
-                        Active ({activeComments.length})
-                      </h4>
-                      {activeComments.map(comment => (
-                        <div key={comment.id} style={{
-                          background: 'var(--bg-secondary)',
-                          padding: '12px',
-                          borderRadius: '12px',
-                          marginBottom: '8px'
-                        }}>
-                          {editingId === comment.id ? (
-                            <div>
-                              <textarea
-                                value={editingText}
-                                onChange={(e) => setEditingText(e.target.value)}
-                                style={{
-                                  width: '100%',
-                                  minHeight: '60px',
-                                  padding: '8px',
-                                  border: '0.5px solid var(--separator)',
-                                  borderRadius: '8px',
-                                  fontSize: '14px',
-                                  outline: 'none',
-                                  resize: 'vertical',
-                                  fontFamily: 'inherit'
-                                }}
-                              />
-                              <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                                <button
-                                  onClick={() => saveEditingComment(comment.id)}
-                                  style={{
-                                    background: 'var(--success)',
-                                    color: 'white',
-                                    border: 'none',
-                                    padding: '4px 12px',
-                                    borderRadius: '6px',
-                                    fontSize: '12px',
-                                    cursor: 'pointer'
-                                  }}
-                                >
-                                  Save
-                                </button>
-                                <button
-                                  onClick={() => setEditingId(null)}
-                                  style={{
-                                    background: 'var(--bg-secondary)',
-                                    color: 'var(--text-primary)',
-                                    border: 'none',
-                                    padding: '4px 12px',
-                                    borderRadius: '6px',
-                                    fontSize: '12px',
-                                    cursor: 'pointer'
-                                  }}
-                                >
-                                  Cancel
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div>
-                              <div style={{ fontSize: '14px', marginBottom: '4px' }}>{comment.text}</div>
-                              <div style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
-                                {new Date(comment.ts).toLocaleString()}
-                              </div>
-                              {isAdmin && (
-                                <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                                  <button
-                                    onClick={() => startEditingComment(comment.id, comment.text)}
-                                    style={{
-                                      background: 'var(--warning)',
-                                      color: 'white',
-                                      border: 'none',
-                                      padding: '4px 8px',
-                                      borderRadius: '6px',
-                                      fontSize: '11px',
-                                      cursor: 'pointer'
-                                    }}
-                                  >
-                                    Edit
-                                  </button>
-                                  <button
-                                    onClick={() => setConfirmIgnore(comment.id)}
-                                    style={{
-                                      background: 'var(--gray-4)',
-                                      color: 'var(--text-primary)',
-                                      border: 'none',
-                                      padding: '4px 8px',
-                                      borderRadius: '6px',
-                                      fontSize: '11px',
-                                      cursor: 'pointer'
-                                    }}
-                                  >
-                                    Ignore
-                                  </button>
-                                  <button
-                                    onClick={() => deleteComment(comment.id)}
-                                    style={{
-                                      background: 'var(--danger)',
-                                      color: 'white',
-                                      border: 'none',
-                                      padding: '4px 8px',
-                                      borderRadius: '6px',
-                                      fontSize: '11px',
-                                      cursor: 'pointer'
-                                    }}
-                                  >
-                                    Delete
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          )}
+              <div style={{
+                flex: 1,
+                overflowY: 'auto',
+                marginBottom: '20px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px'
+              }}>
+                {state.projects.find(p => p.id === commentsForId)?.comments
+                  ?.filter(c => !c.deleted)
+                  .sort((a, b) => new Date(b.ts) - new Date(a.ts))
+                  .map(comment => (
+                    <div key={comment.id} style={{
+                      background: comment.ignored ? 'var(--bg-secondary)' : 'var(--bg-primary)',
+                      border: `0.5px solid ${comment.ignored ? 'var(--gray-4)' : 'var(--separator)'}`,
+                      borderRadius: '12px',
+                      padding: '12px',
+                      opacity: comment.ignored ? 0.6 : 1
+                    }}>
+                      {editingId === comment.id ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <textarea
+                            value={editingText}
+                            onChange={(e) => setEditingText(e.target.value)}
+                            style={{
+                              width: '100%',
+                              minHeight: '60px',
+                              padding: '8px',
+                              border: '0.5px solid var(--separator)',
+                              borderRadius: '8px',
+                              fontSize: '14px',
+                              outline: 'none',
+                              resize: 'vertical',
+                              background: 'var(--bg-primary)'
+                            }}
+                          />
+                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                            <button
+                              onClick={() => setEditingId(null)}
+                              style={{
+                                background: 'var(--bg-secondary)',
+                                color: 'var(--text-primary)',
+                                border: 'none',
+                                padding: '6px 12px',
+                                borderRadius: '8px',
+                                fontSize: '12px',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={() => saveEdit(comment.id)}
+                              style={{
+                                background: 'var(--primary)',
+                                color: 'white',
+                                border: 'none',
+                                padding: '6px 12px',
+                                borderRadius: '8px',
+                                fontSize: '12px',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Save
+                            </button>
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Ignored Comments */}
-                  {isAdmin && ignoredComments.length > 0 && (
-                    <div style={{ marginBottom: '20px' }}>
-                      <h4 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px', color: 'var(--text-tertiary)' }}>
-                        Ignored ({ignoredComments.length})
-                      </h4>
-                      {ignoredComments.map(comment => (
-                        <div key={comment.id} style={{
-                          background: 'var(--gray-5)',
-                          padding: '12px',
-                          borderRadius: '12px',
-                          marginBottom: '8px',
-                          opacity: 0.6
-                        }}>
-                          <div style={{ fontSize: '14px', marginBottom: '4px' }}>{comment.text}</div>
-                          <div style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
+                      ) : (
+                        <div>
+                          <div style={{ fontSize: '14px', color: 'var(--text-tertiary)', marginBottom: '4px' }}>
                             {new Date(comment.ts).toLocaleString()}
+                            {comment.ignored && ' (Ignored)'}
+                          </div>
+                          <div style={{ 
+                            fontSize: '16px', 
+                            color: 'var(--text-primary)', 
+                            whiteSpace: 'pre-wrap',
+                            textDecoration: comment.ignored ? 'line-through' : 'none'
+                          }}>
+                            {comment.text}
                           </div>
                           <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
                             <button
-                              onClick={() => unignoreComment(comment.id)}
+                              onClick={() => startEdit(comment.id, comment.text)}
                               style={{
-                                background: 'var(--success)',
-                                color: 'white',
+                                background: 'var(--bg-secondary)',
+                                color: 'var(--text-primary)',
                                 border: 'none',
                                 padding: '4px 8px',
                                 borderRadius: '6px',
-                                fontSize: '11px',
+                                fontSize: '12px',
                                 cursor: 'pointer'
                               }}
                             >
-                              Unignore
+                              Edit
                             </button>
-                            <button
-                              onClick={() => deleteComment(comment.id)}
-                              style={{
-                                background: 'var(--danger)',
-                                color: 'white',
-                                border: 'none',
-                                padding: '4px 8px',
-                                borderRadius: '6px',
-                                fontSize: '11px',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              Delete
-                            </button>
+                            {!comment.ignored && (
+                              <button
+                                onClick={() => confirmIgnoreComment(comment.id)}
+                                style={{
+                                  background: 'var(--warning)',
+                                  color: 'white',
+                                  border: 'none',
+                                  padding: '4px 8px',
+                                  borderRadius: '6px',
+                                  fontSize: '12px',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                Ignore
+                              </button>
+                            )}
                           </div>
                         </div>
-                      ))}
+                      )}
                     </div>
-                  )}
-
-                  {visibleComments.length === 0 && (
-                    <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', marginTop: '40px' }}>
-                      No comments yet
-                    </div>
-                  )}
-                </div>
-
-                {/* Add Comment Section */}
-                <div style={{
-                  padding: '16px 24px',
-                  borderTop: '0.5px solid var(--separator)'
-                }}>
-                  <textarea
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    placeholder="Add a comment..."
-                    style={{
-                      width: '100%',
-                      minHeight: '60px',
-                      padding: '12px',
-                      border: '0.5px solid var(--separator)',
-                      borderRadius: '12px',
-                      fontSize: '14px',
-                      outline: 'none',
-                      resize: 'vertical',
-                      fontFamily: 'inherit',
-                      marginBottom: '12px'
-                    }}
-                  />
-                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                    <button
-                      onClick={() => setCommentsForId(null)}
-                      style={{
-                        background: 'var(--bg-secondary)',
-                        color: 'var(--text-primary)',
-                        border: 'none',
-                        padding: '8px 16px',
-                        borderRadius: '12px',
-                        fontSize: '14px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Close
-                    </button>
-                    <button
-                      onClick={() => setConfirmAddOpen(true)}
-                      disabled={!draft.trim()}
-                      style={{
-                        background: !draft.trim() ? 'var(--gray-4)' : 'var(--primary)',
-                        color: !draft.trim() ? 'var(--text-tertiary)' : 'white',
-                        border: 'none',
-                        padding: '8px 16px',
-                        borderRadius: '12px',
-                        fontSize: '14px',
-                        cursor: !draft.trim() ? 'not-allowed' : 'pointer'
-                      }}
-                    >
-                      Add Comment
-                    </button>
+                  ))}
+                
+                {state.projects.find(p => p.id === commentsForId)?.comments?.filter(c => !c.deleted).length === 0 && (
+                  <div style={{
+                    textAlign: 'center',
+                    color: 'var(--text-tertiary)',
+                    fontStyle: 'italic',
+                    padding: '20px'
+                  }}>
+                    No comments yet
                   </div>
-
-                  {/* Admin Actions */}
-                  {isAdmin && visibleComments.length > 0 && (
-                    <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '0.5px solid var(--separator)' }}>
-                      <button
-                        onClick={() => setClearCommentsModal(commentsForId)}
-                        style={{
-                          background: 'var(--danger)',
-                          color: 'white',
-                          border: 'none',
-                          padding: '6px 12px',
-                          borderRadius: '8px',
-                          fontSize: '12px',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Clear All Comments
-                      </button>
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
-            </div>
-          );
-        })()}
 
-        {/* History Modal */}
-        {historyForId && (() => {
-          const project = state.projects.find(p => p.id === historyForId);
-          if (!project) return null;
-
-          return (
-            <div style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'rgba(0, 0, 0, 0.5)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 1000
-            }}>
-              <div style={{
-                background: 'var(--bg-primary)',
-                borderRadius: '20px',
-                width: '90%',
-                maxWidth: '600px',
-                maxHeight: '80vh',
-                overflow: 'hidden',
-                display: 'flex',
-                flexDirection: 'column'
-              }}>
-                {/* Header */}
-                <div style={{
-                  padding: '20px 24px',
-                  borderBottom: '0.5px solid var(--separator)',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}>
-                  <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '600' }}>
-                    History for {project.name}
-                  </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <textarea
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  placeholder="Add a new comment..."
+                  style={{
+                    width: '100%',
+                    minHeight: '80px',
+                    padding: '12px',
+                    border: '0.5px solid var(--separator)',
+                    borderRadius: '12px',
+                    fontSize: '16px',
+                    outline: 'none',
+                    resize: 'vertical',
+                    background: 'var(--bg-primary)'
+                  }}
+                />
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
                   <button
-                    onClick={() => setHistoryForId(null)}
+                    onClick={() => setConfirmAddOpen(true)}
+                    disabled={!draft.trim()}
                     style={{
-                      background: 'none',
+                      background: draft.trim() ? 'var(--primary)' : 'var(--gray-4)',
+                      color: 'white',
                       border: 'none',
-                      fontSize: '24px',
-                      cursor: 'pointer',
-                      color: 'var(--text-tertiary)'
+                      padding: '10px 20px',
+                      borderRadius: '14px',
+                      fontSize: '16px',
+                      fontWeight: '500',
+                      cursor: draft.trim() ? 'pointer' : 'not-allowed',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (draft.trim()) {
+                        e.target.style.background = '#0056CC';
+                        e.target.style.transform = 'translateY(-1px)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (draft.trim()) {
+                        e.target.style.background = 'var(--primary)';
+                        e.target.style.transform = 'translateY(0)';
+                      }
                     }}
                   >
-                    ×
+                    Add Comment
                   </button>
                 </div>
+              </div>
 
-                {/* History List */}
-                <div style={{
-                  flex: 1,
-                  overflow: 'auto',
-                  padding: '16px 24px'
-                }}>
-                  {project.history && project.history.length > 0 ? (
-                    project.history.map((entry, index) => (
-                      <div key={index} style={{
-                        background: 'var(--bg-secondary)',
-                        padding: '12px',
-                        borderRadius: '12px',
-                        marginBottom: '8px',
-                        fontSize: '14px'
-                      }}>
-                        {entry}
-                      </div>
-                    ))
-                  ) : (
-                    <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', marginTop: '40px' }}>
-                      No history available
-                    </div>
-                  )}
-                </div>
-
-                {/* Footer */}
-                <div style={{
-                  padding: '16px 24px',
-                  borderTop: '0.5px solid var(--separator)',
-                  display: 'flex',
-                  justifyContent: 'space-between'
-                }}>
-                  {isAdmin && project.history && project.history.length > 0 && (
-                    <button
-                      onClick={() => setClearHistoryModal(historyForId)}
-                      style={{
-                        background: 'var(--danger)',
-                        color: 'white',
-                        border: 'none',
-                        padding: '8px 16px',
-                        borderRadius: '12px',
-                        fontSize: '14px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Clear History
-                    </button>
-                  )}
+              {isAdmin && (
+                <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '0.5px solid var(--separator)' }}>
                   <button
-                    onClick={() => setHistoryForId(null)}
+                    onClick={() => setClearCommentsModal(commentsForId)}
                     style={{
-                      background: 'var(--bg-secondary)',
-                      color: 'var(--text-primary)',
+                      background: 'var(--danger)',
+                      color: 'white',
                       border: 'none',
                       padding: '8px 16px',
-                      borderRadius: '12px',
+                      borderRadius: '10px',
                       fontSize: '14px',
                       cursor: 'pointer',
-                      marginLeft: 'auto'
+                      width: '100%'
                     }}
                   >
-                    Close
+                    Clear All Comments (Admin)
                   </button>
                 </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Confirm Add Comment Modal */}
+        {confirmAddOpen && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100
+          }}>
+            <div style={{
+              background: 'var(--bg-primary)',
+              borderRadius: '20px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '400px',
+              textAlign: 'center'
+            }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Add Comment?</h3>
+              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>Are you sure you want to add this comment?</p>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                <button
+                  onClick={() => setConfirmAddOpen(false)}
+                  style={{
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={addCommentConfirmed}
+                  style={{
+                    background: 'var(--primary)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Add
+                </button>
               </div>
             </div>
-          );
-        })()}
+          </div>
+        )}
+
+        {/* Confirm Ignore Comment Modal */}
+        {confirmIgnore && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100
+          }}>
+            <div style={{
+              background: 'var(--bg-primary)',
+              borderRadius: '20px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '400px',
+              textAlign: 'center'
+            }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Ignore Comment?</h3>
+              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>This comment will be marked as ignored but not deleted.</p>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                <button
+                  onClick={() => setConfirmIgnore(null)}
+                  style={{
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={doIgnore}
+                  style={{
+                    background: 'var(--warning)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Ignore
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* History Modal */}
+        {historyForId && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}>
+            <div style={{
+              background: 'var(--bg-primary)',
+              borderRadius: '20px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '600px',
+              maxHeight: '80vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.2)'
+            }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '20px'
+              }}>
+                <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '600' }}>
+                  History for {state.projects.find(p => p.id === historyForId)?.name}
+                </h3>
+                <button
+                  onClick={closeHistory}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '24px',
+                    cursor: 'pointer',
+                    color: 'var(--text-tertiary)',
+                    transition: 'color 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => e.target.style.color = 'var(--text-primary)'}
+                  onMouseLeave={(e) => e.target.style.color = 'var(--text-tertiary)'}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div style={{
+                flex: 1,
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px'
+              }}>
+                {state.projects.find(p => p.id === historyForId)?.history?.map((entry, index) => (
+                  <div key={index} style={{
+                    padding: '12px',
+                    background: 'var(--bg-secondary)',
+                    borderRadius: '10px',
+                    fontSize: '14px',
+                    color: 'var(--text-primary)'
+                  }}>
+                    {entry}
+                  </div>
+                ))}
+                
+                {(!state.projects.find(p => p.id === historyForId)?.history?.length) && (
+                  <div style={{
+                    textAlign: 'center',
+                    color: 'var(--text-tertiary)',
+                    fontStyle: 'italic',
+                    padding: '20px'
+                  }}>
+                    No history yet
+                  </div>
+                )}
+              </div>
+
+              {isAdmin && (
+                <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '0.5px solid var(--separator)' }}>
+                  <button
+                    onClick={() => setClearHistoryModal(historyForId)}
+                    style={{
+                      background: 'var(--danger)',
+                      color: 'white',
+                      border: 'none',
+                      padding: '8px 16px',
+                      borderRadius: '10px',
+                      fontSize: '14px',
+                      cursor: 'pointer',
+                      width: '100%'
+                    }}
+                  >
+                    Clear History (Admin)
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Password Modal */}
         {passwordModal && (
@@ -2958,9 +2898,11 @@ const ProjectStatusDashboard = () => {
               borderRadius: '20px',
               padding: '24px',
               width: '90%',
-              maxWidth: '400px'
+              maxWidth: '400px',
+              textAlign: 'center'
             }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Enter Admin Password</h3>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Admin Access</h3>
+              <p style={{ margin: '0 0 20px 0', color: 'var(--text-tertiary)' }}>Enter admin password:</p>
               <input
                 type="password"
                 value={passwordInput}
@@ -2970,16 +2912,20 @@ const ProjectStatusDashboard = () => {
                   width: '100%',
                   padding: '12px',
                   border: '0.5px solid var(--separator)',
-                  borderRadius: '12px',
+                  borderRadius: '10px',
                   fontSize: '16px',
                   outline: 'none',
-                  marginBottom: '20px'
+                  marginBottom: '20px',
+                  background: 'var(--bg-primary)'
                 }}
-                autoFocus
+                placeholder="Password"
               />
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
                 <button
-                  onClick={() => setPasswordModal(false)}
+                  onClick={() => {
+                    setPasswordModal(false);
+                    setPasswordInput('');
+                  }}
                   style={{
                     background: 'var(--bg-secondary)',
                     color: 'var(--text-primary)',
@@ -3004,7 +2950,141 @@ const ProjectStatusDashboard = () => {
                     cursor: 'pointer'
                   }}
                 >
-                  Login
+                  Enter
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Alert Message */}
+        {isAlertOpen && (
+          <div style={{
+            position: 'fixed',
+            top: '20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'var(--danger)',
+            color: 'white',
+            padding: '12px 24px',
+            borderRadius: '20px',
+            zIndex: 2000,
+            animation: 'slideIn 0.3s ease-out'
+          }}>
+            {alertMessage}
+          </div>
+        )}
+
+        {/* Clear Comments Confirmation Modal */}
+        {clearCommentsModal && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100
+          }}>
+            <div style={{
+              background: 'var(--bg-primary)',
+              borderRadius: '20px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '400px',
+              textAlign: 'center'
+            }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Clear All Comments?</h3>
+              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>This action cannot be undone. All comments for this project will be permanently deleted.</p>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                <button
+                  onClick={() => setClearCommentsModal(null)}
+                  style={{
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => clearComments(clearCommentsModal)}
+                  style={{
+                    background: 'var(--danger)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Clear All
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Clear History Confirmation Modal */}
+        {clearHistoryModal && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100
+          }}>
+            <div style={{
+              background: 'var(--bg-primary)',
+              borderRadius: '20px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '400px',
+              textAlign: 'center'
+            }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Clear History?</h3>
+              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>This action cannot be undone. All history entries for this project will be permanently deleted.</p>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                <button
+                  onClick={() => setClearHistoryModal(null)}
+                  style={{
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => clearHistory(clearHistoryModal)}
+                  style={{
+                    background: 'var(--danger)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Clear History
                 </button>
               </div>
             </div>
@@ -3037,17 +3117,17 @@ const ProjectStatusDashboard = () => {
                 type="text"
                 value={projectNameModal.name}
                 onChange={(e) => setProjectNameModal({ ...projectNameModal, name: e.target.value })}
-                onKeyPress={(e) => e.key === 'Enter' && saveProjectName()}
                 style={{
                   width: '100%',
                   padding: '12px',
                   border: '0.5px solid var(--separator)',
-                  borderRadius: '12px',
+                  borderRadius: '10px',
                   fontSize: '16px',
                   outline: 'none',
-                  marginBottom: '20px'
+                  marginBottom: '20px',
+                  background: 'var(--bg-primary)'
                 }}
-                autoFocus
+                placeholder="Project name"
               />
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
                 <button
@@ -3105,28 +3185,32 @@ const ProjectStatusDashboard = () => {
               maxWidth: '400px'
             }}>
               <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Choose Project Color</h3>
+              
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(5, 1fr)',
+                gridTemplateColumns: 'repeat(6, 1fr)',
                 gap: '8px',
                 marginBottom: '20px'
               }}>
                 {projectColors.map(color => (
-                  <div
+                  <button
                     key={color}
                     onClick={() => setColorPickerModal({ ...colorPickerModal, currentColor: color })}
                     style={{
-                      width: '40px',
-                      height: '40px',
-                      backgroundColor: color,
+                      width: '32px',
+                      height: '32px',
                       borderRadius: '8px',
+                      border: colorPickerModal.currentColor === color ? '2px solid var(--primary)' : '2px solid transparent',
+                      background: color,
                       cursor: 'pointer',
-                      border: colorPickerModal.currentColor === color ? '3px solid var(--primary)' : 'none',
-                      transition: 'all 0.2s ease'
+                      transition: 'transform 0.2s ease'
                     }}
+                    onMouseEnter={(e) => e.target.style.transform = 'scale(1.1)'}
+                    onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
                   />
                 ))}
               </div>
+              
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
                 <button
                   onClick={closeColorPickerModal}
@@ -3161,123 +3245,7 @@ const ProjectStatusDashboard = () => {
           </div>
         )}
 
-        {/* Confirmation Modals */}
-        {confirmAddOpen && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1010
-          }}>
-            <div style={{
-              background: 'var(--bg-primary)',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '400px'
-            }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Add Comment</h3>
-              <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: 'var(--text-secondary)' }}>
-                Are you sure you want to add this comment?
-              </p>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                <button
-                  onClick={() => setConfirmAddOpen(false)}
-                  style={{
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={addComment}
-                  style={{
-                    background: 'var(--primary)',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Add
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {confirmIgnore && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1010
-          }}>
-            <div style={{
-              background: 'var(--bg-primary)',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '400px'
-            }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Ignore Comment</h3>
-              <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: 'var(--text-secondary)' }}>
-                Are you sure you want to ignore this comment?
-              </p>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                <button
-                  onClick={() => setConfirmIgnore(null)}
-                  style={{
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => ignoreComment(confirmIgnore)}
-                  style={{
-                    background: 'var(--warning)',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Ignore
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
+        {/* Confirm Delete Modal */}
         {confirmDeleteModal.open && (
           <div style={{
             position: 'fixed',
@@ -3289,20 +3257,19 @@ const ProjectStatusDashboard = () => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 1010
+            zIndex: 1100
           }}>
             <div style={{
               background: 'var(--bg-primary)',
               borderRadius: '20px',
               padding: '24px',
               width: '90%',
-              maxWidth: '400px'
+              maxWidth: '400px',
+              textAlign: 'center'
             }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Delete Project</h3>
-              <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: 'var(--text-secondary)' }}>
-                Are you sure you want to delete this project? This action cannot be undone.
-              </p>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Delete Project?</h3>
+              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>This action cannot be undone. The project and all its data will be permanently deleted.</p>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
                 <button
                   onClick={closeConfirmDeleteModal}
                   style={{
@@ -3336,6 +3303,7 @@ const ProjectStatusDashboard = () => {
           </div>
         )}
 
+        {/* Confirm Complete Modal */}
         {confirmCompleteModal.open && (
           <div style={{
             position: 'fixed',
@@ -3347,20 +3315,19 @@ const ProjectStatusDashboard = () => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 1010
+            zIndex: 1100
           }}>
             <div style={{
               background: 'var(--bg-primary)',
               borderRadius: '20px',
               padding: '24px',
               width: '90%',
-              maxWidth: '400px'
+              maxWidth: '400px',
+              textAlign: 'center'
             }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Complete Project</h3>
-              <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: 'var(--text-secondary)' }}>
-                Are you sure you want to mark this project as completed?
-              </p>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Mark as Completed?</h3>
+              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>This project will be marked as completed and all busy artists will be freed up.</p>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
                 <button
                   onClick={closeConfirmCompleteModal}
                   style={{
@@ -3394,6 +3361,7 @@ const ProjectStatusDashboard = () => {
           </div>
         )}
 
+        {/* Date Validation Modal */}
         {dateValidationModal.open && (
           <div style={{
             position: 'fixed',
@@ -3405,25 +3373,24 @@ const ProjectStatusDashboard = () => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 1010
+            zIndex: 1100
           }}>
             <div style={{
               background: 'var(--bg-primary)',
               borderRadius: '20px',
               padding: '24px',
               width: '90%',
-              maxWidth: '400px'
+              maxWidth: '400px',
+              textAlign: 'center'
             }}>
               <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Date Validation</h3>
-              <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: 'var(--text-secondary)' }}>
-                {dateValidationModal.message}
-              </p>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>{dateValidationModal.message}</p>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
                 <button
                   onClick={closeDateValidationModal}
                   style={{
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
+                    background: dateValidationModal.callback ? 'var(--bg-secondary)' : 'var(--primary)',
+                    color: dateValidationModal.callback ? 'var(--text-primary)' : 'white',
                     border: 'none',
                     padding: '10px 20px',
                     borderRadius: '14px',
@@ -3431,7 +3398,7 @@ const ProjectStatusDashboard = () => {
                     cursor: 'pointer'
                   }}
                 >
-                  Cancel
+                  {dateValidationModal.callback ? 'Cancel' : 'OK'}
                 </button>
                 {dateValidationModal.callback && (
                   <button
@@ -3449,7 +3416,7 @@ const ProjectStatusDashboard = () => {
                       cursor: 'pointer'
                     }}
                   >
-                    OK
+                    Continue
                   </button>
                 )}
               </div>
@@ -3457,122 +3424,39 @@ const ProjectStatusDashboard = () => {
           </div>
         )}
 
-        {clearCommentsModal && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1020
-          }}>
-            <div style={{
-              background: 'var(--bg-primary)',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '400px'
-            }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Clear All Comments</h3>
-              <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: 'var(--text-secondary)' }}>
-                Are you sure you want to clear all comments for this project? This action cannot be undone.
-              </p>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                <button
-                  onClick={() => setClearCommentsModal(null)}
-                  style={{
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => clearAllComments(clearCommentsModal)}
-                  style={{
-                    background: 'var(--danger)',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Clear All
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {clearHistoryModal && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1020
-          }}>
-            <div style={{
-              background: 'var(--bg-primary)',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '400px'
-            }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Clear History</h3>
-              <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: 'var(--text-secondary)' }}>
-                Are you sure you want to clear all history for this project? This action cannot be undone.
-              </p>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                <button
-                  onClick={() => setClearHistoryModal(null)}
-                  style={{
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => clearHistory(clearHistoryModal)}
-                  style={{
-                    background: 'var(--danger)',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Clear History
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
+
+      <style>{`
+        @keyframes slideIn {
+          from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
+          to { transform: translateX(-50%) translateY(0); opacity: 1; }
+        }
+        
+        /* Custom scrollbar styling */
+        ::-webkit-scrollbar {
+          width: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+          background: var(--bg-secondary);
+          border-radius: 3px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+          background: var(--gray-2);
+          border-radius: 3px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+          background: var(--gray-1);
+        }
+        
+        /* Focus styles for accessibility */
+        button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+          outline: 2px solid var(--primary);
+          outline-offset: 2px;
+        }
+      `}</style>
     </div>
   );
 };
