@@ -80,6 +80,7 @@ const ProjectStatusDashboard = () => {
   const [lastSync, setLastSync] = useState(new Date());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [holidayDays, setHolidayDays] = useState(new Set());
 
   // Modal states
   const [commentsForId, setCommentsForId] = useState(null);
@@ -114,6 +115,7 @@ const ProjectStatusDashboard = () => {
   const [clearCommentsModal, setClearCommentsModal] = useState(null);
   const [clearHistoryModal, setClearHistoryModal] = useState(null);
   const [colorPickerModal, setColorPickerModal] = useState({ open: false, projectId: null, currentColor: '#8D6E63' });
+  const [totalArtistsModal, setTotalArtistsModal] = useState({ open: false, value: 6 });
 
   // New custom modal states
   const [confirmDeleteModal, setConfirmDeleteModal] = useState({ open: false, projectId: null });
@@ -132,6 +134,15 @@ const ProjectStatusDashboard = () => {
         .select('*');
       
       if (settingsError) throw settingsError;
+
+      // Load holiday days
+      const { data: holidays, error: holidaysError } = await supabase
+        .from('holiday_days')
+        .select('*');
+      
+      if (holidaysError && holidaysError.code !== 'PGRST116') {
+        console.warn('Holiday days table not found, continuing without it');
+      }
 
       // Load projects with comments and history
       const { data: projects, error: projectsError } = await supabase
@@ -169,6 +180,15 @@ const ProjectStatusDashboard = () => {
       }));
 
       const totalArtists = settings?.find(s => s.key === 'totalArtists')?.value || 6;
+      
+      // Load holiday days
+      const holidaySet = new Set();
+      if (holidays && holidays.length > 0) {
+        holidays.forEach(holiday => {
+          holidaySet.add(holiday.date);
+        });
+      }
+      setHolidayDays(holidaySet);
 
       setState({
         totalArtists: parseInt(totalArtists),
@@ -221,6 +241,42 @@ const ProjectStatusDashboard = () => {
         if (error) throw error;
         return data[0];
       }
+      throw err;
+    }
+  }
+
+  async function saveTotalArtists(newTotal) {
+    try {
+      const { error } = await supabase
+        .from('settings')
+        .upsert({
+          key: 'totalArtists',
+          value: newTotal.toString()
+        });
+
+      if (error) throw error;
+    } catch (err) {
+      throw new Error(`Failed to save total artists: ${err.message}`);
+    }
+  }
+
+  async function saveHolidayDay(date, isHoliday) {
+    try {
+      if (isHoliday) {
+        const { error } = await supabase
+          .from('holiday_days')
+          .upsert({ date });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('holiday_days')
+          .delete()
+          .eq('date', date);
+        if (error) throw error;
+      }
+    } catch (err) {
+      // If table doesn't exist, create it first (this would need to be done manually in Supabase)
+      console.warn('Holiday days table might not exist:', err);
       throw err;
     }
   }
@@ -323,6 +379,53 @@ const ProjectStatusDashboard = () => {
 
   function closeConfirmCompleteModal() {
     setConfirmCompleteModal({ open: false, projectId: null });
+  }
+
+  // Total Artists Modal functions
+  function openTotalArtistsModal() {
+    setTotalArtistsModal({ open: true, value: state.totalArtists });
+  }
+
+  function closeTotalArtistsModal() {
+    setTotalArtistsModal({ open: false, value: 6 });
+  }
+
+  async function saveTotalArtistsValue() {
+    try {
+      await saveTotalArtists(totalArtistsModal.value);
+      setState(prev => ({ ...prev, totalArtists: totalArtistsModal.value }));
+      setLastSync(new Date());
+      closeTotalArtistsModal();
+      showAlert("Total artists updated!");
+    } catch (err) {
+      setError(`Failed to update total artists: ${err.message}`);
+    }
+  }
+
+  // Holiday day functions
+  async function toggleHolidayDay(dayKey) {
+    if (!isAdmin) return;
+
+    try {
+      const isCurrentlyHoliday = holidayDays.has(dayKey);
+      const newIsHoliday = !isCurrentlyHoliday;
+
+      await saveHolidayDay(dayKey, newIsHoliday);
+
+      setHolidayDays(prev => {
+        const newSet = new Set(prev);
+        if (newIsHoliday) {
+          newSet.add(dayKey);
+        } else {
+          newSet.delete(dayKey);
+        }
+        return newSet;
+      });
+
+      setLastSync(new Date());
+    } catch (err) {
+      setError(`Failed to toggle holiday: ${err.message}`);
+    }
   }
 
   // Password check for admin
@@ -815,6 +918,16 @@ const ProjectStatusDashboard = () => {
   }
 
   function createDayBackground(dayKey) {
+    const date = new Date(dayKey);
+    const dayOfWeek = date.getDay();
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    const isHoliday = holidayDays.has(dayKey);
+    
+    // Не закрашиваем выходные и праздничные дни
+    if (isWeekend || isHoliday) {
+      return 'var(--bg-secondary)';
+    }
+    
     const projects = getProjectsForDay(dayKey);
     
     if (projects.length === 0) {
@@ -1094,7 +1207,7 @@ const ProjectStatusDashboard = () => {
               src="/zigert-logo.png"
               alt="Zigert Logo"
               style={{
-                width: '280px',
+                width: '560px',
                 height: 'auto',
                 filter: 'grayscale(0)',
                 transition: 'all 0.3s ease'
@@ -1134,14 +1247,18 @@ const ProjectStatusDashboard = () => {
           gap: '16px',
           marginBottom: '24px'
         }}>
-          <div style={{
-            background: 'var(--bg-primary)',
-            padding: '20px',
-            borderRadius: '20px',
-            boxShadow: 'var(--shadow)',
-            textAlign: 'center'
-          }}>
-            <div style={{ fontSize: '14px', color: 'var(--text-tertiary)', marginBottom: '4px' }}>Total Artists</div>
+          <div 
+            style={{
+              background: 'var(--bg-primary)',
+              padding: '20px',
+              borderRadius: '20px',
+              boxShadow: 'var(--shadow)',
+              textAlign: 'center',
+              cursor: isAdmin ? 'pointer' : 'default'
+            }}
+            onClick={isAdmin ? openTotalArtistsModal : undefined}
+          >
+            <div style={{ fontSize: '14px', color: 'var(--text-tertiary)', marginBottom: '4px' }}>Total Artists{isAdmin ? ' (click to edit)' : ''}</div>
             <div style={{ fontSize: '32px', fontWeight: '600', color: 'var(--text-primary)' }}>{total}</div>
           </div>
           <div style={{
@@ -1303,7 +1420,7 @@ const ProjectStatusDashboard = () => {
             {Array.from({ length: firstDayIndex }).map((_, i) => (
               <div key={`empty-${i}`} style={{
                 background: 'var(--bg-secondary)',
-                minHeight: '56px' // ИЗМЕНЕНИЕ 3: Уменьшил высоту на 30% (80px * 0.7 = 56px)
+                minHeight: '40px'
               }}></div>
             ))}
             
@@ -1313,21 +1430,23 @@ const ProjectStatusDashboard = () => {
               const projects = getProjectsForDay(dayKey);
               const isToday = dayKey === todayKey;
               const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+              const isHoliday = holidayDays.has(dayKey);
               
               return (
                 <div
                   key={dayKey}
                   style={{
                     background: createDayBackground(dayKey),
-                    minHeight: '56px', // ИЗМЕНЕНИЕ 3: Уменьшил высоту на 30% (80px * 0.7 = 56px)
+                    minHeight: '40px',
                     padding: '8px',
                     border: dayBorder(dayKey),
                     position: 'relative',
-                    cursor: 'pointer',
+                    cursor: isAdmin ? 'pointer' : (projects.length > 0 ? 'pointer' : 'default'),
                     transition: 'all 0.2s ease'
                   }}
+                  onClick={() => isAdmin ? toggleHolidayDay(dayKey) : null}
                   onMouseEnter={(e) => {
-                    if (projects.length > 0) {
+                    if (projects.length > 0 || isAdmin) {
                       e.target.style.transform = 'scale(1.02)';
                       e.target.style.zIndex = '10';
                       e.target.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.15)';
@@ -1338,7 +1457,7 @@ const ProjectStatusDashboard = () => {
                     e.target.style.zIndex = '1';
                     e.target.style.boxShadow = 'none';
                   }}
-                  title={projectsOnDay(dayKey).join('\n')}
+                  title={projectsOnDay(dayKey).join('\n') + (isAdmin ? '\n\nClick to toggle holiday' : '')}
                 >
                   <div style={{
                     display: 'flex',
@@ -1348,15 +1467,16 @@ const ProjectStatusDashboard = () => {
                     <span style={{
                       fontSize: '16px',
                       fontWeight: isToday ? '600' : '400',
-                      color: isToday ? 'var(--danger)' : (isWeekend ? 'var(--text-tertiary)' : 'var(--text-primary)'),
+                      color: isToday ? 'var(--danger)' : (isWeekend || isHoliday ? 'var(--text-tertiary)' : 'var(--text-primary)'),
                       background: isToday ? 'rgba(255, 255, 255, 0.9)' : 'transparent',
                       borderRadius: '12px',
                       padding: '2px 6px',
-                      margin: '-2px -6px -2px -2px'
+                      margin: '-2px -6px -2px -2px',
+                      textDecoration: isHoliday ? 'line-through' : 'none'
                     }}>
                       {day.getDate()}
                     </span>
-                    {projects.length > 0 && (
+                    {projects.length > 0 && !isWeekend && !isHoliday && (
                       <span style={{
                         background: 'rgba(255, 255, 255, 0.9)',
                         borderRadius: '8px',
@@ -1366,6 +1486,18 @@ const ProjectStatusDashboard = () => {
                         color: 'var(--text-primary)'
                       }}>
                         {projects.length}
+                      </span>
+                    )}
+                    {isHoliday && (
+                      <span style={{
+                        background: 'rgba(255, 0, 0, 0.7)',
+                        borderRadius: '8px',
+                        padding: '2px 6px',
+                        fontSize: '10px',
+                        fontWeight: '500',
+                        color: 'white'
+                      }}>
+                        H
                       </span>
                     )}
                   </div>
@@ -1909,6 +2041,126 @@ const ProjectStatusDashboard = () => {
             </div>
           ))}
         </div>
+
+        {/* Total Artists Modal */}
+        {totalArtistsModal.open && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}>
+            <div style={{
+              background: 'var(--bg-primary)',
+              borderRadius: '20px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '400px'
+            }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Edit Total Artists</h3>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                marginBottom: '20px'
+              }}>
+                <button
+                  onClick={() => setTotalArtistsModal({ ...totalArtistsModal, value: Math.max(1, totalArtistsModal.value - 1) })}
+                  style={{
+                    background: 'var(--bg-secondary)',
+                    border: 'none',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = 'var(--gray-3)';
+                    e.target.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'var(--bg-secondary)';
+                    e.target.style.transform = 'translateY(0)';
+                  }}
+                >
+                  <svg width="14" height="2" viewBox="0 0 14 2" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M1 1h12"/>
+                  </svg>
+                </button>
+                <span style={{ fontSize: '24px', fontWeight: '600', minWidth: '60px', textAlign: 'center' }}>
+                  {totalArtistsModal.value}
+                </span>
+                <button
+                  onClick={() => setTotalArtistsModal({ ...totalArtistsModal, value: totalArtistsModal.value + 1 })}
+                  style={{
+                    background: 'var(--bg-secondary)',
+                    border: 'none',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = 'var(--gray-3)';
+                    e.target.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'var(--bg-secondary)';
+                    e.target.style.transform = 'translateY(0)';
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M7 1v12M1 7h12"/>
+                  </svg>
+                </button>
+              </div>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={closeTotalArtistsModal}
+                  style={{
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveTotalArtistsValue}
+                  style={{
+                    background: 'var(--primary)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Add Project Modal */}
         {isAddModalOpen && (
