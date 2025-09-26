@@ -2304,4 +2304,20 @@ const ProjectStatusDashboard = () => {
                         <option key={priority} value={priority}>{priority}</option>
                       ))}
                     </select>
-                  </div
+                  </div>
+                </div>
+                
+                <div>
+                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Busy Artists</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <button
+                      onClick={() => handleNewProjectChange('busy', Math.max(0, newProject.busy - 1))}
+                      style={{
+                        background: 'var(--bg-secondary)',
+                        border: 'none',
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center
