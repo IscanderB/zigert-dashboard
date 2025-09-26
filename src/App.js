@@ -81,6 +81,7 @@ const ProjectStatusDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [holidayDays, setHolidayDays] = useState(new Set());
+  const [workingWeekends, setWorkingWeekends] = useState(new Set());
 
   // Modal states
   const [commentsForId, setCommentsForId] = useState(null);
@@ -143,6 +144,15 @@ const ProjectStatusDashboard = () => {
         console.warn('Holiday days table not found, continuing without it');
       }
 
+      // Load working weekends
+      const { data: workingWeekendsData, error: workingWeekendsError } = await supabase
+        .from('working_weekends')
+        .select('*');
+      
+      if (workingWeekendsError && workingWeekendsError.code !== 'PGRST116') {
+        console.warn('Working weekends table not found, continuing without it');
+      }
+
       // Load projects with comments and history
       const { data: projects, error: projectsError } = await supabase
         .from('projects')
@@ -188,6 +198,15 @@ const ProjectStatusDashboard = () => {
         });
       }
       setHolidayDays(holidaySet);
+
+      // Load working weekends
+      const workingWeekendsSet = new Set();
+      if (workingWeekendsData && workingWeekendsData.length > 0) {
+        workingWeekendsData.forEach(weekend => {
+          workingWeekendsSet.add(weekend.date);
+        });
+      }
+      setWorkingWeekends(workingWeekendsSet);
 
       setState({
         totalArtists: parseInt(totalArtists),
@@ -277,6 +296,27 @@ const ProjectStatusDashboard = () => {
       // If table doesn't exist, just show error and continue
       console.warn('Holiday days table not found. Please create it in Supabase first.');
       throw new Error('Holiday days table not found. Please create the table first in Supabase.');
+    }
+  }
+
+  async function saveWorkingWeekend(date, isWorkingWeekend) {
+    try {
+      if (isWorkingWeekend) {
+        const { error } = await supabase
+          .from('working_weekends')
+          .upsert({ date });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('working_weekends')
+          .delete()
+          .eq('date', date);
+        if (error) throw error;
+      }
+    } catch (err) {
+      // If table doesn't exist, just show error and continue
+      console.warn('Working weekends table not found. Please create it in Supabase first.');
+      throw new Error('Working weekends table not found. Please create the table first in Supabase.');
     }
   }
 
@@ -426,6 +466,32 @@ const ProjectStatusDashboard = () => {
     }
   }
 
+  // Working weekend functions
+  async function toggleWorkingWeekend(dayKey) {
+    if (!isAdmin) return;
+
+    try {
+      const isCurrentlyWorkingWeekend = workingWeekends.has(dayKey);
+      const newIsWorkingWeekend = !isCurrentlyWorkingWeekend;
+
+      await saveWorkingWeekend(dayKey, newIsWorkingWeekend);
+
+      setWorkingWeekends(prev => {
+        const newSet = new Set(prev);
+        if (newIsWorkingWeekend) {
+          newSet.add(dayKey);
+        } else {
+          newSet.delete(dayKey);
+        }
+        return newSet;
+      });
+
+      setLastSync(new Date());
+    } catch (err) {
+      setError(`Failed to toggle working weekend: ${err.message}`);
+    }
+  }
+
   // Password check for admin
   function handleAdminToggle() {
     if (!isAdmin) {
@@ -515,6 +581,7 @@ const ProjectStatusDashboard = () => {
     }
   }
 
+  // Add Project function with new logic
   async function addProject() {
     try {
       if (!newProject.name.trim()) {
@@ -901,10 +968,17 @@ const ProjectStatusDashboard = () => {
 
   function projectsOnDay(dayKey) {
     const date = new Date(dayKey);
+    const dayOfWeek = date.getDay();
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
     const isHoliday = holidayDays.has(dayKey);
+    const isWorkingWeekend = workingWeekends.has(dayKey);
     
     if (isHoliday) {
       return ['Holiday'];
+    }
+    
+    if (isWeekend && !isWorkingWeekend) {
+      return ['Weekend'];
     }
     
     return state.projects.filter(p => {
@@ -927,10 +1001,16 @@ const ProjectStatusDashboard = () => {
     const dayOfWeek = date.getDay();
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
     const isHoliday = holidayDays.has(dayKey);
+    const isWorkingWeekend = workingWeekends.has(dayKey);
     
-    // Не закрашиваем выходные и праздничные дни
-    if (isWeekend || isHoliday) {
-      return isWeekend ? '#E8E8E8' : 'var(--bg-secondary)'; // Темнее для выходных
+    // Праздничные дни всегда имеют особый фон
+    if (isHoliday) {
+      return 'var(--bg-secondary)';
+    }
+    
+    // Выходные дни, которые не являются рабочими
+    if (isWeekend && !isWorkingWeekend) {
+      return 'var(--bg-secondary)';
     }
     
     const projects = getProjectsForDay(dayKey);
@@ -982,6 +1062,31 @@ const ProjectStatusDashboard = () => {
     'Medium': '#D4A574',
     'Low': '#6BA66B'
   };
+
+  // New Project Status/Busy logic
+  function handleNewProjectStatusChange(newStatus) {
+    let newBusy = newProject.busy;
+    
+    if (newStatus === 'In Progress') {
+      newBusy = 1;
+    } else {
+      newBusy = 0;
+    }
+    
+    setNewProject({ ...newProject, status: newStatus, busy: newBusy });
+  }
+
+  function handleNewProjectBusyChange(newBusy) {
+    let newStatus = newProject.status;
+    
+    if (newBusy === 0) {
+      newStatus = 'Queued';
+    } else if (newBusy > 0 && newProject.status === 'Queued') {
+      newStatus = 'In Progress';
+    }
+    
+    setNewProject({ ...newProject, busy: newBusy, status: newStatus });
+  }
 
   if (loading) {
     return (
@@ -1471,9 +1576,9 @@ const ProjectStatusDashboard = () => {
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(7, 1fr)',
-            gap: '4px',
+            gap: '6px',
             background: 'var(--separator)',
-            padding: '4px'
+            padding: '8px'
           }}>
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
               <div key={day} style={{
@@ -1492,7 +1597,7 @@ const ProjectStatusDashboard = () => {
             {/* Empty cells for days before the first day of the month */}
             {Array.from({ length: firstDayIndex }).map((_, i) => (
               <div key={`empty-${i}`} style={{
-                background: '#E8E8E8',
+                background: 'var(--bg-secondary)',
                 minHeight: '40px',
                 borderRadius: '8px'
               }}></div>
@@ -1503,8 +1608,10 @@ const ProjectStatusDashboard = () => {
               const dayKey = formatDateToYYYYMMDD(day);
               const projects = getProjectsForDay(dayKey);
               const isToday = dayKey === todayKey;
-              const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+              const dayOfWeek = day.getDay();
+              const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
               const isHoliday = holidayDays.has(dayKey);
+              const isWorkingWeekend = workingWeekends.has(dayKey);
               
               return (
                 <div
@@ -1513,13 +1620,22 @@ const ProjectStatusDashboard = () => {
                     background: createDayBackground(dayKey),
                     minHeight: '40px',
                     padding: '16px',
-                    border: isHoliday ? '2px dashed #34C759' : dayBorder(dayKey),
+                    border: isHoliday ? '2px dashed #34C759' : (isWeekend && isWorkingWeekend ? '2px dashed #FF9500' : dayBorder(dayKey)),
                     borderRadius: '8px',
                     position: 'relative',
                     cursor: isAdmin ? 'pointer' : 'default'
                   }}
-                  onClick={() => isAdmin ? toggleHolidayDay(dayKey) : null}
-                  title={projectsOnDay(dayKey).join('\n') + (isAdmin ? '\n\nClick to toggle holiday' : '')}
+                  onClick={() => {
+                    if (!isAdmin) return;
+                    if (isHoliday) {
+                      toggleHolidayDay(dayKey);
+                    } else if (isWeekend) {
+                      toggleWorkingWeekend(dayKey);
+                    } else {
+                      toggleHolidayDay(dayKey);
+                    }
+                  }}
+                  title={projectsOnDay(dayKey).join('\n') + (isAdmin ? '\n\nClick to toggle holiday/working weekend' : '')}
                 >
                   <div style={{
                     display: 'flex',
@@ -1529,7 +1645,7 @@ const ProjectStatusDashboard = () => {
                     <span style={{
                       fontSize: '16px',
                       fontWeight: isToday ? '600' : '400',
-                      color: isToday ? 'var(--danger)' : (isWeekend || isHoliday ? 'var(--text-tertiary)' : 'var(--text-primary)'),
+                      color: isToday ? 'var(--danger)' : 'var(--text-primary)',
                       background: isToday ? 'rgba(255, 255, 255, 0.9)' : 'transparent',
                       borderRadius: '12px',
                       padding: '2px 6px',
@@ -1538,7 +1654,7 @@ const ProjectStatusDashboard = () => {
                     }}>
                       {day.getDate()}
                     </span>
-                    {projects.length > 0 && !isWeekend && !isHoliday && (
+                    {projects.length > 0 && !isHoliday && !(isWeekend && !isWorkingWeekend) && (
                       <span style={{
                         background: 'rgba(255, 255, 255, 0.9)',
                         borderRadius: '8px',
@@ -1560,6 +1676,18 @@ const ProjectStatusDashboard = () => {
                         color: 'white'
                       }}>
                         Holiday
+                      </span>
+                    )}
+                    {isWeekend && isWorkingWeekend && (
+                      <span style={{
+                        background: 'rgba(255, 149, 0, 0.9)',
+                        borderRadius: '6px',
+                        padding: '1px 4px',
+                        fontSize: '8px',
+                        fontWeight: '500',
+                        color: 'white'
+                      }}>
+                        Work
                       </span>
                     )}
                   </div>
@@ -2155,7 +2283,7 @@ const ProjectStatusDashboard = () => {
                   />
                 </div>
                 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <div>
                     <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Start Date</label>
                     <input
@@ -2192,12 +2320,12 @@ const ProjectStatusDashboard = () => {
                   </div>
                 </div>
                 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <div>
                     <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Status</label>
                     <select
                       value={newProject.status}
-                      onChange={(e) => setNewProject({ ...newProject, status: e.target.value })}
+                      onChange={(e) => handleNewProjectStatusChange(e.target.value)}
                       style={{
                         width: '100%',
                         padding: '8px 12px',
@@ -2239,7 +2367,7 @@ const ProjectStatusDashboard = () => {
                   <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Busy Artists</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <button
-                      onClick={() => setNewProject({ ...newProject, busy: Math.max(0, newProject.busy - 1) })}
+                      onClick={() => handleNewProjectBusyChange(Math.max(0, newProject.busy - 1))}
                       style={{
                         background: 'var(--bg-secondary)',
                         border: 'none',
@@ -2269,7 +2397,7 @@ const ProjectStatusDashboard = () => {
                       {newProject.busy}
                     </span>
                     <button
-                      onClick={() => setNewProject({ ...newProject, busy: newProject.busy + 1 })}
+                      onClick={() => handleNewProjectBusyChange(newProject.busy + 1)}
                       style={{
                         background: 'var(--bg-secondary)',
                         border: 'none',
