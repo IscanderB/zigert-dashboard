@@ -384,6 +384,13 @@ const ProjectStatusDashboard = () => {
   async function updateTotalArtists(delta) {
     try {
       const newTotal = Math.max(1, state.totalArtists + delta);
+      
+      // Check if trying to set less than busy artists
+      if (newTotal < busy) {
+        showAlert("These artists are busy!");
+        return;
+      }
+      
       await saveTotalArtists(newTotal);
       setState(prev => ({ ...prev, totalArtists: newTotal }));
       setLastSync(new Date());
@@ -1205,7 +1212,7 @@ const ProjectStatusDashboard = () => {
               src="/zigert-logo.png"
               alt="Zigert Logo"
               style={{
-                width: '280px',
+                width: '322px',
                 height: 'auto',
                 filter: 'grayscale(0)',
                 transition: 'all 0.3s ease'
@@ -1464,9 +1471,9 @@ const ProjectStatusDashboard = () => {
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(7, 1fr)',
-            gap: '2px',
+            gap: '4px',
             background: 'var(--separator)',
-            padding: '2px'
+            padding: '4px'
           }}>
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
               <div key={day} style={{
@@ -1485,7 +1492,7 @@ const ProjectStatusDashboard = () => {
             {/* Empty cells for days before the first day of the month */}
             {Array.from({ length: firstDayIndex }).map((_, i) => (
               <div key={`empty-${i}`} style={{
-                background: 'var(--bg-secondary)',
+                background: '#E8E8E8',
                 minHeight: '40px',
                 borderRadius: '8px'
               }}></div>
@@ -1505,7 +1512,7 @@ const ProjectStatusDashboard = () => {
                   style={{
                     background: createDayBackground(dayKey),
                     minHeight: '40px',
-                    padding: '8px',
+                    padding: '16px',
                     border: isHoliday ? '2px dashed #34C759' : dayBorder(dayKey),
                     borderRadius: '8px',
                     position: 'relative',
@@ -1719,6 +1726,7 @@ const ProjectStatusDashboard = () => {
                     <span style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>Status:</span>
                     <select
                       value={project.status}
+                      disabled={!isAdmin}
                       onChange={(e) => updateProject(project.id, { status: e.target.value }, `${new Date().toLocaleString()}: Status changed to ${e.target.value}`)}
                       style={{
                         background: statusColors[project.status] || 'var(--bg-secondary)',
@@ -1728,9 +1736,11 @@ const ProjectStatusDashboard = () => {
                         borderRadius: '8px',
                         fontSize: '12px',
                         fontWeight: '500',
-                        cursor: 'pointer',
+                        cursor: isAdmin ? 'pointer' : 'not-allowed',
                         outline: 'none',
-                        width: '120px' // ИЗМЕНЕНИЕ 1: Установил фиксированную ширину вместо maxWidth
+                        width: '120px',
+                        textAlign: 'center',
+                        opacity: isAdmin ? 1 : 0.7
                       }}
                     >
                       {Object.keys(statusColors).map(status => (
@@ -1759,7 +1769,8 @@ const ProjectStatusDashboard = () => {
                         fontWeight: '500',
                         cursor: 'pointer',
                         outline: 'none',
-                        width: '120px' // ИЗМЕНЕНИЕ 1: Установил такую же ширину как у статуса
+                        width: '120px',
+                        textAlign: 'center'
                       }}
                     >
                       {Object.keys(priorityColors).map(priority => (
@@ -1784,6 +1795,7 @@ const ProjectStatusDashboard = () => {
                     <input
                       type="date"
                       value={project.startDate}
+                      disabled={!isAdmin}
                       onChange={(e) => {
                         const newStartDate = e.target.value;
                         const newDueDate = new Date(newStartDate) > new Date(project.dueDate) ? newStartDate : project.dueDate;
@@ -1812,7 +1824,9 @@ const ProjectStatusDashboard = () => {
                         fontSize: '12px',
                         outline: 'none',
                         maxWidth: '120px',
-                        background: 'var(--bg-primary)'
+                        background: 'var(--bg-primary)',
+                        cursor: isAdmin ? 'pointer' : 'not-allowed',
+                        opacity: isAdmin ? 1 : 0.7
                       }}
                     />
                   </div>
@@ -1865,9 +1879,9 @@ const ProjectStatusDashboard = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <button
                     onClick={() => updateProject(project.id, { busy: Math.max(0, project.busy - 1) }, `${new Date().toLocaleString()}: Busy decreased to ${Math.max(0, project.busy - 1)}`)}
-                    disabled={project.busy <= 0}
+                    disabled={project.busy <= 0 || !isAdmin}
                     style={{
-                      background: project.busy <= 0 ? 'var(--gray-4)' : 'var(--bg-secondary)',
+                      background: (project.busy <= 0 || !isAdmin) ? 'var(--gray-4)' : 'var(--bg-secondary)',
                       border: 'none',
                       width: '28px',
                       height: '28px',
@@ -1875,18 +1889,18 @@ const ProjectStatusDashboard = () => {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      cursor: project.busy <= 0 ? 'not-allowed' : 'pointer',
+                      cursor: (project.busy <= 0 || !isAdmin) ? 'not-allowed' : 'pointer',
                       transition: 'all 0.2s ease',
-                      opacity: project.busy <= 0 ? 0.5 : 1
+                      opacity: (project.busy <= 0 || !isAdmin) ? 0.5 : 1
                     }}
                     onMouseEnter={(e) => {
-                      if (project.busy > 0) {
+                      if (project.busy > 0 && isAdmin) {
                         e.target.style.background = 'var(--gray-3)';
                         e.target.style.transform = 'translateY(-1px)';
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (project.busy > 0) {
+                      if (project.busy > 0 && isAdmin) {
                         e.target.style.background = 'var(--bg-secondary)';
                         e.target.style.transform = 'translateY(0)';
                       }
@@ -1907,9 +1921,9 @@ const ProjectStatusDashboard = () => {
                   </span>
                   <button
                     onClick={() => updateProject(project.id, { busy: project.busy + 1 }, `${new Date().toLocaleString()}: Busy increased to ${project.busy + 1}`)}
-                    disabled={busy >= total}
+                    disabled={busy >= total || !isAdmin}
                     style={{
-                      background: busy >= total ? 'var(--gray-4)' : 'var(--bg-secondary)',
+                      background: (busy >= total || !isAdmin) ? 'var(--gray-4)' : 'var(--bg-secondary)',
                       border: 'none',
                       width: '28px',
                       height: '28px',
@@ -1917,18 +1931,18 @@ const ProjectStatusDashboard = () => {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      cursor: busy >= total ? 'not-allowed' : 'pointer',
+                      cursor: (busy >= total || !isAdmin) ? 'not-allowed' : 'pointer',
                       transition: 'all 0.2s ease',
-                      opacity: busy >= total ? 0.5 : 1
+                      opacity: (busy >= total || !isAdmin) ? 0.5 : 1
                     }}
                     onMouseEnter={(e) => {
-                      if (busy < total) {
+                      if (busy < total && isAdmin) {
                         e.target.style.background = 'var(--gray-3)';
                         e.target.style.transform = 'translateY(-1px)';
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (busy < total) {
+                      if (busy < total && isAdmin) {
                         e.target.style.background = 'var(--bg-secondary)';
                         e.target.style.transform = 'translateY(0)';
                       }
@@ -2844,7 +2858,7 @@ const ProjectStatusDashboard = () => {
                 onChange={(e) => setPasswordInput(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && checkPassword()}
                 style={{
-                  width: '100%',
+                  width: 'calc(100% - 24px)',
                   padding: '12px',
                   border: '0.5px solid var(--separator)',
                   borderRadius: '10px',
