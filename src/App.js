@@ -81,7 +81,6 @@ const ProjectStatusDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [holidayDays, setHolidayDays] = useState(new Set());
-  const [weekendDays, setWeekendDays] = useState(new Set()); // Новое состояние для выходных дней
 
   // Modal states
   const [commentsForId, setCommentsForId] = useState(null);
@@ -427,21 +426,6 @@ const ProjectStatusDashboard = () => {
     }
   }
 
-  // Новая функция для переключения выходных дней
-  function toggleWeekendDay(dayKey) {
-    if (!isAdmin) return;
-
-    setWeekendDays(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(dayKey)) {
-        newSet.delete(dayKey);
-      } else {
-        newSet.add(dayKey);
-      }
-      return newSet;
-    });
-  }
-
   // Password check for admin
   function handleAdminToggle() {
     if (!isAdmin) {
@@ -529,34 +513,6 @@ const ProjectStatusDashboard = () => {
       setError(`Failed to update project: ${err.message}`);
       console.error('Update error:', err);
     }
-  }
-
-  // Функция для обработки изменений в Add New Project
-  function handleNewProjectChange(field, value) {
-    setNewProject(prev => {
-      const updated = { ...prev, [field]: value };
-      
-      // Правила для Status и Busy Artists
-      if (field === 'status') {
-        if (value === 'In Progress') {
-          updated.busy = 1;
-        } else {
-          updated.busy = 0;
-        }
-      }
-      
-      if (field === 'busy') {
-        const busyValue = parseInt(value) || 0;
-        if (busyValue === 0) {
-          updated.status = 'Queued';
-        } else if (busyValue > 0 && prev.status !== 'In Progress') {
-          updated.status = 'In Progress';
-        }
-        updated.busy = busyValue;
-      }
-      
-      return updated;
-    });
   }
 
   async function addProject() {
@@ -946,7 +902,6 @@ const ProjectStatusDashboard = () => {
   function projectsOnDay(dayKey) {
     const date = new Date(dayKey);
     const isHoliday = holidayDays.has(dayKey);
-    const isWeekend = weekendDays.has(dayKey) || (weekendDays.size === 0 && (date.getDay() === 0 || date.getDay() === 6));
     
     if (isHoliday) {
       return ['Holiday'];
@@ -969,7 +924,8 @@ const ProjectStatusDashboard = () => {
 
   function createDayBackground(dayKey) {
     const date = new Date(dayKey);
-    const isWeekend = weekendDays.has(dayKey) || (weekendDays.size === 0 && (date.getDay() === 0 || date.getDay() === 6));
+    const dayOfWeek = date.getDay();
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
     const isHoliday = holidayDays.has(dayKey);
     
     // Не закрашиваем выходные и праздничные дни
@@ -1515,9 +1471,9 @@ const ProjectStatusDashboard = () => {
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(7, 1fr)',
-            gap: '6px', // Изменено с 4px на 6px
+            gap: '6px',
             background: 'var(--separator)',
-            padding: '8px' // Изменено с 4px на 8px
+            padding: '8px'
           }}>
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
               <div key={day} style={{
@@ -1536,7 +1492,7 @@ const ProjectStatusDashboard = () => {
             {/* Empty cells for days before the first day of the month */}
             {Array.from({ length: firstDayIndex }).map((_, i) => (
               <div key={`empty-${i}`} style={{
-                background: 'var(--bg-primary)', // Изменено с #E8E8E8 на var(--bg-primary)
+                background: 'var(--bg-primary)',
                 minHeight: '40px',
                 borderRadius: '8px'
               }}></div>
@@ -1547,7 +1503,7 @@ const ProjectStatusDashboard = () => {
               const dayKey = formatDateToYYYYMMDD(day);
               const projects = getProjectsForDay(dayKey);
               const isToday = dayKey === todayKey;
-              const isWeekend = weekendDays.has(dayKey) || (weekendDays.size === 0 && (day.getDay() === 0 || day.getDay() === 6));
+              const isWeekend = day.getDay() === 0 || day.getDay() === 6;
               const isHoliday = holidayDays.has(dayKey);
               
               return (
@@ -1562,19 +1518,8 @@ const ProjectStatusDashboard = () => {
                     position: 'relative',
                     cursor: isAdmin ? 'pointer' : 'default'
                   }}
-                  onClick={() => {
-                    if (!isAdmin) return;
-                    // Сначала проверяем праздник, затем выходной
-                    if (isHoliday) {
-                      toggleHolidayDay(dayKey);
-                    } else {
-                      toggleWeekendDay(dayKey);
-                    }
-                  }}
-                  title={
-                    projectsOnDay(dayKey).join('\n') + 
-                    (isAdmin ? (isHoliday ? '\n\nClick to toggle holiday' : '\n\nClick to toggle weekend') : '')
-                  }
+                  onClick={() => isAdmin ? toggleHolidayDay(dayKey) : null}
+                  title={projectsOnDay(dayKey).join('\n') + (isAdmin ? '\n\nClick to toggle holiday' : '')}
                 >
                   <div style={{
                     display: 'flex',
@@ -1615,18 +1560,6 @@ const ProjectStatusDashboard = () => {
                         color: 'white'
                       }}>
                         Holiday
-                      </span>
-                    )}
-                    {isWeekend && !isHoliday && (
-                      <span style={{
-                        background: 'rgba(142, 142, 147, 0.9)',
-                        borderRadius: '6px',
-                        padding: '1px 4px',
-                        fontSize: '8px',
-                        fontWeight: '500',
-                        color: 'white'
-                      }}>
-                        Weekend
                       </span>
                     )}
                   </div>
@@ -2208,10 +2141,10 @@ const ProjectStatusDashboard = () => {
                   <input
                     type="text"
                     value={newProject.name}
-                    onChange={(e) => handleNewProjectChange('name', e.target.value)}
+                    onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
                     style={{
                       width: '100%',
-                      padding: '12px',
+                      padding: '8px 12px',
                       border: '0.5px solid var(--separator)',
                       borderRadius: '10px',
                       fontSize: '16px',
@@ -2229,10 +2162,10 @@ const ProjectStatusDashboard = () => {
                     <input
                       type="date"
                       value={newProject.startDate}
-                      onChange={(e) => handleNewProjectChange('startDate', e.target.value)}
+                      onChange={(e) => setNewProject({ ...newProject, startDate: e.target.value })}
                       style={{
                         width: '100%',
-                        padding: '12px',
+                        padding: '8px 12px',
                         border: '0.5px solid var(--separator)',
                         borderRadius: '10px',
                         fontSize: '14px',
@@ -2247,10 +2180,10 @@ const ProjectStatusDashboard = () => {
                     <input
                       type="date"
                       value={newProject.dueDate}
-                      onChange={(e) => handleNewProjectChange('dueDate', e.target.value)}
+                      onChange={(e) => setNewProject({ ...newProject, dueDate: e.target.value })}
                       style={{
                         width: '100%',
-                        padding: '12px',
+                        padding: '8px 12px',
                         border: '0.5px solid var(--separator)',
                         borderRadius: '10px',
                         fontSize: '14px',
@@ -2267,10 +2200,22 @@ const ProjectStatusDashboard = () => {
                     <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Status</label>
                     <select
                       value={newProject.status}
-                      onChange={(e) => handleNewProjectChange('status', e.target.value)}
+                      onChange={(e) => {
+                        const newStatus = e.target.value;
+                        let newBusy = newProject.busy;
+                        
+                        // Логика для статуса и busy
+                        if (newStatus === 'In Progress') {
+                          newBusy = 1;
+                        } else {
+                          newBusy = 0;
+                        }
+                        
+                        setNewProject({ ...newProject, status: newStatus, busy: newBusy });
+                      }}
                       style={{
                         width: '100%',
-                        padding: '12px',
+                        padding: '8px 12px',
                         border: '0.5px solid var(--separator)',
                         borderRadius: '10px',
                         fontSize: '14px',
@@ -2288,10 +2233,10 @@ const ProjectStatusDashboard = () => {
                     <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Priority</label>
                     <select
                       value={newProject.priority}
-                      onChange={(e) => handleNewProjectChange('priority', e.target.value)}
+                      onChange={(e) => setNewProject({ ...newProject, priority: e.target.value })}
                       style={{
                         width: '100%',
-                        padding: '12px',
+                        padding: '8px 12px',
                         border: '0.5px solid var(--separator)',
                         borderRadius: '10px',
                         fontSize: '14px',
@@ -2311,7 +2256,17 @@ const ProjectStatusDashboard = () => {
                   <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Busy Artists</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <button
-                      onClick={() => handleNewProjectChange('busy', Math.max(0, newProject.busy - 1))}
+                      onClick={() => {
+                        const newBusy = Math.max(0, newProject.busy - 1);
+                        let newStatus = newProject.status;
+                        
+                        // Логика для busy и статуса
+                        if (newBusy === 0) {
+                          newStatus = 'Queued';
+                        }
+                        
+                        setNewProject({ ...newProject, busy: newBusy, status: newStatus });
+                      }}
                       style={{
                         background: 'var(--bg-secondary)',
                         border: 'none',
@@ -2320,4 +2275,3 @@ const ProjectStatusDashboard = () => {
                         borderRadius: '50%',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center
