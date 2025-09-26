@@ -1295,7 +1295,8 @@ const ProjectStatusDashboard = () => {
           background: 'var(--bg-primary)',
           borderRadius: '20px',
           boxShadow: 'var(--shadow)',
-          transition: 'transform 0.3s ease, box-shadow 0.3s ease'
+          transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+          position: 'relative'
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.transform = 'translateY(-2px)';
@@ -1310,14 +1311,13 @@ const ProjectStatusDashboard = () => {
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
-            marginBottom: '8px',
             animation: 'fadeInUp 0.6s ease-out'
           }}>
             <img 
               src="/zigert-logo.png"
               alt="Zigert Logo"
               style={{
-                width: '322px',
+                width: '370px',
                 height: 'auto',
                 filter: 'grayscale(0)',
                 transition: 'all 0.3s ease'
@@ -1333,17 +1333,9 @@ const ProjectStatusDashboard = () => {
             />
           </div>
           <div style={{
-            fontSize: '24px',
-            fontWeight: 600,
-            color: 'var(--text-primary)',
-            animation: 'fadeInUp 0.6s ease-out 0.1s both'
-          }}>
-            Project Status Dashboard
-          </div>
-          <div style={{
             fontSize: '14px',
             color: 'var(--text-quaternary)',
-            marginTop: '8px',
+            marginTop: '16px',
             animation: 'fadeInUp 0.6s ease-out 0.2s both'
           }}>
             Real-time collaborative workspace
@@ -1598,7 +1590,7 @@ const ProjectStatusDashboard = () => {
             {Array.from({ length: firstDayIndex }).map((_, i) => (
               <div key={`empty-${i}`} style={{
                 background: 'var(--bg-secondary)',
-                minHeight: '40px',
+                minHeight: '28px',
                 borderRadius: '8px'
               }}></div>
             ))}
@@ -1606,7 +1598,6 @@ const ProjectStatusDashboard = () => {
             {/* Calendar days */}
             {monthDays.map(day => {
               const dayKey = formatDateToYYYYMMDD(day);
-              const projects = getProjectsForDay(dayKey);
               const isToday = dayKey === todayKey;
               const dayOfWeek = day.getDay();
               const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
@@ -1618,8 +1609,8 @@ const ProjectStatusDashboard = () => {
                   key={dayKey}
                   style={{
                     background: createDayBackground(dayKey),
-                    minHeight: '40px',
-                    padding: '16px',
+                    minHeight: '28px',
+                    padding: '8px',
                     border: isHoliday ? '2px dashed #34C759' : (isWeekend && isWorkingWeekend ? '2px dashed #FF9500' : dayBorder(dayKey)),
                     borderRadius: '8px',
                     position: 'relative',
@@ -1643,35 +1634,23 @@ const ProjectStatusDashboard = () => {
                     alignItems: 'flex-start'
                   }}>
                     <span style={{
-                      fontSize: '16px',
+                      fontSize: '12px',
                       fontWeight: isToday ? '600' : '400',
                       color: isToday ? 'var(--danger)' : 'var(--text-primary)',
                       background: isToday ? 'rgba(255, 255, 255, 0.9)' : 'transparent',
-                      borderRadius: '12px',
-                      padding: '2px 6px',
-                      margin: '-2px -6px -2px -2px',
+                      borderRadius: '8px',
+                      padding: '1px 4px',
+                      margin: '-1px -4px -1px -1px',
                       textDecoration: isHoliday ? 'line-through' : 'none'
                     }}>
                       {day.getDate()}
                     </span>
-                    {projects.length > 0 && !isHoliday && !(isWeekend && !isWorkingWeekend) && (
-                      <span style={{
-                        background: 'rgba(255, 255, 255, 0.9)',
-                        borderRadius: '8px',
-                        padding: '2px 6px',
-                        fontSize: '12px',
-                        fontWeight: '500',
-                        color: 'var(--text-primary)'
-                      }}>
-                        {projects.length}
-                      </span>
-                    )}
                     {isHoliday && (
                       <span style={{
                         background: 'rgba(52, 199, 89, 0.9)',
-                        borderRadius: '6px',
-                        padding: '1px 4px',
-                        fontSize: '8px',
+                        borderRadius: '4px',
+                        padding: '1px 3px',
+                        fontSize: '6px',
                         fontWeight: '500',
                         color: 'white'
                       }}>
@@ -1681,9 +1660,9 @@ const ProjectStatusDashboard = () => {
                     {isWeekend && isWorkingWeekend && (
                       <span style={{
                         background: 'rgba(255, 149, 0, 0.9)',
-                        borderRadius: '6px',
-                        padding: '1px 4px',
-                        fontSize: '8px',
+                        borderRadius: '4px',
+                        padding: '1px 3px',
+                        fontSize: '6px',
                         fontWeight: '500',
                         color: 'white'
                       }}>
@@ -1774,7 +1753,8 @@ const ProjectStatusDashboard = () => {
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'flex-start',
-                marginBottom: '16px'
+                marginBottom: '16px',
+                gap: '12px'
               }}>
                 <div style={{
                   display: 'flex',
@@ -1951,7 +1931,7 @@ const ProjectStatusDashboard = () => {
                         borderRadius: '6px',
                         fontSize: '12px',
                         outline: 'none',
-                        maxWidth: '120px',
+                        width: '120px',
                         background: 'var(--bg-primary)',
                         cursor: isAdmin ? 'pointer' : 'not-allowed',
                         opacity: isAdmin ? 1 : 0.7
@@ -1988,7 +1968,7 @@ const ProjectStatusDashboard = () => {
                         borderRadius: '6px',
                         fontSize: '12px',
                         outline: 'none',
-                        maxWidth: '120px',
+                        width: '120px',
                         background: 'var(--bg-primary)'
                       }}
                     />
