@@ -2251,7 +2251,7 @@ const ProjectStatusDashboard = () => {
                     value={newProject.name}
                     onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
                     style={{
-                      width: '100%',
+                      width: 'calc(100% - 24px)',
                       padding: '8px 12px',
                       border: '0.5px solid var(--separator)',
                       borderRadius: '10px',
@@ -2271,7 +2271,7 @@ const ProjectStatusDashboard = () => {
                       value={newProject.startDate}
                       onChange={(e) => setNewProject({ ...newProject, startDate: e.target.value })}
                       style={{
-                        width: '100%',
+                        width: 'calc(100% - 24px)',
                         padding: '8px 12px',
                         border: '0.5px solid var(--separator)',
                         borderRadius: '10px',
@@ -2288,7 +2288,7 @@ const ProjectStatusDashboard = () => {
                       value={newProject.dueDate}
                       onChange={(e) => setNewProject({ ...newProject, dueDate: e.target.value })}
                       style={{
-                        width: '100%',
+                        width: 'calc(100% - 24px)',
                         padding: '8px 12px',
                         border: '0.5px solid var(--separator)',
                         borderRadius: '10px',
