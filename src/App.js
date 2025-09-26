@@ -162,8 +162,9 @@ const ProjectStatusDashboard = () => {
           deleted: comment.deleted,
           ts: comment.created_at
         })),
+        // ИЗМЕНЕНИЕ 2: Изменил сортировку истории - новые записи вверху
         history: (project.project_history || [])
-          .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
           .map(h => h.entry)
       }));
 
@@ -400,7 +401,8 @@ const ProjectStatusDashboard = () => {
         projects: prev.projects.map(p => p.id === id ? ({
           ...p,
           ...changes,
-          history: historyEntry ? [...(p.history || []), isAdmin ? `${historyEntry} [Admin]` : historyEntry] : p.history
+          // Добавляем новую запись истории в начало массива
+          history: historyEntry ? [isAdmin ? `${historyEntry} [Admin]` : historyEntry, ...(p.history || [])] : p.history
         }) : p)
       }));
 
@@ -524,7 +526,7 @@ const ProjectStatusDashboard = () => {
         projects: prev.projects.map(p => p.id === commentsForId ? ({
           ...p,
           comments: [comment, ...p.comments],
-          history: [...(p.history || []), `${new Date().toLocaleString()}: Comment added${isAdmin ? ' [Admin]' : ''}`]
+          history: [`${new Date().toLocaleString()}: Comment added${isAdmin ? ' [Admin]' : ''}`, ...(p.history || [])]
         }) : p)
       }));
       
@@ -576,7 +578,7 @@ const ProjectStatusDashboard = () => {
           return { 
             ...p, 
             comments: newComments, 
-            history: [...(p.history || []), `${new Date().toLocaleString()}: ${historyMessage}${isAdmin ? ' [Admin]' : ''}`] 
+            history: [`${new Date().toLocaleString()}: ${historyMessage}${isAdmin ? ' [Admin]' : ''}`, ...(p.history || [])]
           };
         })
       }));
@@ -624,7 +626,11 @@ const ProjectStatusDashboard = () => {
         projects: prev.projects.map(p => {
           if (p.id !== projectId) return p;
           const newComments = p.comments.map(c => c.id === commentId ? ({ ...c, ignored: true, deleted: false, ts: new Date().toISOString() }) : c);
-          return { ...p, comments: newComments, history: [...(p.history || []), `${new Date().toLocaleString()}: Comment ignored${isAdmin ? ' [Admin]' : ''}`] };
+          return { 
+            ...p, 
+            comments: newComments, 
+            history: [`${new Date().toLocaleString()}: Comment ignored${isAdmin ? ' [Admin]' : ''}`, ...(p.history || [])]
+          };
         })
       }));
       
@@ -665,7 +671,7 @@ const ProjectStatusDashboard = () => {
         projects: prev.projects.map(p => p.id === projectId ? ({
           ...p,
           comments: [],
-          history: [...(p.history || []), `${new Date().toLocaleString()}: All comments cleared [Admin]`]
+          history: [`${new Date().toLocaleString()}: All comments cleared [Admin]`, ...(p.history || [])]
         }) : p)
       }));
 
@@ -972,13 +978,62 @@ const ProjectStatusDashboard = () => {
         {connected ? `Synced ${lastSync.toLocaleTimeString()}` : 'Reconnecting...'}
       </div>
 
+      {/* ИЗМЕНЕНИЕ 4: Добавил Header с логотипом */}
+      <header style={{
+        background: 'var(--bg-primary)',
+        borderBottom: '0.5px solid var(--separator)',
+        padding: '16px 24px',
+        position: 'sticky',
+        top: 0,
+        zIndex: 50
+      }}>
+        <div style={{
+          maxWidth: '1400px',
+          margin: '0 auto',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px'
+        }}>
+          {/* Логотип */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px'
+          }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, var(--primary), var(--secondary))',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'white',
+              fontSize: '18px',
+              fontWeight: '600'
+            }}>
+              PS
+            </div>
+            <h1 style={{
+              fontSize: '24px',
+              fontWeight: '700',
+              margin: 0,
+              color: 'var(--text-primary)',
+              letterSpacing: '-0.5px'
+            }}>
+              Project Status Dashboard
+            </h1>
+          </div>
+        </div>
+      </header>
+
       {/* Navigation Bar */}
       <div style={{
         background: 'rgba(255, 255, 255, 0.72)',
         backdropFilter: 'saturate(180%) blur(20px)',
         WebkitBackdropFilter: 'saturate(180%) blur(20px)',
         position: 'sticky',
-        top: 0,
+        top: '72px',
         zIndex: 100,
         borderBottom: '0.5px solid var(--separator)',
         marginBottom: '24px',
@@ -1234,7 +1289,7 @@ const ProjectStatusDashboard = () => {
             {Array.from({ length: firstDayIndex }).map((_, i) => (
               <div key={`empty-${i}`} style={{
                 background: 'var(--bg-secondary)',
-                minHeight: '80px'
+                minHeight: '56px' // ИЗМЕНЕНИЕ 3: Уменьшил высоту на 30% (80px * 0.7 = 56px)
               }}></div>
             ))}
             
@@ -1250,7 +1305,7 @@ const ProjectStatusDashboard = () => {
                   key={dayKey}
                   style={{
                     background: createDayBackground(dayKey),
-                    minHeight: '80px',
+                    minHeight: '56px', // ИЗМЕНЕНИЕ 3: Уменьшил высоту на 30% (80px * 0.7 = 56px)
                     padding: '8px',
                     border: dayBorder(dayKey),
                     position: 'relative',
@@ -1321,7 +1376,7 @@ const ProjectStatusDashboard = () => {
           }}>
             Projects ({state.projects.length})
           </h2>
-          {/* ИЗМЕНЕНИЕ 2: Показывать кнопку Add Project только в Admin режиме */}
+          {/* Показывать кнопку Add Project только в Admin режиме */}
           {isAdmin && (
             <button
               onClick={() => setIsAddModalOpen(true)}
@@ -1474,7 +1529,7 @@ const ProjectStatusDashboard = () => {
                         fontWeight: '500',
                         cursor: 'pointer',
                         outline: 'none',
-                        maxWidth: '120px'
+                        width: '120px' // ИЗМЕНЕНИЕ 1: Установил фиксированную ширину вместо maxWidth
                       }}
                     >
                       {Object.keys(statusColors).map(status => (
@@ -1503,7 +1558,7 @@ const ProjectStatusDashboard = () => {
                         fontWeight: '500',
                         cursor: 'pointer',
                         outline: 'none',
-                        maxWidth: '120px' // ИЗМЕНЕНИЕ 3: Добавлен такой же maxWidth как у статуса
+                        width: '120px' // ИЗМЕНЕНИЕ 1: Установил такую же ширину как у статуса
                       }}
                     >
                       {Object.keys(priorityColors).map(priority => (
@@ -2211,11 +2266,10 @@ const ProjectStatusDashboard = () => {
                             fontSize: '16px', 
                             color: 'var(--text-primary)', 
                             whiteSpace: 'pre-wrap',
-                            textDecoration: comment.ignored ? 'line-through' : 'none' // ИЗМЕНЕНИЕ 1: Добавлено перечёркивание для игнорируемых комментов
+                            textDecoration: comment.ignored ? 'line-through' : 'none'
                           }}>
                             {comment.text}
                           </div>
-                          {/* ИЗМЕНЕНИЕ 1: Убрано условие !comment.ignored - теперь можно редактировать игнорируемые комменты */}
                           <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
                             <button
                               onClick={() => startEdit(comment.id, comment.text)}
