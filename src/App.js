@@ -879,2247 +879,2257 @@ const ProjectStatusDashboard = () => {
   }
 
   return (
-    <>
-      <div style={{
-        fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif',
-        background: '#F2F2F7',
-        minHeight: '100vh',
-        color: '#000000',
-        fontSize: '17px',
-        lineHeight: '1.47059',
-        fontWeight: '400',
-        letterSpacing: '-0.022em',
-        '--primary': '#007AFF',
-        '--secondary': '#5856D6',
-        '--success': '#34C759',
-        '--warning': '#FF9500',
-        '--danger': '#FF3B30',
-        '--gray-1': '#8E8E93',
-        '--gray-2': '#C7C7CC',
-        '--gray-3': '#D1D1D6',
-        '--gray-4': '#E5E5EA',
-        '--gray-5': '#F2F2F7',
-        '--gray-6': '#FFFFFF',
-        '--text-primary': '#000000',
-        '--text-secondary': '#3C3C43',
-        '--text-tertiary': '#48484A',
-        '--text-quaternary': '#8E8E93',
-        '--bg-primary': '#FFFFFF',
-        '--bg-secondary': '#F2F2F7',
-        '--bg-tertiary': '#E5E5EA',
-        '--separator': 'rgba(60, 60, 67, 0.12)',
-        '--shadow': '0 0 20px rgba(0, 0, 0, 0.05)'
-      }}>
-        
-        {/* Error notification */}
-        {error && (
-          <div style={{
-            position: 'fixed',
-            top: '10px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 300,
-            background: '#FF3B30',
-            color: 'white',
-            padding: '12px 20px',
-            borderRadius: '20px',
-            fontSize: '14px',
-            boxShadow: '0 4px 20px rgba(255, 59, 48, 0.3)',
-            animation: 'slideIn 0.3s ease-out'
-          }}>
-            {error}
-            <button 
-              onClick={() => setError(null)}
-              style={{
-                marginLeft: '12px',
-                background: 'none',
-                border: 'none',
-                color: 'white',
-                cursor: 'pointer',
-                fontSize: '16px',
-                transition: 'opacity 0.2s ease'
-              }}
-              onMouseEnter={(e) => e.target.style.opacity = '0.7'}
-              onMouseLeave={(e) => e.target.style.opacity = '1'}
-            >
-              ×
-            </button>
-          </div>
-        )}
-
-        {/* Status indicator for real-time connection */}
+    <div style={{
+      fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif',
+      background: '#F2F2F7',
+      minHeight: '100vh',
+      color: '#000000',
+      fontSize: '17px',
+      lineHeight: '1.47059',
+      fontWeight: '400',
+      letterSpacing: '-0.022em',
+      '--primary': '#007AFF',
+      '--secondary': '#5856D6',
+      '--success': '#34C759',
+      '--warning': '#FF9500',
+      '--danger': '#FF3B30',
+      '--gray-1': '#8E8E93',
+      '--gray-2': '#C7C7CC',
+      '--gray-3': '#D1D1D6',
+      '--gray-4': '#E5E5EA',
+      '--gray-5': '#F2F2F7',
+      '--gray-6': '#FFFFFF',
+      '--text-primary': '#000000',
+      '--text-secondary': '#3C3C43',
+      '--text-tertiary': '#48484A',
+      '--text-quaternary': '#8E8E93',
+      '--bg-primary': '#FFFFFF',
+      '--bg-secondary': '#F2F2F7',
+      '--bg-tertiary': '#E5E5EA',
+      '--separator': 'rgba(60, 60, 67, 0.12)',
+      '--shadow': '0 0 20px rgba(0, 0, 0, 0.05)'
+    }}>
+      
+      {/* Error notification */}
+      {error && (
         <div style={{
           position: 'fixed',
           top: '10px',
-          right: '10px',
-          zIndex: 200,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          background: 'var(--bg-primary)',
-          padding: '8px 12px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 300,
+          background: '#FF3B30',
+          color: 'white',
+          padding: '12px 20px',
           borderRadius: '20px',
-          boxShadow: 'var(--shadow)',
-          fontSize: '12px',
-          transition: 'all 0.3s ease'
+          fontSize: '14px',
+          boxShadow: '0 4px 20px rgba(255, 59, 48, 0.3)',
+          animation: 'slideIn 0.3s ease-out'
         }}>
-          <div style={{
-            width: '8px',
-            height: '8px',
-            borderRadius: '50%',
-            backgroundColor: connected ? '#34C759' : '#FF3B30',
-            transition: 'background-color 0.3s ease'
-          }}></div>
-          {connected ? `Synced ${lastSync.toLocaleTimeString()}` : 'Reconnecting...'}
+          {error}
+          <button 
+            onClick={() => setError(null)}
+            style={{
+              marginLeft: '12px',
+              background: 'none',
+              border: 'none',
+              color: 'white',
+              cursor: 'pointer',
+              fontSize: '16px',
+              transition: 'opacity 0.2s ease'
+            }}
+            onMouseEnter={(e) => e.target.style.opacity = '0.7'}
+            onMouseLeave={(e) => e.target.style.opacity = '1'}
+          >
+            ×
+          </button>
         </div>
+      )}
 
-        {/* Navigation Bar */}
+      {/* Status indicator for real-time connection */}
+      <div style={{
+        position: 'fixed',
+        top: '10px',
+        right: '10px',
+        zIndex: 200,
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        background: 'var(--bg-primary)',
+        padding: '8px 12px',
+        borderRadius: '20px',
+        boxShadow: 'var(--shadow)',
+        fontSize: '12px',
+        transition: 'all 0.3s ease'
+      }}>
         <div style={{
-          background: 'rgba(255, 255, 255, 0.72)',
-          backdropFilter: 'saturate(180%) blur(20px)',
-          WebkitBackdropFilter: 'saturate(180%) blur(20px)',
-          position: 'sticky',
-          top: 0,
-          zIndex: 100,
-          borderBottom: '0.5px solid var(--separator)',
-          marginBottom: '24px',
-          transition: 'all 0.3s ease'
+          width: '8px',
+          height: '8px',
+          borderRadius: '50%',
+          backgroundColor: connected ? '#34C759' : '#FF3B30',
+          transition: 'background-color 0.3s ease'
+        }}></div>
+        {connected ? `Synced ${lastSync.toLocaleTimeString()}` : 'Reconnecting...'}
+      </div>
+
+      {/* Navigation Bar */}
+      <div style={{
+        background: 'rgba(255, 255, 255, 0.72)',
+        backdropFilter: 'saturate(180%) blur(20px)',
+        WebkitBackdropFilter: 'saturate(180%) blur(20px)',
+        position: 'sticky',
+        top: 0,
+        zIndex: 100,
+        borderBottom: '0.5px solid var(--separator)',
+        marginBottom: '24px',
+        transition: 'all 0.3s ease'
+      }}>
+        <div style={{
+          maxWidth: '1400px',
+          margin: '0 auto',
+          padding: '16px 24px',
+          display: 'flex',
+          justifyContent: 'flex-end',
+          alignItems: 'center'
         }}>
           <div style={{
-            maxWidth: '1400px',
-            margin: '0 auto',
-            padding: '16px 24px',
             display: 'flex',
-            justifyContent: 'flex-end',
+            gap: '12px',
             alignItems: 'center'
           }}>
-            <div style={{
-              display: 'flex',
-              gap: '12px',
-              alignItems: 'center'
-            }}>
-              <button
-                onClick={() => loadInitialData()}
-                style={{
-                  background: 'var(--bg-secondary)',
-                  color: 'var(--primary)',
-                  border: 'none',
-                  padding: '8px 16px',
-                  borderRadius: '18px',
-                  fontSize: '15px',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  outline: 'none'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.background = 'var(--gray-3)';
-                  e.target.style.transform = 'translateY(-1px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.background = 'var(--bg-secondary)';
-                  e.target.style.transform = 'translateY(0)';
-                }}
-              >
-                Refresh
-              </button>
-              <button
-                onClick={handleAdminToggle}
-                style={{
-                  background: 'var(--bg-secondary)',
-                  color: 'var(--primary)',
-                  border: 'none',
-                  padding: '8px 16px',
-                  borderRadius: '18px',
-                  fontSize: '15px',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  outline: 'none'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.background = 'var(--gray-3)';
-                  e.target.style.transform = 'translateY(-1px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.background = 'var(--bg-secondary)';
-                  e.target.style.transform = 'translateY(0)';
-                }}
-              >
-                {isAdmin ? 'Partner View' : 'Admin View'}
-              </button>
-              {isAdmin && (
-                <button
-                  onClick={() => setIsAddModalOpen(true)}
-                  style={{
-                    background: 'var(--primary)',
-                    color: 'white',
-                    border: 'none',
-                    padding: '8px 16px',
-                    borderRadius: '18px',
-                    fontSize: '15px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    outline: 'none'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = '#0056CC';
-                    e.target.style.transform = 'translateY(-1px)';
-                    e.target.style.boxShadow = '0 4px 12px rgba(0, 122, 255, 0.3)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = 'var(--primary)';
-                    e.target.style.transform = 'translateY(0)';
-                    e.target.style.boxShadow = 'none';
-                  }}
-                >
-                  + Add
-                </button>
-              )}
-            </div>
+            <button
+              onClick={() => loadInitialData()}
+              style={{
+                background: 'var(--bg-secondary)',
+                color: 'var(--primary)',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '18px',
+                fontSize: '15px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                outline: 'none'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = 'var(--gray-3)';
+                e.target.style.transform = 'translateY(-1px)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = 'var(--bg-secondary)';
+                e.target.style.transform = 'translateY(0)';
+              }}
+            >
+              Refresh
+            </button>
+            <button
+              onClick={handleAdminToggle}
+              style={{
+                background: 'var(--bg-secondary)',
+                color: 'var(--primary)',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '18px',
+                fontSize: '15px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                outline: 'none'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = 'var(--gray-3)';
+                e.target.style.transform = 'translateY(-1px)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = 'var(--bg-secondary)';
+                e.target.style.transform = 'translateY(0)';
+              }}
+            >
+              {isAdmin ? 'Admin Mode' : 'Admin'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div style={{
+        maxWidth: '1400px',
+        margin: '0 auto',
+        padding: '0 24px 24px'
+      }}>
+
+        {/* Stats Overview */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '16px',
+          marginBottom: '24px'
+        }}>
+          <div style={{
+            background: 'var(--bg-primary)',
+            padding: '20px',
+            borderRadius: '20px',
+            boxShadow: 'var(--shadow)',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '14px', color: 'var(--text-tertiary)', marginBottom: '4px' }}>Total Artists</div>
+            <div style={{ fontSize: '32px', fontWeight: '600', color: 'var(--text-primary)' }}>{total}</div>
+          </div>
+          <div style={{
+            background: 'var(--bg-primary)',
+            padding: '20px',
+            borderRadius: '20px',
+            boxShadow: 'var(--shadow)',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '14px', color: 'var(--text-tertiary)', marginBottom: '4px' }}>Busy</div>
+            <div style={{ fontSize: '32px', fontWeight: '600', color: 'var(--danger)' }}>{busy}</div>
+          </div>
+          <div style={{
+            background: 'var(--bg-primary)',
+            padding: '20px',
+            borderRadius: '20px',
+            boxShadow: 'var(--shadow)',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '14px', color: 'var(--text-tertiary)', marginBottom: '4px' }}>Free</div>
+            <div style={{ fontSize: '32px', fontWeight: '600', color: 'var(--success)' }}>{free}</div>
+          </div>
+          <div style={{
+            background: 'var(--bg-primary)',
+            padding: '20px',
+            borderRadius: '20px',
+            boxShadow: 'var(--shadow)',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '14px', color: 'var(--text-tertiary)', marginBottom: '4px' }}>Free %</div>
+            <div style={{ fontSize: '32px', fontWeight: '600', color: 'var(--success)' }}>{freePct}%</div>
           </div>
         </div>
 
-        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '24px' }}>
-          {/* Header Section */}
+        {/* Calendar Section */}
+        <div style={{
+          background: 'var(--bg-primary)',
+          borderRadius: '20px',
+          boxShadow: 'var(--shadow)',
+          marginBottom: '24px',
+          overflow: 'hidden'
+        }}>
           <div style={{
-            textAlign: 'center',
-            marginBottom: '32px',
-            padding: '32px 20px',
-            background: 'var(--bg-primary)',
-            borderRadius: '20px',
-            boxShadow: 'var(--shadow)',
-            transition: 'transform 0.3s ease, box-shadow 0.3s ease'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'translateY(-2px)';
-            e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.1)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = 'var(--shadow)';
-          }}
-          >
-            <div style={{
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              marginBottom: '8px',
-              animation: 'fadeInUp 0.6s ease-out'
+            padding: '20px 24px',
+            borderBottom: '0.5px solid var(--separator)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <h2 style={{
+              fontSize: '22px',
+              fontWeight: '600',
+              margin: 0,
+              color: 'var(--text-primary)'
             }}>
-              <img 
-                src="/zigert-logo.png"
-                alt="Zigert Logo"
+              {monthNames[currentDate.month]} {currentDate.year}
+            </h2>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <button
+                onClick={() => changeMonth(-1)}
                 style={{
-                  width: '280px',
-                  height: 'auto',
-                  filter: 'grayscale(0)',
-                  transition: 'all 0.3s ease'
+                  background: 'var(--bg-secondary)',
+                  border: 'none',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
                 }}
                 onMouseEnter={(e) => {
-                  e.target.style.transform = 'scale(1.05)';
-                  e.target.style.filter = 'grayscale(0) brightness(1.1)';
+                  e.target.style.background = 'var(--gray-3)';
+                  e.target.style.transform = 'translateY(-1px)';
                 }}
                 onMouseLeave={(e) => {
-                  e.target.style.transform = 'scale(1)';
-                  e.target.style.filter = 'grayscale(0)';
+                  e.target.style.background = 'var(--bg-secondary)';
+                  e.target.style.transform = 'translateY(0)';
                 }}
-              />
-            </div>
-            <div style={{
-              fontSize: '24px',
-              fontWeight: 600,
-              color: 'var(--text-primary)',
-              animation: 'fadeInUp 0.6s ease-out 0.1s both'
-            }}>
-              Project Status Dashboard
-            </div>
-            <div style={{
-              fontSize: '14px',
-              color: 'var(--text-quaternary)',
-              marginTop: '8px',
-              animation: 'fadeInUp 0.6s ease-out 0.2s both'
-            }}>
-              Real-time collaborative workspace
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M15 18l-6-6 6-6"/>
+                </svg>
+              </button>
+              <button
+                onClick={goToToday}
+                style={{
+                  background: 'var(--bg-secondary)',
+                  border: 'none',
+                  padding: '6px 12px',
+                  borderRadius: '16px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = 'var(--gray-3)';
+                  e.target.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = 'var(--bg-secondary)';
+                  e.target.style.transform = 'translateY(0)';
+                }}
+              >
+                Today
+              </button>
+              <button
+                onClick={() => changeMonth(1)}
+                style={{
+                  background: 'var(--bg-secondary)',
+                  border: 'none',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = 'var(--gray-3)';
+                  e.target.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = 'var(--bg-secondary)';
+                  e.target.style.transform = 'translateY(0)';
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M9 18l6-6-6-6"/>
+                </svg>
+              </button>
             </div>
           </div>
 
-          {/* Stats Cards */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-            gap: '16px',
-            marginBottom: '32px'
+            gridTemplateColumns: 'repeat(7, 1fr)',
+            gap: '1px',
+            background: 'var(--separator)'
           }}>
-            {[
-              { label: 'Total Artists', value: total },
-              { label: 'Busy', value: busy },
-              { label: 'Free', value: free },
-              { label: '% Free', value: freePct + '%', alert: freePct >= 50 }
-            ].map((stat, idx) => (
-              <div key={idx} style={{
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+              <div key={day} style={{
                 background: 'var(--bg-primary)',
-                borderRadius: '20px',
-                padding: '20px',
-                boxShadow: 'var(--shadow)',
+                padding: '12px',
                 textAlign: 'center',
-                transition: 'all 0.3s ease',
-                animation: `fadeInUp 0.6s ease-out ${0.1 * idx}s both`
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)';
-                e.currentTarget.style.boxShadow = '0 12px 30px rgba(0, 0, 0, 0.15)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                e.currentTarget.style.boxShadow = 'var(--shadow)';
-              }}
-              >
-                <div style={{
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  color: 'var(--text-quaternary)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                  marginBottom: '8px'
-                }}>
-                  {stat.label}
-                </div>
-                <div style={{
-                  fontSize: '34px',
-                  fontWeight: 700,
-                  color: stat.alert ? 'var(--danger)' : 'var(--text-primary)',
-                  letterSpacing: '-0.024em',
-                  transition: 'color 0.3s ease'
-                }}>
-                  {stat.value}
-                </div>
+                fontSize: '14px',
+                fontWeight: '500',
+                color: 'var(--text-tertiary)'
+              }}>
+                {day}
               </div>
             ))}
-          </div>
-
-          {/* Active Projects */}
-          <div style={{
-            background: 'var(--bg-primary)',
-            borderRadius: '20px',
-            overflow: 'hidden',
-            boxShadow: 'var(--shadow)',
-            marginBottom: '32px',
-            transition: 'all 0.3s ease',
-            animation: 'fadeInUp 0.6s ease-out 0.4s both'
-          }}>
-            <div style={{
-              padding: '24px',
-              borderBottom: '0.5px solid var(--separator)'
-            }}>
-              <h3 style={{
-                fontSize: '28px',
-                fontWeight: 700,
-                letterSpacing: '-0.024em',
-                color: 'var(--text-primary)',
-                margin: 0
-              }}>
-                Active Projects
-              </h3>
-            </div>
-            <div style={{ padding: '24px' }}>
-              {state.projects.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-quaternary)' }}>
-                  No projects yet. {isAdmin && 'Click "Add" to create your first project.'}
-                </div>
-              ) : (
-                [...state.projects].sort((a, b) => {
-                  const priorityOrder = { 'High': 3, 'Medium': 2, 'Low': 1 };
-                  const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority];
-                  if (priorityDiff === 0) {
-                    return a.name.localeCompare(b.name);
-                  }
-                  return priorityDiff;
-                }).map((project, index) => (
-                  <div key={project.id} style={{
-                    background: 'var(--bg-secondary)',
-                    borderRadius: '16px',
-                    padding: '20px',
-                    marginBottom: '16px',
-                    transition: 'all 0.3s ease',
-                    animation: `fadeInUp 0.4s ease-out ${0.1 * index}s both`,
-                    position: 'relative'
+            
+            {/* Empty cells for days before the first day of the month */}
+            {Array.from({ length: firstDayIndex }).map((_, i) => (
+              <div key={`empty-${i}`} style={{
+                background: 'var(--bg-secondary)',
+                minHeight: '80px'
+              }}></div>
+            ))}
+            
+            {/* Calendar days */}
+            {monthDays.map(day => {
+              const dayKey = formatDateToYYYYMMDD(day);
+              const projects = getProjectsForDay(dayKey);
+              const isToday = dayKey === todayKey;
+              const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+              
+              return (
+                <div
+                  key={dayKey}
+                  style={{
+                    background: createDayBackground(dayKey),
+                    minHeight: '80px',
+                    padding: '8px',
+                    border: dayBorder(dayKey),
+                    position: 'relative',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'translateX(4px)';
-                    e.currentTarget.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.1)';
+                    if (projects.length > 0) {
+                      e.target.style.transform = 'scale(1.02)';
+                      e.target.style.zIndex = '10';
+                      e.target.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.15)';
+                    }
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'translateX(0)';
-                    e.currentTarget.style.boxShadow = 'none';
+                    e.target.style.transform = 'scale(1)';
+                    e.target.style.zIndex = '1';
+                    e.target.style.boxShadow = 'none';
                   }}
-                  >
-                    {/* Color Bar - Left Side (Clickable in Admin) */}
-                    <div style={{
-                      position: 'absolute',
-                      top: '0',
-                      left: '0',
-                      bottom: '0',
-                      width: '12px',
-                      borderRadius: '16px 0 0 16px',
-                      background: getProjectColor(project),
-                      cursor: isAdmin ? 'pointer' : 'default',
-                      transition: 'all 0.2s ease'
-                    }}
-                    title={isAdmin ? "Click to change color" : ""}
-                    onClick={isAdmin ? () => openColorPickerModal(project.id) : undefined}
-                    onMouseEnter={isAdmin ? (e) => {
-                      e.target.style.width = '24px';
-                      e.target.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
-                    } : undefined}
-                    onMouseLeave={isAdmin ? (e) => {
-                      e.target.style.width = '12px';
-                      e.target.style.boxShadow = 'none';
-                    } : undefined}
-                    ></div>
-
-                    {/* Delete Button - Top Right */}
-                    {isAdmin && (
-                      <div style={{
-                        position: 'absolute',
-                        top: '8px',
-                        right: '8px',
-                        zIndex: 10
-                      }}>
-                        <button
-                          onClick={() => showConfirmDeleteModal(project.id)}
-                          style={{
-                            width: '24px',
-                            height: '24px',
-                            borderRadius: '50%',
-                            background: 'var(--danger)',
-                            color: 'white',
-                            border: 'none',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            fontSize: '14px',
-                            fontWeight: 700,
-                            transition: 'all 0.2s ease'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.target.style.transform = 'scale(1.1)';
-                            e.target.style.boxShadow = '0 2px 8px rgba(255, 59, 48, 0.3)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.target.style.transform = 'scale(1)';
-                            e.target.style.boxShadow = 'none';
-                          }}
-                          title="Delete project"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Complete Button - Right Side */}
-                    {isAdmin && (
-                      <div style={{
-                        position: 'absolute',
-                        top: '0',
-                        right: '0',
-                        bottom: '0',
-                        width: '12px',
-                        borderRadius: '0 16px 16px 0',
-                        background: 'var(--primary)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease'
-                      }}
-                      onClick={() => showConfirmCompleteModal(project.id)}
-                      onMouseEnter={(e) => {
-                        e.target.style.width = '24px';
-                        e.target.style.boxShadow = '0 2px 8px rgba(0, 122, 255, 0.3)';
-                        const checkmark = e.target.querySelector('.checkmark');
-                        if (checkmark) {
-                          checkmark.style.fontSize = '18px';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.width = '12px';
-                        e.target.style.boxShadow = 'none';
-                        const checkmark = e.target.querySelector('.checkmark');
-                        if (checkmark) {
-                          checkmark.style.fontSize = '14px';
-                        }
-                      }}
-                      title="Mark as completed"
-                      >
-                        <div className="checkmark" style={{
-                          color: 'white',
-                          fontSize: '14px',
-                          fontWeight: 700,
-                          transition: 'all 0.2s ease'
-                        }}>
-                          ✓
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Project Details Grid - ИСПРАВЛЕНО: автоматические размеры под контент */}
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'minmax(200px, 2fr) auto auto auto minmax(60px, auto) auto minmax(100px, auto)', // Автоматические размеры под контент
-                      gap: '4px', // Уменьшен gap в 2 раза с 8px до 4px
-                      alignItems: 'stretch', // Одинаковая высота для всех элементов
-                      paddingLeft: '5px', // Минимальный отступ от цветной полосы
-                      paddingRight: '20px' // Отступ от кнопки Complete
+                  title={projectsOnDay(dayKey).join('\n')}
+                >
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start'
+                  }}>
+                    <span style={{
+                      fontSize: '16px',
+                      fontWeight: isToday ? '600' : '400',
+                      color: isToday ? 'var(--danger)' : (isWeekend ? 'var(--text-tertiary)' : 'var(--text-primary)'),
+                      background: isToday ? 'rgba(255, 255, 255, 0.9)' : 'transparent',
+                      borderRadius: '12px',
+                      padding: '2px 6px',
+                      margin: '-2px -6px -2px -2px'
                     }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', textAlign: 'center', minHeight: '64px', justifyContent: 'center' }}>
-                        <div style={{
-                          fontSize: '12px',
-                          color: 'var(--text-quaternary)',
-                          fontWeight: 500,
-                          letterSpacing: '0.06em',
-                          textAlign: 'center',
-                          height: '16px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          whiteSpace: 'nowrap'
-                        }}>
-                          Project
-                        </div>
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          height: '40px',
-                          minWidth: '160px',
-                          justifyContent: 'center'
-                        }}>
-                          {isAdmin ? (
-                            <div
-                              onClick={() => openProjectNameModal(project.id, project.name)}
-                              style={{
-                                padding: '8px 12px',
-                                borderRadius: '8px',
-                                border: '1px solid var(--gray-3)',
-                                textAlign: 'center',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                background: 'var(--bg-primary)',
-                                transition: 'all 0.2s ease',
-                                minWidth: '160px',
-                                maxWidth: '200px',
-                                height: '40px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: '14px',
-                                overflowWrap: 'break-word',
-                                wordBreak: 'break-word',
-                                whiteSpace: 'normal',
-                                lineHeight: '1.2'
-                              }}
-                              title="Click to edit"
-                              onMouseEnter={(e) => {
-                                e.target.style.borderColor = 'var(--primary)';
-                                e.target.style.transform = 'scale(1.02)';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.target.style.borderColor = 'var(--gray-3)';
-                                e.target.style.transform = 'scale(1)';
-                              }}
-                            >
-                              {project.name}
-                            </div>
-                          ) : (
-                            <div style={{ 
-                              fontWeight: 600, 
-                              fontSize: '14px',
-                              minWidth: '160px',
-                              maxWidth: '200px',
-                              height: '40px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              padding: '8px 12px',
-                              overflowWrap: 'break-word',
-                              wordBreak: 'break-word',
-                              whiteSpace: 'normal',
-                              lineHeight: '1.2',
-                              textAlign: 'center'
-                            }}>{project.name}</div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', textAlign: 'center', minHeight: '64px', justifyContent: 'center' }}>
-                        <div style={{
-                          fontSize: '12px',
-                          color: 'var(--text-quaternary)',
-                          fontWeight: 500,
-                          letterSpacing: '0.06em',
-                          textAlign: 'center',
-                          height: '16px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          whiteSpace: 'nowrap'
-                        }}>
-                          Status
-                        </div>
-                        {isAdmin ? (
-                          <select
-                            value={project.status}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              updateProject(project.id, { status: val }, `${new Date().toLocaleString()}: Status changed to ${val}`);
-                            }}
-                            style={{
-                              padding: '8px 12px',
-                              borderRadius: '8px',
-                              border: '1px solid transparent',
-                              minWidth: '120px',
-                              height: '40px',
-                              textAlign: 'center',
-                              fontWeight: 600,
-                              backgroundColor: statusColors[project.status] || '#e5e5ea',
-                              color: '#fff',
-                              cursor: 'pointer',
-                              fontSize: '14px',
-                              transition: 'all 0.2s ease',
-                              whiteSpace: 'nowrap'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.target.style.transform = 'scale(1.02)';
-                              e.target.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.target.style.transform = 'scale(1)';
-                              e.target.style.boxShadow = 'none';
-                            }}
-                          >
-                            <option value="Waiting" style={{color: '#000', backgroundColor: '#fff'}}>Waiting</option>
-                            <option value="In Progress" style={{color: '#000', backgroundColor: '#fff'}}>In Progress</option>
-                            <option value="Queued" style={{color: '#000', backgroundColor: '#fff'}}>Queued</option>
-                            <option value="Hold" style={{color: '#000', backgroundColor: '#fff'}}>Hold</option>
-                            <option value="Completed" style={{color: '#000', backgroundColor: '#fff'}}>Completed</option>
-                          </select>
-                        ) : (
-                          <div style={{
-                            padding: '8px 12px',
-                            borderRadius: '8px',
-                            backgroundColor: statusColors[project.status] || '#e5e5ea',
-                            color: '#fff',
-                            fontWeight: 600,
-                            fontSize: '14px',
-                            height: '40px',
-                            minWidth: '120px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            transition: 'all 0.2s ease',
-                            whiteSpace: 'nowrap'
-                          }}>
-                            {project.status}
-                          </div>
-                        )}
-                      </div>
-
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', textAlign: 'center', minHeight: '64px', justifyContent: 'center' }}>
-                        <div style={{
-                          fontSize: '12px',
-                          color: 'var(--text-quaternary)',
-                          fontWeight: 500,
-                          letterSpacing: '0.06em',
-                          textAlign: 'center',
-                          height: '16px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          whiteSpace: 'nowrap'
-                        }}>
-                          Start
-                        </div>
-                        {isAdmin ? (
-                          <input
-                            type='date'
-                            value={project.startDate}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              if (new Date(val) > new Date(project.dueDate)) {
-                                showDateValidationModal('Start date cannot be later than Due date', null);
-                                return;
-                              }
-                              updateProject(project.id, { startDate: val }, `${new Date().toLocaleString()}: Start changed to ${val}`);
-                            }}
-                            style={{
-                              padding: '8px 12px',
-                              borderRadius: '8px',
-                              border: '1px solid var(--gray-3)',
-                              background: 'var(--bg-primary)',
-                              fontFamily: 'inherit',
-                              fontSize: '14px',
-                              fontWeight: 600,
-                              color: 'var(--text-primary)',
-                              width: '140px',
-                              height: '40px',
-                              textAlign: 'center',
-                              cursor: 'pointer',
-                              transition: 'all 0.2s ease'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.target.style.borderColor = 'var(--primary)';
-                              e.target.style.transform = 'scale(1.02)';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.target.style.borderColor = 'var(--gray-3)';
-                              e.target.style.transform = 'scale(1)';
-                            }}
-                          />
-                        ) : (
-                          <div style={{
-                            height: '40px', 
-                            width: '140px',
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            justifyContent: 'center',
-                            fontSize: '14px',
-                            padding: '8px 12px',
-                            border: '1px solid var(--gray-3)',
-                            borderRadius: '8px',
-                            background: 'var(--bg-primary)',
-                            fontWeight: 600,
-                            whiteSpace: 'nowrap'
-                          }}>{formatDateForDisplay(project.startDate)}</div>
-                        )}
-                      </div>
-
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', textAlign: 'center', minHeight: '64px', justifyContent: 'center' }}>
-                        <div style={{
-                          fontSize: '12px',
-                          color: 'var(--text-quaternary)',
-                          fontWeight: 500,
-                          letterSpacing: '0.06em',
-                          textAlign: 'center',
-                          height: '16px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          whiteSpace: 'nowrap'
-                        }}>
-                          Due
-                        </div>
-                        <input
-                          type='date'
-                          value={project.dueDate}
-                          min={project.startDate}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            if (new Date(val) < new Date(project.startDate)) {
-                              showDateValidationModal('Due date cannot be earlier than Start date', null);
-                              return;
-                            }
-                            updateProject(project.id, { dueDate: val }, `${new Date().toLocaleString()}: Due changed to ${val}`);
-                          }}
-                          style={{
-                            padding: '8px 12px',
-                            borderRadius: '8px',
-                            border: '1px solid var(--gray-3)',
-                            background: 'var(--bg-primary)',
-                            fontFamily: 'inherit',
-                            fontSize: '14px',
-                            fontWeight: 600,
-                            color: 'var(--text-primary)',
-                            width: '140px',
-                            height: '40px',
-                            textAlign: 'center',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.target.style.borderColor = 'var(--primary)';
-                            e.target.style.transform = 'scale(1.02)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.target.style.borderColor = 'var(--gray-3)';
-                            e.target.style.transform = 'scale(1)';
-                          }}
-                        />
-                      </div>
-
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', textAlign: 'center', minHeight: '64px', justifyContent: 'center' }}>
-                        <div style={{
-                          fontSize: '12px',
-                          color: 'var(--text-quaternary)',
-                          fontWeight: 500,
-                          letterSpacing: '0.06em',
-                          textAlign: 'center',
-                          height: '16px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          whiteSpace: 'nowrap'
-                        }}>
-                          Busy
-                        </div>
-                        {isAdmin ? (
-                          <input
-                            type='number'
-                            value={project.busy}
-                            onChange={(e) => updateProject(project.id, { busy: Math.max(0, Number(e.target.value) || 0) }, `${new Date().toLocaleString()}: Busy set to ${e.target.value}`)}
-                            style={{
-                              padding: '8px 12px',
-                              borderRadius: '8px',
-                              border: '1px solid var(--gray-3)',
-                              background: 'var(--bg-primary)',
-                              fontFamily: 'inherit',
-                              fontSize: '14px',
-                              fontWeight: 600,
-                              color: 'var(--text-primary)',
-                              width: '70px',
-                              height: '40px',
-                              textAlign: 'center',
-                              cursor: 'pointer',
-                              transition: 'all 0.2s ease'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.target.style.borderColor = 'var(--primary)';
-                              e.target.style.transform = 'scale(1.02)';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.target.style.borderColor = 'var(--gray-3)';
-                              e.target.style.transform = 'scale(1)';
-                            }}
-                          />
-                        ) : (
-                          <div style={{ 
-                            width: '70px', 
-                            height: '40px', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            justifyContent: 'center',
-                            fontSize: '14px',
-                            padding: '8px 12px',
-                            border: '1px solid var(--gray-3)',
-                            borderRadius: '8px',
-                            background: 'var(--bg-primary)',
-                            fontWeight: 600
-                          }}>{project.busy}</div>
-                        )}
-                      </div>
-
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', textAlign: 'center', minHeight: '64px', justifyContent: 'center' }}>
-                        <div style={{
-                          fontSize: '12px',
-                          color: 'var(--text-quaternary)',
-                          fontWeight: 500,
-                          letterSpacing: '0.06em',
-                          textAlign: 'center',
-                          height: '16px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          whiteSpace: 'nowrap'
-                        }}>
-                          Priority
-                        </div>
-                        <select
-                          value={project.priority}
-                          onChange={(e) => updateProject(project.id, { priority: e.target.value }, `${new Date().toLocaleString()}: Priority changed to ${e.target.value}`)}
-                          style={{
-                            padding: '8px 12px',
-                            borderRadius: '8px',
-                            border: '1px solid var(--gray-3)',
-                            width: '100px',
-                            height: '40px',
-                            textAlign: 'center',
-                            fontWeight: 600,
-                            backgroundColor: priorityColors[project.priority] || '#fff',
-                            color: ['High', 'Medium'].includes(project.priority) ? '#fff' : '#000',
-                            cursor: 'pointer',
-                            fontSize: '14px',
-                            transition: 'all 0.2s ease',
-                            whiteSpace: 'nowrap'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.target.style.transform = 'scale(1.02)';
-                            e.target.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.target.style.transform = 'scale(1)';
-                            e.target.style.boxShadow = 'none';
-                          }}
-                        >
-                          <option value="Low" style={{color: '#000', backgroundColor: '#fff'}}>Low</option>
-                          <option value="Medium" style={{color: '#000', backgroundColor: '#fff'}}>Medium</option>
-                          <option value="High" style={{color: '#000', backgroundColor: '#fff'}}>High</option>
-                        </select>
-                      </div>
-
-                      <div style={{
-                        display: 'flex',
-                        gap: '6px',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        minHeight: '64px'
+                      {day.getDate()}
+                    </span>
+                    {projects.length > 0 && (
+                      <span style={{
+                        background: 'rgba(255, 255, 255, 0.9)',
+                        borderRadius: '8px',
+                        padding: '2px 6px',
+                        fontSize: '12px',
+                        fontWeight: '500',
+                        color: 'var(--text-primary)'
                       }}>
-                        <div
-                          onClick={() => openComments(project.id)}
-                          style={{
-                            width: '36px', // Уменьшен размер кнопок
-                            height: '36px',
-                            borderRadius: '18px',
-                            border: '1px solid var(--gray-3)',
-                            background: 'var(--bg-primary)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            fontSize: '14px', // Уменьшен размер эмодзи
-                            transition: 'all 0.2s ease',
-                            position: 'relative'
-                          }}
-                          title={isAdmin && project.comments.length > 0 ? "Comments (Right-click to clear)" : "Comments"}
-                          onMouseEnter={(e) => {
-                            e.target.style.transform = 'scale(1.1) rotate(5deg)';
-                            e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.target.style.transform = 'scale(1) rotate(0deg)';
-                            e.target.style.boxShadow = 'none';
-                          }}
-                          onContextMenu={isAdmin && project.comments.length > 0 ? (e) => {
-                            e.preventDefault();
-                            setClearCommentsModal(project.id);
-                          } : undefined}
-                        >
-                          💬
-                          {project.comments.length > 0 && (
-                            <span style={{ 
-                              position: 'absolute',
-                              top: '-4px',
-                              right: '-4px',
-                              fontSize: '10px', 
-                              fontWeight: 600,
-                              backgroundColor: 'var(--danger)',
-                              color: 'white',
-                              borderRadius: '50%',
-                              width: '16px',
-                              height: '16px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center'
-                            }}>
-                              {project.comments.length}
-                            </span>
-                          )}
-                        </div>
-                        <div
-                          title={isAdmin && project.history && project.history.length > 0 ? "History (Right-click to clear)" : "History"}
-                          onClick={() => openHistory(project.id)}
-                          onContextMenu={isAdmin && project.history && project.history.length > 0 ? (e) => {
-                            e.preventDefault();
-                            setClearHistoryModal(project.id);
-                          } : undefined}
-                          style={{
-                            width: '36px',
-                            height: '36px',
-                            borderRadius: '18px',
-                            border: '1px solid var(--gray-3)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            fontWeight: 700,
-                            background: 'var(--bg-primary)',
-                            fontSize: '14px',
-                            transition: 'all 0.2s ease'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.target.style.transform = 'scale(1.1) rotate(-5deg)';
-                            e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.target.style.transform = 'scale(1) rotate(0deg)';
-                            e.target.style.boxShadow = 'none';
-                          }}
-                        >
-                          📋
-                        </div>
-                      </div>
-                    </div>
+                        {projects.length}
+                      </span>
+                    )}
                   </div>
-                ))
-              )}
-            </div>
+                </div>
+              );
+            })}
           </div>
+        </div>
 
-          {/* Timeline Calendar */}
-          <div style={{
-            background: 'var(--bg-primary)',
-            borderRadius: '20px',
-            padding: '24px',
-            boxShadow: 'var(--shadow)',
-            animation: 'fadeInUp 0.6s ease-out 0.6s both'
+        {/* Projects Section */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '16px'
+        }}>
+          <h2 style={{
+            fontSize: '22px',
+            fontWeight: '600',
+            margin: 0,
+            color: 'var(--text-primary)'
           }}>
-            <div style={{
-              padding: '0 0 24px 0',
-              borderBottom: '0.5px solid var(--separator)'
-            }}>
-              <h3 style={{
-                fontSize: '28px',
-                fontWeight: 700,
-                letterSpacing: '-0.024em',
-                color: 'var(--text-primary)',
-                margin: 0
+            Projects ({state.projects.length})
+          </h2>
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            style={{
+              background: 'var(--primary)',
+              color: 'white',
+              border: 'none',
+              padding: '10px 20px',
+              borderRadius: '18px',
+              fontSize: '16px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              outline: 'none'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.background = '#0056CC';
+              e.target.style.transform = 'translateY(-1px)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.background = 'var(--primary)';
+              e.target.style.transform = 'translateY(0)';
+            }}
+          >
+            Add Project
+          </button>
+        </div>
+
+        {/* Projects Grid */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+          gap: '16px',
+          marginBottom: '24px'
+        }}>
+          {state.projects.map(project => (
+            <div
+              key={project.id}
+              style={{
+                background: 'var(--bg-primary)',
+                borderRadius: '20px',
+                boxShadow: 'var(--shadow)',
+                padding: '20px',
+                transition: 'all 0.3s ease',
+                border: '0.5px solid var(--separator)'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 8px 30px rgba(0, 0, 0, 0.12)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = 'var(--shadow)';
+              }}
+            >
+              {/* Project Header */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                marginBottom: '16px'
               }}>
-                Timeline Overview (Calendar)
-              </h3>
-            </div>
-            
-            <div style={{ marginTop: '16px' }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  flex: 1,
+                  minWidth: 0
+                }}>
+                  <div style={{
+                    width: '12px',
+                    height: '12px',
+                    borderRadius: '50%',
+                    backgroundColor: getProjectColor(project),
+                    flexShrink: 0
+                  }}></div>
+                  <h3 style={{
+                    margin: 0,
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    color: 'var(--text-primary)',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    flex: 1,
+                    minWidth: 0
+                  }}>
+                    {project.name}
+                  </h3>
+                </div>
+                {isAdmin && (
+                  <button
+                    onClick={() => openProjectNameModal(project.id, project.name)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--gray-1)',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      borderRadius: '6px',
+                      transition: 'all 0.2s ease',
+                      flexShrink: 0
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.background = 'var(--bg-secondary)';
+                      e.target.style.color = 'var(--text-primary)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.background = 'none';
+                      e.target.style.color = 'var(--gray-1)';
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                  </button>
+                )}
+              </div>
+
+              {/* Project Details */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '12px',
+                marginBottom: '16px'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <span style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>Status:</span>
+                    <select
+                      value={project.status}
+                      onChange={(e) => updateProject(project.id, { status: e.target.value }, `${new Date().toLocaleString()}: Status changed to ${e.target.value}`)}
+                      style={{
+                        background: statusColors[project.status] || 'var(--bg-secondary)',
+                        color: 'white',
+                        border: 'none',
+                        padding: '4px 8px',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                        outline: 'none',
+                        maxWidth: '120px'
+                      }}
+                    >
+                      {Object.keys(statusColors).map(status => (
+                        <option key={status} value={status} style={{ background: 'white', color: 'black' }}>
+                          {status}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <span style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>Priority:</span>
+                    <select
+                      value={project.priority}
+                      onChange={(e) => updateProject(project.id, { priority: e.target.value }, `${new Date().toLocaleString()}: Priority changed to ${e.target.value}`)}
+                      style={{
+                        background: priorityColors[project.priority] || 'var(--bg-secondary)',
+                        color: 'white',
+                        border: 'none',
+                        padding: '4px 8px',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                        outline: 'none',
+                        maxWidth: '120px'
+                      }}
+                    >
+                      {Object.keys(priorityColors).map(priority => (
+                        <option key={priority} value={priority} style={{ background: 'white', color: 'black' }}>
+                          {priority}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <span style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>Start:</span>
+                    <input
+                      type="date"
+                      value={project.startDate}
+                      onChange={(e) => {
+                        const newStartDate = e.target.value;
+                        const newDueDate = new Date(newStartDate) > new Date(project.dueDate) ? newStartDate : project.dueDate;
+                        
+                        if (new Date(newStartDate) > new Date(newDueDate)) {
+                          showDateValidationModal(
+                            "Start date cannot be after due date! Adjusting due date.",
+                            () => updateProject(
+                              project.id, 
+                              { startDate: newStartDate, dueDate: newStartDate }, 
+                              `${new Date().toLocaleString()}: Dates changed to ${formatDateForDisplay(newStartDate)}`
+                            )
+                          );
+                        } else {
+                          updateProject(
+                            project.id, 
+                            { startDate: newStartDate, dueDate: newDueDate }, 
+                            `${new Date().toLocaleString()}: Dates changed to ${formatDateForDisplay(newStartDate)} - ${formatDateForDisplay(newDueDate)}`
+                          );
+                        }
+                      }}
+                      style={{
+                        border: '0.5px solid var(--separator)',
+                        padding: '4px 8px',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        outline: 'none',
+                        maxWidth: '120px',
+                        background: 'var(--bg-primary)'
+                      }}
+                    />
+                  </div>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <span style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>Due:</span>
+                    <input
+                      type="date"
+                      value={project.dueDate}
+                      onChange={(e) => {
+                        const newDueDate = e.target.value;
+                        if (new Date(newDueDate) < new Date(project.startDate)) {
+                          showDateValidationModal(
+                            "Due date cannot be before start date!",
+                            null
+                          );
+                        } else {
+                          updateProject(
+                            project.id, 
+                            { dueDate: newDueDate }, 
+                            `${new Date().toLocaleString()}: Due date changed to ${formatDateForDisplay(newDueDate)}`
+                          );
+                        }
+                      }}
+                      style={{
+                        border: '0.5px solid var(--separator)',
+                        padding: '4px 8px',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        outline: 'none',
+                        maxWidth: '120px',
+                        background: 'var(--bg-primary)'
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Busy Section */}
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 marginBottom: '16px'
               }}>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <span style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>Busy:</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <button
-                    onClick={() => changeMonth(-1)}
+                    onClick={() => updateProject(project.id, { busy: Math.max(0, project.busy - 1) }, `${new Date().toLocaleString()}: Busy decreased to ${Math.max(0, project.busy - 1)}`)}
+                    disabled={project.busy <= 0}
                     style={{
-                      background: 'var(--bg-secondary)',
-                      color: 'var(--primary)',
+                      background: project.busy <= 0 ? 'var(--gray-4)' : 'var(--bg-secondary)',
                       border: 'none',
-                      padding: '8px 12px',
-                      borderRadius: '12px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: 500,
-                      transition: 'all 0.2s ease'
+                      width: '28px',
+                      height: '28px',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: project.busy <= 0 ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s ease',
+                      opacity: project.busy <= 0 ? 0.5 : 1
                     }}
                     onMouseEnter={(e) => {
-                      e.target.style.background = 'var(--primary)';
-                      e.target.style.color = 'white';
-                      e.target.style.transform = 'translateX(-2px)';
+                      if (project.busy > 0) {
+                        e.target.style.background = 'var(--gray-3)';
+                        e.target.style.transform = 'translateY(-1px)';
+                      }
                     }}
                     onMouseLeave={(e) => {
-                      e.target.style.background = 'var(--bg-secondary)';
-                      e.target.style.color = 'var(--primary)';
-                      e.target.style.transform = 'translateX(0)';
+                      if (project.busy > 0) {
+                        e.target.style.background = 'var(--bg-secondary)';
+                        e.target.style.transform = 'translateY(0)';
+                      }
                     }}
                   >
-                    ←
+                    <svg width="12" height="2" viewBox="0 0 12 2" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M1 1h10"/>
+                    </svg>
                   </button>
+                  <span style={{
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: 'var(--text-primary)',
+                    minWidth: '20px',
+                    textAlign: 'center'
+                  }}>
+                    {project.busy}
+                  </span>
                   <button
-                    onClick={goToToday}
+                    onClick={() => updateProject(project.id, { busy: project.busy + 1 }, `${new Date().toLocaleString()}: Busy increased to ${project.busy + 1}`)}
+                    disabled={busy >= total}
                     style={{
-                      background: 'var(--bg-secondary)',
-                      color: 'var(--primary)',
+                      background: busy >= total ? 'var(--gray-4)' : 'var(--bg-secondary)',
                       border: 'none',
-                      padding: '8px 12px',
-                      borderRadius: '12px',
+                      width: '28px',
+                      height: '28px',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: busy >= total ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s ease',
+                      opacity: busy >= total ? 0.5 : 1
+                    }}
+                    onMouseEnter={(e) => {
+                      if (busy < total) {
+                        e.target.style.background = 'var(--gray-3)';
+                        e.target.style.transform = 'translateY(-1px)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (busy < total) {
+                        e.target.style.background = 'var(--bg-secondary)';
+                        e.target.style.transform = 'translateY(0)';
+                      }
+                    }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M6 1v10M1 6h10"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{
+                display: 'flex',
+                gap: '8px',
+                justifyContent: 'space-between'
+              }}>
+                <button
+                  onClick={() => openComments(project.id)}
+                  style={{
+                    flex: 1,
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    border: 'none',
+                    padding: '8px 12px',
+                    borderRadius: '10px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    outline: 'none'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = 'var(--gray-3)';
+                    e.target.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'var(--bg-secondary)';
+                    e.target.style.transform = 'translateY(0)';
+                  }}
+                >
+                  Comments ({project.comments?.filter(c => !c.ignored && !c.deleted).length || 0})
+                </button>
+                <button
+                  onClick={() => openHistory(project.id)}
+                  style={{
+                    flex: 1,
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    border: 'none',
+                    padding: '8px 12px',
+                    borderRadius: '10px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    outline: 'none'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = 'var(--gray-3)';
+                    e.target.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'var(--bg-secondary)';
+                    e.target.style.transform = 'translateY(0)';
+                  }}
+                >
+                  History
+                </button>
+              </div>
+
+              {/* Admin Actions */}
+              {isAdmin && (
+                <div style={{
+                  display: 'flex',
+                  gap: '8px',
+                  marginTop: '12px',
+                  paddingTop: '12px',
+                  borderTop: '0.5px solid var(--separator)'
+                }}>
+                  <button
+                    onClick={() => openColorPickerModal(project.id)}
+                    style={{
+                      flex: 1,
+                      background: 'var(--bg-secondary)',
+                      color: 'var(--text-primary)',
+                      border: 'none',
+                      padding: '6px 12px',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                      fontWeight: '500',
                       cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: 500,
                       transition: 'all 0.2s ease'
                     }}
                     onMouseEnter={(e) => {
-                      e.target.style.background = 'var(--primary)';
-                      e.target.style.color = 'white';
+                      e.target.style.background = 'var(--gray-3)';
                       e.target.style.transform = 'translateY(-1px)';
                     }}
                     onMouseLeave={(e) => {
                       e.target.style.background = 'var(--bg-secondary)';
-                      e.target.style.color = 'var(--primary)';
                       e.target.style.transform = 'translateY(0)';
                     }}
                   >
-                    Today
+                    Color
                   </button>
                   <button
-                    onClick={() => changeMonth(1)}
+                    onClick={() => showConfirmCompleteModal(project.id)}
+                    disabled={project.status === 'Completed'}
                     style={{
-                      background: 'var(--bg-secondary)',
-                      color: 'var(--primary)',
+                      flex: 1,
+                      background: project.status === 'Completed' ? 'var(--gray-4)' : 'var(--success)',
+                      color: project.status === 'Completed' ? 'var(--text-tertiary)' : 'white',
                       border: 'none',
-                      padding: '8px 12px',
-                      borderRadius: '12px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: 500,
-                      transition: 'all 0.2s ease'
+                      padding: '6px 12px',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                      fontWeight: '500',
+                      cursor: project.status === 'Completed' ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s ease',
+                      opacity: project.status === 'Completed' ? 0.6 : 1
                     }}
                     onMouseEnter={(e) => {
-                      e.target.style.background = 'var(--primary)';
-                      e.target.style.color = 'white';
-                      e.target.style.transform = 'translateX(2px)';
+                      if (project.status !== 'Completed') {
+                        e.target.style.background = '#2AA44F';
+                        e.target.style.transform = 'translateY(-1px)';
+                      }
                     }}
                     onMouseLeave={(e) => {
-                      e.target.style.background = 'var(--bg-secondary)';
-                      e.target.style.color = 'var(--primary)';
-                      e.target.style.transform = 'translateX(0)';
+                      if (project.status !== 'Completed') {
+                        e.target.style.background = 'var(--success)';
+                        e.target.style.transform = 'translateY(0)';
+                      }
                     }}
                   >
-                    →
+                    Complete
                   </button>
-                </div>
-                <div style={{
-                  fontSize: '18px',
-                  fontWeight: 700
-                }}>
-                  {monthNames[currentDate.month]} {currentDate.year}
-                </div>
-                <div style={{ width: 100 }}></div>
-              </div>
-
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(7, 1fr)',
-                gap: '6px',
-                marginBottom: '12px'
-              }}>
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-                  <div key={d} style={{
-                    fontWeight: 700,
-                    fontSize: '12px',
-                    textAlign: 'center',
-                    color: 'var(--text-quaternary)',
-                    textTransform: 'uppercase'
-                  }}>
-                    {d}
-                  </div>
-                ))}
-              </div>
-
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(7, 1fr)',
-                gap: '6px'
-              }}>
-                {Array.from({ length: firstDayIndex }).map((_, i) => (
-                  <div key={'blank-' + i} style={{
-                    padding: '10px',
-                    borderRadius: '10px',
-                    background: 'transparent',
-                    textAlign: 'center'
-                  }}></div>
-                ))}
-
-                {monthDays.map((day, i) => {
-                  const key = formatDateToYYYYMMDD(day);
-                  const projects = getProjectsForDay(key);
-                  const tooltipText = projectsOnDay(key).join('\n');
-                  const titleAttr = `${key} — ${projects.length} project(s).\n${tooltipText}`;
-                  
-                  return (
-                    <div
-                      key={i}
-                      style={{
-                        padding: '10px',
-                        borderRadius: '10px',
-                        background: createDayBackground(key),
-                        color: projects.length > 0 ? '#fff' : '#000',
-                        textAlign: 'center',
-                        border: dayBorder(key),
-                        position: 'relative',
-                        fontSize: '14px',
-                        fontWeight: 500,
-                        cursor: 'pointer',
-                        textShadow: projects.length > 0 ? '1px 1px 2px rgba(0,0,0,0.7)' : 'none',
-                        transition: 'all 0.2s ease'
-                      }}
-                      title={titleAttr}
-                      onMouseEnter={(e) => {
-                        e.target.style.transform = 'scale(1.1)';
-                        e.target.style.zIndex = '10';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.transform = 'scale(1)';
-                        e.target.style.zIndex = '1';
-                      }}
-                    >
-                      {day.getDate()}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Add CSS animations */}
-        <style>
-          {`
-            @keyframes slideIn {
-              from {
-                opacity: 0;
-                transform: translateX(-50%) translateY(-20px);
-              }
-              to {
-                opacity: 1;
-                transform: translateX(-50%) translateY(0);
-              }
-            }
-            
-            @keyframes fadeInUp {
-              from {
-                opacity: 0;
-                transform: translateY(20px);
-              }
-              to {
-                opacity: 1;
-                transform: translateY(0);
-              }
-            }
-            
-            @keyframes pulse {
-              0%, 100% {
-                opacity: 1;
-              }
-              50% {
-                opacity: 0.7;
-              }
-            }
-            
-            .modal-backdrop {
-              animation: fadeIn 0.2s ease-out;
-            }
-            
-            .modal-content {
-              animation: slideInModal 0.3s ease-out;
-            }
-            
-            @keyframes fadeIn {
-              from { opacity: 0; }
-              to { opacity: 1; }
-            }
-            
-            @keyframes slideInModal {
-              from {
-                opacity: 0;
-                transform: scale(0.9) translateY(-10px);
-              }
-              to {
-                opacity: 1;
-                transform: scale(1) translateY(0);
-              }
-            }
-          `}
-        </style>
-      </div>
-
-      {/* All modals */}
-      {passwordModal && (
-        <div className="modal-backdrop" style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          background: 'rgba(0, 0, 0, 0.4)',
-          zIndex: 1200,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <div className="modal-content" style={{
-            background: 'var(--bg-primary)',
-            borderRadius: '18px',
-            maxWidth: '400px',
-            textAlign: 'center',
-            padding: '24px'
-          }}>
-            <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>Admin Access Required</div>
-            <input
-              type="password"
-              placeholder="Enter admin password"
-              value={passwordInput}
-              onChange={(e) => setPasswordInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && checkPassword()}
-              style={{
-                width: '100%',
-                padding: '10px',
-                borderRadius: '10px',
-                border: '1px solid var(--gray-4)',
-                marginBottom: '16px',
-                fontSize: '16px'
-              }}
-              autoFocus
-            />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              <button 
-                onClick={() => {
-                  setPasswordModal(false);
-                  setPasswordInput('');
-                }} 
-                style={{
-                  background: 'var(--bg-secondary)',
-                  color: 'var(--text-primary)',
-                  border: 'none',
-                  padding: '10px 20px',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={checkPassword} 
-                style={{
-                  background: 'var(--primary)',
-                  color: 'white',
-                  border: 'none',
-                  padding: '10px 20px',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                Complete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {colorPickerModal.open && (
-        <div className="modal-backdrop" style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          background: 'rgba(0, 0, 0, 0.4)',
-          zIndex: 1000,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }} onClick={closeColorPickerModal}>
-          <div className="modal-content" style={{
-            background: 'var(--bg-primary)',
-            borderRadius: '18px',
-            width: '92%',
-            maxWidth: '400px',
-            padding: '24px'
-          }} onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>Choose Project Color</div>
-            
-            <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontSize: '14px', marginBottom: '8px', color: 'var(--text-secondary)' }}>Current Color:</div>
-              <div style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '50%',
-                backgroundColor: colorPickerModal.currentColor,
-                margin: '0 auto',
-                marginBottom: '16px',
-                border: '3px solid #fff',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-              }}></div>
-            </div>
-
-            <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontSize: '14px', marginBottom: '8px', color: 'var(--text-secondary)' }}>Select New Color:</div>
-              <input
-                type="color"
-                value={colorPickerModal.currentColor}
-                onChange={(e) => setColorPickerModal(prev => ({ ...prev, currentColor: e.target.value }))}
-                style={{
-                  width: '100%',
-                  height: '40px',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer'
-                }}
-              />
-            </div>
-
-            <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontSize: '14px', marginBottom: '8px', color: 'var(--text-secondary)' }}>Standard Color Palette:</div>
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(8, 1fr)',
-                gap: '6px'
-              }}>
-                {[
-                  // Reds
-                  '#FF0000', '#FF3333', '#FF6666', '#FF9999',
-                  // Oranges  
-                  '#FF8C00', '#FFA500', '#FFB84D', '#FFCC80',
-                  // Yellows
-                  '#FFD700', '#FFFF00', '#FFFF66', '#FFFF99',
-                  // Greens
-                  '#008000', '#32CD32', '#90EE90', '#98FB98',
-                  // Blues
-                  '#0000FF', '#4169E1', '#87CEEB', '#ADD8E6',
-                  // Purples
-                  '#800080', '#9932CC', '#DDA0DD', '#E6E6FA',
-                  // Pinks
-                  '#FF1493', '#FF69B4', '#FFB6C1', '#FFC0CB',
-                  // Browns
-                  '#8B4513', '#A0522D', '#CD853F', '#D2B48C',
-                  // Grays
-                  '#000000', '#404040', '#808080', '#C0C0C0',
-                  // Additional colors
-                  '#FFFFFF', '#00FFFF', '#FF00FF', '#00FF00',
-                  '#FFE4E1', '#F0E68C', '#E0FFFF', '#F5F5DC',
-                  '#FF4500', '#DC143C', '#00CED1', '#9370DB',
-                  '#228B22', '#B22222', '#4682B4', '#D2691E'
-                ].map((color, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => setColorPickerModal(prev => ({ ...prev, currentColor: color }))}
+                  <button
+                    onClick={() => showConfirmDeleteModal(project.id)}
                     style={{
-                      width: '28px',
-                      height: '28px',
-                      borderRadius: '4px',
-                      backgroundColor: color,
+                      flex: 1,
+                      background: 'var(--danger)',
+                      color: 'white',
+                      border: 'none',
+                      padding: '6px 12px',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                      fontWeight: '500',
                       cursor: 'pointer',
-                      border: colorPickerModal.currentColor === color ? '3px solid var(--primary)' : color === '#FFFFFF' ? '2px solid #ddd' : '2px solid transparent',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
                       transition: 'all 0.2s ease'
                     }}
                     onMouseEnter={(e) => {
-                      e.target.style.transform = 'scale(1.1)';
+                      e.target.style.background = '#D70015';
+                      e.target.style.transform = 'translateY(-1px)';
                     }}
                     onMouseLeave={(e) => {
-                      e.target.style.transform = 'scale(1)';
+                      e.target.style.background = 'var(--danger)';
+                      e.target.style.transform = 'translateY(0)';
                     }}
-                  ></div>
-                ))}
-              </div>
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
             </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              <button onClick={closeColorPickerModal} style={{
-                background: 'var(--bg-secondary)', 
-                padding: '8px 16px', 
-                borderRadius: '10px', 
-                border: 'none', 
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
-              }}>Cancel</button>
-              <button onClick={saveProjectColor} style={{
-                background: 'var(--primary)', 
-                color: 'white', 
-                padding: '8px 16px', 
-                borderRadius: '10px', 
-                border: 'none', 
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
-              }}>Save Color</button>
-            </div>
-          </div>
+          ))}
         </div>
-      )}
 
-      {isAlertOpen && (
-        <div className="modal-backdrop" style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          background: 'rgba(0, 0, 0, 0.4)',
-          zIndex: 1200,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <div className="modal-content" style={{
-            background: 'var(--bg-primary)',
-            borderRadius: '18px',
-            maxWidth: '400px',
-            textAlign: 'center',
-            padding: '24px'
-          }}>
-            <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>Attention</div>
-            <div style={{ marginBottom: '20px' }}>{alertMessage}</div>
-            <button onClick={() => setIsAlertOpen(false)} style={{
-              background: 'var(--primary)',
-              color: 'white',
-              border: 'none',
-              padding: '10px 20px',
-              borderRadius: '10px',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease'
-            }}>OK</button>
-          </div>
-        </div>
-      )}
-
-      {commentsForId && (
-        <div className="modal-backdrop" style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          background: 'rgba(0, 0, 0, 0.4)',
-          backdropFilter: 'blur(40px)',
-          WebkitBackdropFilter: 'blur(40px)',
-          zIndex: 1000,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }} onClick={closeComments}>
-          <div className="modal-content" style={{
-            background: 'var(--bg-primary)',
-            borderRadius: '18px',
-            width: '92%',
-            maxWidth: '920px',
-            maxHeight: '86vh',
-            overflow: 'hidden',
-            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+        {/* Add Project Modal */}
+        {isAddModalOpen && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
             display: 'flex',
-            flexDirection: 'column'
-          }} onClick={e => e.stopPropagation()}>
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}>
             <div style={{
-              padding: '18px 24px',
-              borderBottom: '0.5px solid var(--separator)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
+              background: 'var(--bg-primary)',
+              borderRadius: '20px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '400px',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.2)'
             }}>
-              <div>
-                <div style={{ fontSize: '18px', fontWeight: 700 }}>
-                  Comments — {state.projects.find(p => p.id === commentsForId)?.name}
+              <h3 style={{ margin: '0 0 20px 0', fontSize: '20px', fontWeight: '600' }}>Add New Project</h3>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Project Name</label>
+                  <input
+                    type="text"
+                    value={newProject.name}
+                    onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '0.5px solid var(--separator)',
+                      borderRadius: '10px',
+                      fontSize: '16px',
+                      outline: 'none',
+                      background: 'var(--bg-primary)'
+                    }}
+                    placeholder="Enter project name"
+                  />
                 </div>
-                <div style={{ fontSize: '12px', color: 'var(--text-quaternary)' }}>
-                  {state.projects.find(p => p.id === commentsForId)?.comments?.length || 0} comment(s)
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Start Date</label>
+                    <input
+                      type="date"
+                      value={newProject.startDate}
+                      onChange={(e) => setNewProject({ ...newProject, startDate: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '0.5px solid var(--separator)',
+                        borderRadius: '10px',
+                        fontSize: '14px',
+                        outline: 'none',
+                        background: 'var(--bg-primary)'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Due Date</label>
+                    <input
+                      type="date"
+                      value={newProject.dueDate}
+                      onChange={(e) => setNewProject({ ...newProject, dueDate: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '0.5px solid var(--separator)',
+                        borderRadius: '10px',
+                        fontSize: '14px',
+                        outline: 'none',
+                        background: 'var(--bg-primary)'
+                      }}
+                    />
+                  </div>
+                </div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Status</label>
+                    <select
+                      value={newProject.status}
+                      onChange={(e) => setNewProject({ ...newProject, status: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '0.5px solid var(--separator)',
+                        borderRadius: '10px',
+                        fontSize: '14px',
+                        outline: 'none',
+                        background: 'var(--bg-primary)'
+                      }}
+                    >
+                      {Object.keys(statusColors).map(status => (
+                        <option key={status} value={status}>{status}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Priority</label>
+                    <select
+                      value={newProject.priority}
+                      onChange={(e) => setNewProject({ ...newProject, priority: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '0.5px solid var(--separator)',
+                        borderRadius: '10px',
+                        fontSize: '14px',
+                        outline: 'none',
+                        background: 'var(--bg-primary)'
+                      }}
+                    >
+                      {Object.keys(priorityColors).map(priority => (
+                        <option key={priority} value={priority}>{priority}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Busy Artists</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <button
+                      onClick={() => setNewProject({ ...newProject, busy: Math.max(0, newProject.busy - 1) })}
+                      style={{
+                        background: 'var(--bg-secondary)',
+                        border: 'none',
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.background = 'var(--gray-3)';
+                        e.target.style.transform = 'translateY(-1px)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.background = 'var(--bg-secondary)';
+                        e.target.style.transform = 'translateY(0)';
+                      }}
+                    >
+                      <svg width="14" height="2" viewBox="0 0 14 2" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M1 1h12"/>
+                      </svg>
+                    </button>
+                    <span style={{ fontSize: '18px', fontWeight: '600', minWidth: '30px', textAlign: 'center' }}>
+                      {newProject.busy}
+                    </span>
+                    <button
+                      onClick={() => setNewProject({ ...newProject, busy: newProject.busy + 1 })}
+                      style={{
+                        background: 'var(--bg-secondary)',
+                        border: 'none',
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.background = 'var(--gray-3)';
+                        e.target.style.transform = 'translateY(-1px)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.background = 'var(--bg-secondary)';
+                        e.target.style.transform = 'translateY(0)';
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M7 1v12M1 7h12"/>
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
-              <button onClick={closeComments} style={{
-                background: 'var(--bg-tertiary)',
-                border: 'none',
-                padding: '8px 16px',
-                borderRadius: '10px',
-                fontSize: '14px',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
-              }}>Close</button>
-            </div>
-            <div style={{ padding: '24px', overflow: 'auto', flex: 1 }}>
-              <div style={{
-                border: '1px solid var(--separator)',
-                borderRadius: '12px',
-                padding: '12px',
-                minHeight: '200px',
-                maxHeight: '400px',
-                overflowY: 'auto',
-                background: 'var(--bg-secondary)',
-                marginBottom: '16px'
-              }}>
-                {state.projects.find(p => p.id === commentsForId)?.comments?.length === 0 && (
-                  <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-quaternary)' }}>
-                    No comments yet
-                  </div>
-                )}
-                {state.projects.find(p => p.id === commentsForId)?.comments?.map(c => (
-                  <div key={c.id} style={{
-                    padding: '12px',
-                    borderRadius: '10px',
-                    background: c.deleted || c.ignored ? '#fafafa' : 'var(--bg-primary)',
-                    marginBottom: '8px',
-                    border: '1px solid var(--separator)',
-                    transition: 'all 0.2s ease'
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{
-                          fontSize: '14px',
-                          color: (c.deleted || c.ignored) ? 'var(--text-quaternary)' : 'var(--text-primary)',
-                          textDecoration: (c.deleted || c.ignored) ? 'line-through' : 'none'
-                        }}>
-                          {c.text || (c.deleted ? '(deleted)' : '')}
-                        </div>
-                        <div style={{ fontSize: '11px', color: 'var(--text-quaternary)', marginTop: '6px' }}>
-                          {c.ts ? new Date(c.ts).toLocaleString() : ''}
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        <button onClick={() => startEdit(c.id, c.text)} style={{
-                          background: 'var(--bg-secondary)',
-                          border: 'none',
-                          padding: '6px 10px',
-                          borderRadius: '8px',
-                          fontSize: '12px',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease'
-                        }}>✏️ Edit</button>
-                        <button 
-                          disabled={c.ignored} 
-                          onClick={() => confirmIgnoreComment(c.id)} 
-                          style={{
-                            background: 'var(--bg-secondary)',
-                            border: 'none',
-                            padding: '6px 10px',
-                            borderRadius: '8px',
-                            fontSize: '12px',
-                            cursor: c.ignored ? 'not-allowed' : 'pointer',
-                            opacity: c.ignored ? 0.5 : 1,
-                            transition: 'all 0.2s ease'
-                          }}
-                        >{c.ignored ? 'Ignored' : 'Ignore'}</button>
-                      </div>
-                    </div>
-                    {editingId === c.id && (
-                      <div style={{ marginTop: '8px', display: 'flex', gap: '8px' }}>
-                        <input
-                          value={editingText}
-                          onChange={e => setEditingText(e.target.value)}
-                          placeholder='Edit comment...'
-                          style={{
-                            flex: 1,
-                            padding: '8px',
-                            borderRadius: '10px',
-                            border: '1px solid var(--gray-4)',
-                            transition: 'all 0.2s ease'
-                          }}
-                        />
-                        <button onClick={() => saveEdit(c.id)} style={{
-                          background: 'var(--primary)',
-                          color: 'white',
-                          border: 'none',
-                          padding: '8px 16px',
-                          borderRadius: '10px',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease'
-                        }}>Save</button>
-                        <button onClick={() => { setEditingId(null); setEditingText(''); }} style={{
-                          background: 'var(--bg-secondary)',
-                          border: 'none',
-                          padding: '8px 16px',
-                          borderRadius: '10px',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease'
-                        }}>Cancel</button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <input
-                  value={draft}
-                  onChange={e => setDraft(e.target.value)}
-                  placeholder='Write a comment...'
+              
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
+                <button
+                  onClick={() => setIsAddModalOpen(false)}
                   style={{
-                    flex: 1,
-                    padding: '10px',
-                    borderRadius: '12px',
-                    border: '1px solid var(--gray-4)',
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    fontWeight: '500',
+                    cursor: 'pointer',
                     transition: 'all 0.2s ease'
                   }}
-                />
+                  onMouseEnter={(e) => {
+                    e.target.style.background = 'var(--gray-3)';
+                    e.target.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'var(--bg-secondary)';
+                    e.target.style.transform = 'translateY(0)';
+                  }}
+                >
+                  Cancel
+                </button>
                 <button
-                  disabled={!draft.trim()}
-                  onClick={() => setConfirmAddOpen(true)}
+                  onClick={addProject}
                   style={{
                     background: 'var(--primary)',
                     color: 'white',
                     border: 'none',
                     padding: '10px 20px',
-                    borderRadius: '10px',
-                    cursor: draft.trim() ? 'pointer' : 'not-allowed',
-                    opacity: draft.trim() ? 1 : 0.5,
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    fontWeight: '500',
+                    cursor: 'pointer',
                     transition: 'all 0.2s ease'
                   }}
-                >Add</button>
+                  onMouseEnter={(e) => {
+                    e.target.style.background = '#0056CC';
+                    e.target.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'var(--primary)';
+                    e.target.style.transform = 'translateY(0)';
+                  }}
+                >
+                  Add Project
+                </button>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {historyForId && (
-        <div className="modal-backdrop" style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          background: 'rgba(0, 0, 0, 0.4)',
-          backdropFilter: 'blur(40px)',
-          WebkitBackdropFilter: 'blur(40px)',
-          zIndex: 1000,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }} onClick={closeHistory}>
-          <div className="modal-content" style={{
-            background: 'var(--bg-primary)',
-            borderRadius: '18px',
-            width: '92%',
-            maxWidth: '920px',
-            maxHeight: '86vh',
-            overflow: 'hidden',
-            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+        {/* Comments Modal */}
+        {commentsForId && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
             display: 'flex',
-            flexDirection: 'column'
-          }} onClick={e => e.stopPropagation()}>
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}>
             <div style={{
-              padding: '18px 24px',
-              borderBottom: '0.5px solid var(--separator)',
+              background: 'var(--bg-primary)',
+              borderRadius: '20px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '500px',
+              maxHeight: '80vh',
               display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
+              flexDirection: 'column',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.2)'
             }}>
-              <div>
-                <div style={{ fontSize: '18px', fontWeight: 700 }}>
-                  History — {state.projects.find(p => p.id === historyForId)?.name}
-                </div>
-                <div style={{ fontSize: '12px', color: 'var(--text-quaternary)' }}>
-                  {(state.projects.find(p => p.id === historyForId)?.history || []).length} record(s)
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '20px'
+              }}>
+                <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '600' }}>
+                  Comments for {state.projects.find(p => p.id === commentsForId)?.name}
+                </h3>
+                <button
+                  onClick={closeComments}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '24px',
+                    cursor: 'pointer',
+                    color: 'var(--text-tertiary)',
+                    transition: 'color 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => e.target.style.color = 'var(--text-primary)'}
+                  onMouseLeave={(e) => e.target.style.color = 'var(--text-tertiary)'}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div style={{
+                flex: 1,
+                overflowY: 'auto',
+                marginBottom: '20px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px'
+              }}>
+                {state.projects.find(p => p.id === commentsForId)?.comments
+                  ?.filter(c => !c.deleted)
+                  .sort((a, b) => new Date(b.ts) - new Date(a.ts))
+                  .map(comment => (
+                    <div key={comment.id} style={{
+                      background: comment.ignored ? 'var(--bg-secondary)' : 'var(--bg-primary)',
+                      border: `0.5px solid ${comment.ignored ? 'var(--gray-4)' : 'var(--separator)'}`,
+                      borderRadius: '12px',
+                      padding: '12px',
+                      opacity: comment.ignored ? 0.6 : 1
+                    }}>
+                      {editingId === comment.id ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <textarea
+                            value={editingText}
+                            onChange={(e) => setEditingText(e.target.value)}
+                            style={{
+                              width: '100%',
+                              minHeight: '60px',
+                              padding: '8px',
+                              border: '0.5px solid var(--separator)',
+                              borderRadius: '8px',
+                              fontSize: '14px',
+                              outline: 'none',
+                              resize: 'vertical',
+                              background: 'var(--bg-primary)'
+                            }}
+                          />
+                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                            <button
+                              onClick={() => setEditingId(null)}
+                              style={{
+                                background: 'var(--bg-secondary)',
+                                color: 'var(--text-primary)',
+                                border: 'none',
+                                padding: '6px 12px',
+                                borderRadius: '8px',
+                                fontSize: '12px',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={() => saveEdit(comment.id)}
+                              style={{
+                                background: 'var(--primary)',
+                                color: 'white',
+                                border: 'none',
+                                padding: '6px 12px',
+                                borderRadius: '8px',
+                                fontSize: '12px',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Save
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div style={{ fontSize: '14px', color: 'var(--text-tertiary)', marginBottom: '4px' }}>
+                            {new Date(comment.ts).toLocaleString()}
+                            {comment.ignored && ' (Ignored)'}
+                          </div>
+                          <div style={{ fontSize: '16px', color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>
+                            {comment.text}
+                          </div>
+                          {!comment.ignored && (
+                            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                              <button
+                                onClick={() => startEdit(comment.id, comment.text)}
+                                style={{
+                                  background: 'var(--bg-secondary)',
+                                  color: 'var(--text-primary)',
+                                  border: 'none',
+                                  padding: '4px 8px',
+                                  borderRadius: '6px',
+                                  fontSize: '12px',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => confirmIgnoreComment(comment.id)}
+                                style={{
+                                  background: 'var(--warning)',
+                                  color: 'white',
+                                  border: 'none',
+                                  padding: '4px 8px',
+                                  borderRadius: '6px',
+                                  fontSize: '12px',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                Ignore
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                
+                {state.projects.find(p => p.id === commentsForId)?.comments?.filter(c => !c.deleted).length === 0 && (
+                  <div style={{
+                    textAlign: 'center',
+                    color: 'var(--text-tertiary)',
+                    fontStyle: 'italic',
+                    padding: '20px'
+                  }}>
+                    No comments yet
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <textarea
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  placeholder="Add a new comment..."
+                  style={{
+                    width: '100%',
+                    minHeight: '80px',
+                    padding: '12px',
+                    border: '0.5px solid var(--separator)',
+                    borderRadius: '12px',
+                    fontSize: '16px',
+                    outline: 'none',
+                    resize: 'vertical',
+                    background: 'var(--bg-primary)'
+                  }}
+                />
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                  <button
+                    onClick={() => setConfirmAddOpen(true)}
+                    disabled={!draft.trim()}
+                    style={{
+                      background: draft.trim() ? 'var(--primary)' : 'var(--gray-4)',
+                      color: 'white',
+                      border: 'none',
+                      padding: '10px 20px',
+                      borderRadius: '14px',
+                      fontSize: '16px',
+                      fontWeight: '500',
+                      cursor: draft.trim() ? 'pointer' : 'not-allowed',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (draft.trim()) {
+                        e.target.style.background = '#0056CC';
+                        e.target.style.transform = 'translateY(-1px)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (draft.trim()) {
+                        e.target.style.background = 'var(--primary)';
+                        e.target.style.transform = 'translateY(0)';
+                      }
+                    }}
+                  >
+                    Add Comment
+                  </button>
                 </div>
               </div>
-              <button
-                onClick={closeHistory}
-                style={{
-                  background: 'var(--bg-tertiary)',
-                  border: 'none',
-                  padding: '8px 16px',
-                  borderRadius: '10px',
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  color: 'var(--text-primary)',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                Close
-              </button>
+
+              {isAdmin && (
+                <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '0.5px solid var(--separator)' }}>
+                  <button
+                    onClick={() => setClearCommentsModal(commentsForId)}
+                    style={{
+                      background: 'var(--danger)',
+                      color: 'white',
+                      border: 'none',
+                      padding: '8px 16px',
+                      borderRadius: '10px',
+                      fontSize: '14px',
+                      cursor: 'pointer',
+                      width: '100%'
+                    }}
+                  >
+                    Clear All Comments (Admin)
+                  </button>
+                </div>
+              )}
             </div>
-            <div style={{ padding: '24px', overflow: 'auto', flex: 1 }}>
-              <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                {(state.projects.find(p => p.id === historyForId)?.history || []).length === 0 && (
-                  <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-quaternary)' }}>
+          </div>
+        )}
+
+        {/* Confirm Add Comment Modal */}
+        {confirmAddOpen && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100
+          }}>
+            <div style={{
+              background: 'var(--bg-primary)',
+              borderRadius: '20px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '400px',
+              textAlign: 'center'
+            }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Add Comment?</h3>
+              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>Are you sure you want to add this comment?</p>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                <button
+                  onClick={() => setConfirmAddOpen(false)}
+                  style={{
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={addCommentConfirmed}
+                  style={{
+                    background: 'var(--primary)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Confirm Ignore Comment Modal */}
+        {confirmIgnore && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100
+          }}>
+            <div style={{
+              background: 'var(--bg-primary)',
+              borderRadius: '20px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '400px',
+              textAlign: 'center'
+            }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Ignore Comment?</h3>
+              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>This comment will be marked as ignored but not deleted.</p>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                <button
+                  onClick={() => setConfirmIgnore(null)}
+                  style={{
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={doIgnore}
+                  style={{
+                    background: 'var(--warning)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Ignore
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* History Modal */}
+        {historyForId && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}>
+            <div style={{
+              background: 'var(--bg-primary)',
+              borderRadius: '20px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '600px',
+              maxHeight: '80vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.2)'
+            }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '20px'
+              }}>
+                <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '600' }}>
+                  History for {state.projects.find(p => p.id === historyForId)?.name}
+                </h3>
+                <button
+                  onClick={closeHistory}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '24px',
+                    cursor: 'pointer',
+                    color: 'var(--text-tertiary)',
+                    transition: 'color 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => e.target.style.color = 'var(--text-primary)'}
+                  onMouseLeave={(e) => e.target.style.color = 'var(--text-tertiary)'}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div style={{
+                flex: 1,
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px'
+              }}>
+                {state.projects.find(p => p.id === historyForId)?.history?.map((entry, index) => (
+                  <div key={index} style={{
+                    padding: '12px',
+                    background: 'var(--bg-secondary)',
+                    borderRadius: '10px',
+                    fontSize: '14px',
+                    color: 'var(--text-primary)'
+                  }}>
+                    {entry}
+                  </div>
+                ))}
+                
+                {(!state.projects.find(p => p.id === historyForId)?.history?.length) && (
+                  <div style={{
+                    textAlign: 'center',
+                    color: 'var(--text-tertiary)',
+                    fontStyle: 'italic',
+                    padding: '20px'
+                  }}>
                     No history yet
                   </div>
                 )}
-                {(state.projects.find(p => p.id === historyForId)?.history || []).slice().reverse().map((h, idx) => {
-                  const sep = h.lastIndexOf(': ');
-                  let datePart = '';
-                  let msgPart = h;
-                  if (sep !== -1) {
-                    datePart = h.slice(0, sep);
-                    msgPart = h.slice(sep + 2);
-                  }
-                  return (
-                    <div key={idx} style={{
-                      padding: '12px',
-                      background: 'var(--bg-secondary)',
+              </div>
+
+              {isAdmin && (
+                <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '0.5px solid var(--separator)' }}>
+                  <button
+                    onClick={() => setClearHistoryModal(historyForId)}
+                    style={{
+                      background: 'var(--danger)',
+                      color: 'white',
+                      border: 'none',
+                      padding: '8px 16px',
                       borderRadius: '10px',
-                      marginBottom: '8px',
-                      border: '1px solid var(--separator)',
-                      transition: 'all 0.2s ease',
-                      animation: `fadeInUp 0.3s ease-out ${0.05 * idx}s both`
-                    }}>
-                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                        {msgPart}
-                      </div>
-                      <div style={{ fontSize: '12px', color: 'var(--text-quaternary)', marginTop: '6px' }}>
-                        {datePart}
-                      </div>
-                    </div>
-                  );
-                })}
+                      fontSize: '14px',
+                      cursor: 'pointer',
+                      width: '100%'
+                    }}
+                  >
+                    Clear History (Admin)
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Password Modal */}
+        {passwordModal && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}>
+            <div style={{
+              background: 'var(--bg-primary)',
+              borderRadius: '20px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '400px',
+              textAlign: 'center'
+            }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Admin Access</h3>
+              <p style={{ margin: '0 0 20px 0', color: 'var(--text-tertiary)' }}>Enter admin password:</p>
+              <input
+                type="password"
+                value={passwordInput}
+                onChange={(e) => setPasswordInput(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && checkPassword()}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '0.5px solid var(--separator)',
+                  borderRadius: '10px',
+                  fontSize: '16px',
+                  outline: 'none',
+                  marginBottom: '20px',
+                  background: 'var(--bg-primary)'
+                }}
+                placeholder="Password"
+              />
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                <button
+                  onClick={() => {
+                    setPasswordModal(false);
+                    setPasswordInput('');
+                  }}
+                  style={{
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={checkPassword}
+                  style={{
+                    background: 'var(--primary)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Enter
+                </button>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {isAddModalOpen && (
-        <div className="modal-backdrop" style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          background: 'rgba(0, 0, 0, 0.4)',
-          zIndex: 1000,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }} onClick={() => setIsAddModalOpen(false)}>
-          <div className="modal-content" style={{
-            background: 'var(--bg-primary)',
-            borderRadius: '18px',
-            width: '92%',
-            maxWidth: '500px',
-            padding: '24px'
-          }} onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>Add New Project</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        {/* Alert Message */}
+        {isAlertOpen && (
+          <div style={{
+            position: 'fixed',
+            top: '20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'var(--danger)',
+            color: 'white',
+            padding: '12px 24px',
+            borderRadius: '20px',
+            zIndex: 2000,
+            animation: 'slideIn 0.3s ease-out'
+          }}>
+            {alertMessage}
+          </div>
+        )}
+
+        {/* Clear Comments Confirmation Modal */}
+        {clearCommentsModal && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100
+          }}>
+            <div style={{
+              background: 'var(--bg-primary)',
+              borderRadius: '20px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '400px',
+              textAlign: 'center'
+            }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Clear All Comments?</h3>
+              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>This action cannot be undone. All comments for this project will be permanently deleted.</p>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                <button
+                  onClick={() => setClearCommentsModal(null)}
+                  style={{
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => clearComments(clearCommentsModal)}
+                  style={{
+                    background: 'var(--danger)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Clear All
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Clear History Confirmation Modal */}
+        {clearHistoryModal && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100
+          }}>
+            <div style={{
+              background: 'var(--bg-primary)',
+              borderRadius: '20px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '400px',
+              textAlign: 'center'
+            }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Clear History?</h3>
+              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>This action cannot be undone. All history entries for this project will be permanently deleted.</p>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                <button
+                  onClick={() => setClearHistoryModal(null)}
+                  style={{
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => clearHistory(clearHistoryModal)}
+                  style={{
+                    background: 'var(--danger)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Clear History
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Project Name Modal */}
+        {projectNameModal.open && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}>
+            <div style={{
+              background: 'var(--bg-primary)',
+              borderRadius: '20px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '400px'
+            }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Edit Project Name</h3>
               <input
                 type="text"
+                value={projectNameModal.name}
+                onChange={(e) => setProjectNameModal({ ...projectNameModal, name: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '0.5px solid var(--separator)',
+                  borderRadius: '10px',
+                  fontSize: '16px',
+                  outline: 'none',
+                  marginBottom: '20px',
+                  background: 'var(--bg-primary)'
+                }}
                 placeholder="Project name"
-                value={newProject.name}
-                onChange={(e) => setNewProject(prev => ({ ...prev, name: e.target.value }))}
-                style={{ 
-                  padding: '10px', 
-                  borderRadius: '10px', 
-                  border: '1px solid var(--gray-4)',
-                  transition: 'all 0.2s ease'
-                }}
               />
-              <select
-                value={newProject.status}
-                onChange={(e) => setNewProject(prev => ({ ...prev, status: e.target.value }))}
-                style={{ 
-                  padding: '10px', 
-                  borderRadius: '10px', 
-                  border: '1px solid var(--gray-4)',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <option value="Waiting">Waiting</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Queued">Queued</option>
-                <option value="Hold">Hold</option>
-                <option value="Completed">Completed</option>
-              </select>
-              <input
-                type="date"
-                value={newProject.startDate}
-                onChange={(e) => setNewProject(prev => ({ ...prev, startDate: e.target.value }))}
-                style={{ 
-                  padding: '10px', 
-                  borderRadius: '10px', 
-                  border: '1px solid var(--gray-4)',
-                  transition: 'all 0.2s ease'
-                }}
-              />
-              <input
-                type="date"
-                value={newProject.dueDate}
-                onChange={(e) => setNewProject(prev => ({ ...prev, dueDate: e.target.value }))}
-                style={{ 
-                  padding: '10px', 
-                  borderRadius: '10px', 
-                  border: '1px solid var(--gray-4)',
-                  transition: 'all 0.2s ease'
-                }}
-              />
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <label style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Project Color:</label>
-                <input
-                  type="color"
-                  value={newProject.color}
-                  onChange={(e) => setNewProject(prev => ({ ...prev, color: e.target.value }))}
-                  style={{ 
-                    width: '40px', 
-                    height: '30px', 
-                    border: 'none', 
-                    borderRadius: '6px', 
-                    cursor: 'pointer' 
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={closeProjectNameModal}
+                  style={{
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
                   }}
-                />
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveProjectName}
+                  style={{
+                    background: 'var(--primary)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Save
+                </button>
               </div>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
-              <button onClick={() => setIsAddModalOpen(false)} style={{
-                background: 'var(--bg-secondary)', 
-                padding: '8px 16px', 
-                borderRadius: '10px', 
-                border: 'none', 
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
-              }}>Cancel</button>
-              <button onClick={addProject} style={{
-                background: 'var(--primary)', 
-                color: 'white', 
-                padding: '8px 16px', 
-                borderRadius: '10px', 
-                border: 'none', 
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
-              }}>Add</button>
-            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {projectNameModal.open && (
-        <div className="modal-backdrop" style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          background: 'rgba(0, 0, 0, 0.4)',
-          zIndex: 1000,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }} onClick={closeProjectNameModal}>
-          <div className="modal-content" style={{
-            background: 'var(--bg-primary)',
-            borderRadius: '18px',
-            width: '92%',
-            maxWidth: '400px',
-            padding: '24px'
-          }} onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>Edit Project Name</div>
-            <input
-              type="text"
-              value={projectNameModal.name}
-              onChange={e => setProjectNameModal({ ...projectNameModal, name: e.target.value })}
-              placeholder="Project name"
-              style={{ 
-                width: '100%', 
-                padding: '10px', 
-                borderRadius: '10px', 
-                border: '1px solid var(--gray-4)', 
-                marginBottom: '16px',
-                transition: 'all 0.2s ease'
-              }}
-            />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              <button onClick={closeProjectNameModal} style={{
-                background: 'var(--bg-secondary)', 
-                padding: '8px 16px', 
-                borderRadius: '10px', 
-                border: 'none', 
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
-              }}>Cancel</button>
-              <button onClick={saveProjectName} style={{
-                background: 'var(--primary)', 
-                color: 'white', 
-                padding: '8px 16px', 
-                borderRadius: '10px', 
-                border: 'none', 
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
-              }}>Save</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {confirmAddOpen && (
-        <div className="modal-backdrop" style={{
-          position: 'fixed',
-          inset: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1100,
-          background: 'rgba(0, 0, 0, 0.5)'
-        }}>
-          <div className="modal-content" style={{
-            background: 'var(--bg-primary)',
-            padding: '20px',
-            borderRadius: '12px',
-            maxWidth: '400px'
+        {/* Color Picker Modal */}
+        {colorPickerModal.open && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
           }}>
-            <div style={{ fontWeight: 700, marginBottom: '8px' }}>Are you sure?</div>
-            <div style={{ marginBottom: '16px' }}>Add this comment to the project?</div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              <button onClick={() => setConfirmAddOpen(false)} style={{
-                background: 'var(--bg-secondary)',
-                border: 'none',
-                padding: '8px 16px',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
-              }}>Cancel</button>
-              <button onClick={addCommentConfirmed} style={{
-                background: 'var(--primary)',
-                color: 'white',
-                border: 'none',
-                padding: '8px 16px',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
-              }}>Ok</button>
+            <div style={{
+              background: 'var(--bg-primary)',
+              borderRadius: '20px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '400px'
+            }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Choose Project Color</h3>
+              
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(6, 1fr)',
+                gap: '8px',
+                marginBottom: '20px'
+              }}>
+                {projectColors.map(color => (
+                  <button
+                    key={color}
+                    onClick={() => setColorPickerModal({ ...colorPickerModal, currentColor: color })}
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '8px',
+                      border: colorPickerModal.currentColor === color ? '2px solid var(--primary)' : '2px solid transparent',
+                      background: color,
+                      cursor: 'pointer',
+                      transition: 'transform 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => e.target.style.transform = 'scale(1.1)'}
+                    onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+                  />
+                ))}
+              </div>
+              
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={closeColorPickerModal}
+                  style={{
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveProjectColor}
+                  style={{
+                    background: 'var(--primary)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Save
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {confirmIgnore && (
-        <div className="modal-backdrop" style={{
-          position: 'fixed',
-          inset: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1100,
-          background: 'rgba(0, 0, 0, 0.5)'
-        }}>
-          <div className="modal-content" style={{
-            background: 'var(--bg-primary)',
-            padding: '20px',
-            borderRadius: '12px',
-            maxWidth: '400px'
+        {/* Confirm Delete Modal */}
+        {confirmDeleteModal.open && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100
           }}>
-            <div style={{ fontWeight: 700, marginBottom: '8px' }}>Ignore comment?</div>
-            <div style={{ marginBottom: '16px' }}>Are you sure you want to ignore this comment?</div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              <button onClick={() => setConfirmIgnore(null)} style={{
-                background: 'var(--bg-secondary)',
-                border: 'none',
-                padding: '8px 16px',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
-              }}>No</button>
-              <button onClick={doIgnore} style={{
-                background: 'var(--primary)',
-                color: 'white',
-                border: 'none',
-                padding: '8px 16px',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
-              }}>Yes</button>
+            <div style={{
+              background: 'var(--bg-primary)',
+              borderRadius: '20px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '400px',
+              textAlign: 'center'
+            }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Delete Project?</h3>
+              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>This action cannot be undone. The project and all its data will be permanently deleted.</p>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                <button
+                  onClick={closeConfirmDeleteModal}
+                  style={{
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => deleteProject(confirmDeleteModal.projectId)}
+                  style={{
+                    background: 'var(--danger)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {clearCommentsModal && (
-        <div className="modal-backdrop" style={{
-          position: 'fixed',
-          inset: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1100,
-          background: 'rgba(0, 0, 0, 0.5)'
-        }}>
-          <div className="modal-content" style={{
-            background: 'var(--bg-primary)',
-            padding: '20px',
-            borderRadius: '12px',
-            maxWidth: '400px'
+        {/* Confirm Complete Modal */}
+        {confirmCompleteModal.open && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100
           }}>
-            <div style={{ fontWeight: 700, marginBottom: '8px' }}>Clear All Comments?</div>
-            <div style={{ marginBottom: '16px' }}>Are you sure you want to permanently delete all comments for this project? This action cannot be undone.</div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              <button onClick={() => setClearCommentsModal(null)} style={{
-                background: 'var(--bg-secondary)',
-                border: 'none',
-                padding: '8px 16px',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
-              }}>Cancel</button>
-              <button onClick={() => clearComments(clearCommentsModal)} style={{
-                background: 'var(--danger)',
-                color: 'white',
-                border: 'none',
-                padding: '8px 16px',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
-              }}>Clear All</button>
+            <div style={{
+              background: 'var(--bg-primary)',
+              borderRadius: '20px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '400px',
+              textAlign: 'center'
+            }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Mark as Completed?</h3>
+              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>This project will be marked as completed and all busy artists will be freed up.</p>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                <button
+                  onClick={closeConfirmCompleteModal}
+                  style={{
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => completeProject(confirmCompleteModal.projectId)}
+                  style={{
+                    background: 'var(--success)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Complete
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {clearHistoryModal && (
-        <div className="modal-backdrop" style={{
-          position: 'fixed',
-          inset: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1100,
-          background: 'rgba(0, 0, 0, 0.5)'
-        }}>
-          <div className="modal-content" style={{
-            background: 'var(--bg-primary)',
-            padding: '20px',
-            borderRadius: '12px',
-            maxWidth: '400px'
+        {/* Date Validation Modal */}
+        {dateValidationModal.open && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100
           }}>
-            <div style={{ fontWeight: 700, marginBottom: '8px' }}>Clear All History?</div>
-            <div style={{ marginBottom: '16px' }}>Are you sure you want to permanently delete all history records for this project? This action cannot be undone.</div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              <button onClick={() => setClearHistoryModal(null)} style={{
-                background: 'var(--bg-secondary)',
-                border: 'none',
-                padding: '8px 16px',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
-              }}>Cancel</button>
-              <button onClick={() => clearHistory(clearHistoryModal)} style={{
-                background: 'var(--danger)',
-                color: 'white',
-                border: 'none',
-                padding: '8px 16px',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
-              }}>Clear All</button>
+            <div style={{
+              background: 'var(--bg-primary)',
+              borderRadius: '20px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '400px',
+              textAlign: 'center'
+            }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Date Validation</h3>
+              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>{dateValidationModal.message}</p>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                <button
+                  onClick={closeDateValidationModal}
+                  style={{
+                    background: dateValidationModal.callback ? 'var(--bg-secondary)' : 'var(--primary)',
+                    color: dateValidationModal.callback ? 'var(--text-primary)' : 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {dateValidationModal.callback ? 'Cancel' : 'OK'}
+                </button>
+                {dateValidationModal.callback && (
+                  <button
+                    onClick={() => {
+                      dateValidationModal.callback();
+                      closeDateValidationModal();
+                    }}
+                    style={{
+                      background: 'var(--primary)',
+                      color: 'white',
+                      border: 'none',
+                      padding: '10px 20px',
+                      borderRadius: '14px',
+                      fontSize: '16px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Continue
+                  </button>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </>
+        )}
+
+      </div>
+
+      <style>{`
+        @keyframes slideIn {
+          from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
+          to { transform: translateX(-50%) translateY(0); opacity: 1; }
+        }
+        
+        /* Custom scrollbar styling */
+        ::-webkit-scrollbar {
+          width: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+          background: var(--bg-secondary);
+          border-radius: 3px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+          background: var(--gray-2);
+          border-radius: 3px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+          background: var(--gray-1);
+        }
+        
+        /* Focus styles for accessibility */
+        button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+          outline: 2px solid var(--primary);
+          outline-offset: 2px;
+        }
+      `}</style>
+    </div>
   );
 };
 
 export default ProjectStatusDashboard;
-                  border: 'none',
-                  padding: '10px 20px',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                Login
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {dateValidationModal.open && (
-        <div className="modal-backdrop" style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          background: 'rgba(0, 0, 0, 0.4)',
-          zIndex: 1200,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <div className="modal-content" style={{
-            background: 'var(--bg-primary)',
-            borderRadius: '18px',
-            maxWidth: '400px',
-            textAlign: 'center',
-            padding: '24px'
-          }}>
-            <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>Attention</div>
-            <div style={{ marginBottom: '20px' }}>{dateValidationModal.message}</div>
-            <button 
-              onClick={closeDateValidationModal} 
-              style={{
-                background: 'var(--primary)',
-                color: 'white',
-                border: 'none',
-                padding: '10px 20px',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              OK
-            </button>
-          </div>
-        </div>
-      )}
-
-      {confirmDeleteModal.open && (
-        <div className="modal-backdrop" style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          background: 'rgba(0, 0, 0, 0.4)',
-          zIndex: 1200,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <div className="modal-content" style={{
-            background: 'var(--bg-primary)',
-            borderRadius: '18px',
-            maxWidth: '400px',
-            textAlign: 'center',
-            padding: '24px'
-          }}>
-            <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>Attention</div>
-            <div style={{ marginBottom: '20px' }}>Are you sure you want to delete this project?</div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              <button 
-                onClick={closeConfirmDeleteModal} 
-                style={{
-                  background: 'var(--bg-secondary)',
-                  color: 'var(--text-primary)',
-                  border: 'none',
-                  padding: '10px 20px',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={() => deleteProject(confirmDeleteModal.projectId)} 
-                style={{
-                  background: 'var(--danger)',
-                  color: 'white',
-                  border: 'none',
-                  padding: '10px 20px',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {confirmCompleteModal.open && (
-        <div className="modal-backdrop" style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          background: 'rgba(0, 0, 0, 0.4)',
-          zIndex: 1200,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <div className="modal-content" style={{
-            background: 'var(--bg-primary)',
-            borderRadius: '18px',
-            maxWidth: '400px',
-            textAlign: 'center',
-            padding: '24px'
-          }}>
-            <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>Attention</div>
-            <div style={{ marginBottom: '20px' }}>Are you sure you want to mark the project as completed?</div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              <button 
-                onClick={closeConfirmCompleteModal} 
-                style={{
-                  background: 'var(--bg-secondary)',
-                  color: 'var(--text-primary)',
-                  border: 'none',
-                  padding: '10px 20px',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={() => completeProject(confirmCompleteModal.projectId)} 
-                style={{
-                  background: 'var(--primary)',
-                  color: 'white',
