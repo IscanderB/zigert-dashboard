@@ -1321,31 +1321,34 @@ const ProjectStatusDashboard = () => {
           }}>
             Projects ({state.projects.length})
           </h2>
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            style={{
-              background: 'var(--primary)',
-              color: 'white',
-              border: 'none',
-              padding: '10px 20px',
-              borderRadius: '18px',
-              fontSize: '16px',
-              fontWeight: '500',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              outline: 'none'
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.background = '#0056CC';
-              e.target.style.transform = 'translateY(-1px)';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.background = 'var(--primary)';
-              e.target.style.transform = 'translateY(0)';
-            }}
-          >
-            Add Project
-          </button>
+          {/* ИЗМЕНЕНИЕ 2: Показывать кнопку Add Project только в Admin режиме */}
+          {isAdmin && (
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              style={{
+                background: 'var(--primary)',
+                color: 'white',
+                border: 'none',
+                padding: '10px 20px',
+                borderRadius: '18px',
+                fontSize: '16px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                outline: 'none'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = '#0056CC';
+                e.target.style.transform = 'translateY(-1px)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = 'var(--primary)';
+                e.target.style.transform = 'translateY(0)';
+              }}
+            >
+              Add Project
+            </button>
+          )}
         </div>
 
         {/* Projects Grid */}
@@ -1500,7 +1503,7 @@ const ProjectStatusDashboard = () => {
                         fontWeight: '500',
                         cursor: 'pointer',
                         outline: 'none',
-                        maxWidth: '120px'
+                        maxWidth: '120px' // ИЗМЕНЕНИЕ 3: Добавлен такой же maxWidth как у статуса
                       }}
                     >
                       {Object.keys(priorityColors).map(priority => (
@@ -2204,25 +2207,31 @@ const ProjectStatusDashboard = () => {
                             {new Date(comment.ts).toLocaleString()}
                             {comment.ignored && ' (Ignored)'}
                           </div>
-                          <div style={{ fontSize: '16px', color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>
+                          <div style={{ 
+                            fontSize: '16px', 
+                            color: 'var(--text-primary)', 
+                            whiteSpace: 'pre-wrap',
+                            textDecoration: comment.ignored ? 'line-through' : 'none' // ИЗМЕНЕНИЕ 1: Добавлено перечёркивание для игнорируемых комментов
+                          }}>
                             {comment.text}
                           </div>
-                          {!comment.ignored && (
-                            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                              <button
-                                onClick={() => startEdit(comment.id, comment.text)}
-                                style={{
-                                  background: 'var(--bg-secondary)',
-                                  color: 'var(--text-primary)',
-                                  border: 'none',
-                                  padding: '4px 8px',
-                                  borderRadius: '6px',
-                                  fontSize: '12px',
-                                  cursor: 'pointer'
-                                }}
-                              >
-                                Edit
-                              </button>
+                          {/* ИЗМЕНЕНИЕ 1: Убрано условие !comment.ignored - теперь можно редактировать игнорируемые комменты */}
+                          <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                            <button
+                              onClick={() => startEdit(comment.id, comment.text)}
+                              style={{
+                                background: 'var(--bg-secondary)',
+                                color: 'var(--text-primary)',
+                                border: 'none',
+                                padding: '4px 8px',
+                                borderRadius: '6px',
+                                fontSize: '12px',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Edit
+                            </button>
+                            {!comment.ignored && (
                               <button
                                 onClick={() => confirmIgnoreComment(comment.id)}
                                 style={{
@@ -2237,8 +2246,8 @@ const ProjectStatusDashboard = () => {
                               >
                                 Ignore
                               </button>
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
