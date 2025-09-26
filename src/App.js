@@ -2261,8 +2261,8 @@ const ProjectStatusDashboard = () => {
                         let newStatus = newProject.status;
                         
                         // Логика для busy и статуса
-                        if (newBusy === 0) {
-                          newStatus = 'Queued';
+                        if (newBusy > 0 && newProject.status !== 'In Progress') {
+                          newStatus = 'In Progress';
                         }
                         
                         setNewProject({ ...newProject, busy: newBusy, status: newStatus });
@@ -2275,3 +2275,113 @@ const ProjectStatusDashboard = () => {
                         borderRadius: '50%',
                         display: 'flex',
                         alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.background = 'var(--gray-3)';
+                        e.target.style.transform = 'translateY(-1px)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.background = 'var(--bg-secondary)';
+                        e.target.style.transform = 'translateY(0)';
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M7 1v12M1 7h12"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <div style={{ display: 'flex', gap: '16px', justifyContent: 'flex-end', marginTop: '24px' }}>
+                <button
+                  onClick={() => setIsAddModalOpen(false)}
+                  style={{
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = 'var(--gray-3)';
+                    e.target.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'var(--bg-secondary)';
+                    e.target.style.transform = 'translateY(0)';
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={addProject}
+                  style={{
+                    background: 'var(--primary)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = '#0056CC';
+                    e.target.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'var(--primary)';
+                    e.target.style.transform = 'translateY(0)';
+                  }}
+                >
+                  Add Project
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <style>{`
+        @keyframes slideIn {
+          from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
+          to { transform: translateX(-50%) translateY(0); opacity: 1; }
+        }
+        
+        ::-webkit-scrollbar {
+          width: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+          background: var(--bg-secondary);
+          border-radius: 3px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+          background: var(--gray-2);
+          border-radius: 3px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+          background: var(--gray-1);
+        }
+        
+        button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+          outline: 2px solid var(--primary);
+          outline-offset: 2px;
+        }
+      `}</style>
+    </div>
+  );
+};
+
+export default ProjectStatusDashboard;
