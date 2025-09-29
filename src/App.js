@@ -131,6 +131,30 @@ const ProjectStatusDashboard = () => {
   const [stageModal, setStageModal] = useState({ open: false, projectId: null, cameraId: null });
   const [confirmRemoveCameraModal, setConfirmRemoveCameraModal] = useState({ open: false, projectId: null, cameraId: null });
 
+  // CSS Variables for styling
+  const cssVariables = {
+    '--primary': '#007AFF',
+    '--secondary': '#5856D6',
+    '--success': '#34C759',
+    '--warning': '#FF9500',
+    '--danger': '#FF3B30',
+    '--gray-1': '#8E8E93',
+    '--gray-2': '#C7C7CC',
+    '--gray-3': '#D1D1D6',
+    '--gray-4': '#E5E5EA',
+    '--gray-5': '#F2F2F7',
+    '--gray-6': '#FFFFFF',
+    '--text-primary': '#000000',
+    '--text-secondary': '#3C3C43',
+    '--text-tertiary': '#48484A',
+    '--text-quaternary': '#8E8E93',
+    '--bg-primary': '#FFFFFF',
+    '--bg-secondary': '#F2F2F7',
+    '--bg-tertiary': '#E5E5EA',
+    '--separator': 'rgba(60, 60, 67, 0.12)',
+    '--shadow': '0 0 20px rgba(0, 0, 0, 0.05)'
+  };
+
   // Supabase API functions
   async function loadInitialData() {
     try {
@@ -183,7 +207,7 @@ const ProjectStatusDashboard = () => {
         dueDate: project.due_date,
         busy: project.busy,
         priority: project.priority,
-        color: project.color || null, // Handle missing color column gracefully
+        color: project.color || null,
         comments: (project.project_comments || []).map(comment => ({
           id: comment.id,
           text: comment.text,
@@ -191,11 +215,9 @@ const ProjectStatusDashboard = () => {
           deleted: comment.deleted,
           ts: comment.created_at
         })),
-        // ИЗМЕНЕНИЕ 2: Изменил сортировку истории - новые записи вверху
         history: (project.project_history || [])
           .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
           .map(h => h.entry),
-        // Добавляем камеры из данных проекта
         cameras: project.cameras || []
       }));
 
@@ -245,15 +267,15 @@ const ProjectStatusDashboard = () => {
           due_date: projectData.dueDate,
           busy: projectData.busy,
           priority: projectData.priority,
-          ...(projectData.color && { color: projectData.color }), // Only include color if it exists
-          cameras: projectData.cameras // Save cameras array
+          ...(projectData.color && { color: projectData.color }),
+          cameras: projectData.cameras
         })
         .select();
 
       if (error) throw error;
       return data[0];
     } catch (err) {
-      // If color column doesn't exist yet, save without it
+      // If columns don't exist yet, save without them
       if (err.message?.includes("color") || err.message?.includes("cameras")) {
         const { data, error } = await supabase
           .from('projects')
@@ -305,7 +327,6 @@ const ProjectStatusDashboard = () => {
         if (error) throw error;
       }
     } catch (err) {
-      // If table doesn't exist, just show error and continue
       console.warn('Holiday days table not found. Please create it in Supabase first.');
       throw new Error('Holiday days table not found. Please create the table first in Supabase.');
     }
@@ -326,7 +347,6 @@ const ProjectStatusDashboard = () => {
         if (error) throw error;
       }
     } catch (err) {
-      // If table doesn't exist, just show error and continue
       console.warn('Working weekends table not found. Please create it in Supabase first.');
       throw new Error('Working weekends table not found. Please create the table first in Supabase.');
     }
@@ -376,16 +396,14 @@ const ProjectStatusDashboard = () => {
   // Simulate connection status and periodic sync
   useEffect(() => {
     const interval = setInterval(() => {
-      // Simulate connection status changes
       setConnected(prev => {
-        if (Math.random() > 0.98) { // 2% chance to disconnect
+        if (Math.random() > 0.98) {
           setTimeout(() => setConnected(true), 1000 + Math.random() * 2000);
           return false;
         }
         return true;
       });
 
-      // Update last sync time when connected
       if (connected) {
         setLastSync(new Date());
       }
@@ -400,7 +418,7 @@ const ProjectStatusDashboard = () => {
       const timer = setTimeout(() => {
         setExpandedProjectId(null);
         setAutoCollapseTimer(null);
-      }, 180000); // 3 minutes
+      }, 180000);
       setAutoCollapseTimer(timer);
     }
 
@@ -628,7 +646,6 @@ const ProjectStatusDashboard = () => {
     try {
       const newTotal = Math.max(1, state.totalArtists + delta);
       
-      // Check if trying to set less than busy artists
       if (newTotal < busy) {
         showAlert("These artists are busy!");
         return;
@@ -771,7 +788,6 @@ const ProjectStatusDashboard = () => {
         projects: prev.projects.map(p => p.id === id ? ({
           ...p,
           ...changes,
-          // Добавляем новую запись истории в начало массива
           history: historyEntry ? [isAdmin ? `${historyEntry} [Admin]` : historyEntry, ...(p.history || [])] : p.history
         }) : p)
       }));
@@ -923,15 +939,14 @@ const ProjectStatusDashboard = () => {
       
       const trimmed = editingText.trim();
       
-      // Find the current comment to preserve original text
       const project = state.projects.find(p => p.id === commentsForId);
       const comment = project?.comments.find(c => c.id === commentId);
       
       const updatedComment = {
         id: commentId,
-        text: trimmed === '' ? comment?.text || '' : trimmed, // Keep original if empty
+        text: trimmed === '' ? comment?.text || '' : trimmed,
         deleted: false,
-        ignored: trimmed === '', // Mark as ignored if empty text
+        ignored: trimmed === '',
         ts: new Date().toISOString()
       };
 
@@ -976,7 +991,6 @@ const ProjectStatusDashboard = () => {
       
       const { projectId, commentId } = confirmIgnore;
       
-      // Find the current comment to preserve its text
       const project = state.projects.find(p => p.id === projectId);
       const comment = project?.comments.find(c => c.id === commentId);
       
@@ -984,7 +998,7 @@ const ProjectStatusDashboard = () => {
       
       const updatedComment = {
         id: commentId,
-        text: comment.text, // Preserve the original text
+        text: comment.text,
         ignored: true,
         deleted: false,
         ts: new Date().toISOString()
@@ -1027,7 +1041,6 @@ const ProjectStatusDashboard = () => {
       const project = state.projects.find(p => p.id === projectId);
       if (!project) return;
 
-      // Delete all comments from database
       for (const comment of project.comments) {
         await supabase
           .from('project_comments')
@@ -1037,7 +1050,6 @@ const ProjectStatusDashboard = () => {
 
       await addHistoryEntry(projectId, `${new Date().toLocaleString()}: All comments cleared [Admin]`);
 
-      // Update local state
       setState(prev => ({
         ...prev,
         projects: prev.projects.map(p => p.id === projectId ? ({
@@ -1058,13 +1070,11 @@ const ProjectStatusDashboard = () => {
 
   async function clearHistory(projectId) {
     try {
-      // Delete all history from database
       await supabase
         .from('project_history')
         .delete()
         .eq('project_id', projectId);
 
-      // Update local state
       setState(prev => ({
         ...prev,
         projects: prev.projects.map(p => p.id === projectId ? ({
@@ -1082,7 +1092,7 @@ const ProjectStatusDashboard = () => {
     }
   }
 
-  // ИСПРАВЛЕНО: Calendar functions
+  // Calendar functions
   function changeMonth(delta) {
     setCurrentDate(prev => {
       let newMonth = prev.month + delta;
@@ -1155,7 +1165,7 @@ const ProjectStatusDashboard = () => {
     closeColorPickerModal();
   }
 
-  // ИСПРАВЛЕНО: Timeline helpers - используем currentDate вместо currentMonth/currentYear
+  // Timeline helpers
   const monthDays = getMonthDays(currentDate.year, currentDate.month);
   const firstDayIndex = monthDays.length ? monthDays[0].getDay() : 0;
   const todayKey = formatDateToYYYYMMDD(new Date());
@@ -1207,20 +1217,18 @@ const ProjectStatusDashboard = () => {
     const isHoliday = holidayDays.has(dayKey);
     const isWorkingWeekend = workingWeekends.has(dayKey);
     
-    // Праздничные дни всегда имеют особый фон
     if (isHoliday) {
-      return 'var(--bg-secondary)';
+      return cssVariables['--bg-secondary'];
     }
     
-    // Выходные дни, которые не являются рабочими
     if (isWeekend && !isWorkingWeekend) {
-      return 'var(--bg-secondary)';
+      return cssVariables['--bg-secondary'];
     }
     
     const projects = getProjectsForDay(dayKey);
     
     if (projects.length === 0) {
-      return 'var(--bg-secondary)';
+      return cssVariables['--bg-secondary'];
     }
 
     if (projects.length === 1) {
@@ -1314,33 +1322,13 @@ const ProjectStatusDashboard = () => {
   return (
     <div style={{
       fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif',
-      background: '#F2F2F7',
+      background: cssVariables['--gray-5'],
       minHeight: '100vh',
-      color: '#000000',
+      color: cssVariables['--text-primary'],
       fontSize: '17px',
       lineHeight: '1.47059',
       fontWeight: '400',
-      letterSpacing: '-0.022em',
-      '--primary': '#007AFF',
-      '--secondary': '#5856D6',
-      '--success': '#34C759',
-      '--warning': '#FF9500',
-      '--danger': '#FF3B30',
-      '--gray-1': '#8E8E93',
-      '--gray-2': '#C7C7CC',
-      '--gray-3': '#D1D1D6',
-      '--gray-4': '#E5E5EA',
-      '--gray-5': '#F2F2F7',
-      '--gray-6': '#FFFFFF',
-      '--text-primary': '#000000',
-      '--text-secondary': '#3C3C43',
-      '--text-tertiary': '#48484A',
-      '--text-quaternary': '#8E8E93',
-      '--bg-primary': '#FFFFFF',
-      '--bg-secondary': '#F2F2F7',
-      '--bg-tertiary': '#E5E5EA',
-      '--separator': 'rgba(60, 60, 67, 0.12)',
-      '--shadow': '0 0 20px rgba(0, 0, 0, 0.05)'
+      letterSpacing: '-0.022em'
     }}>
       
       {/* Error notification */}
@@ -1351,13 +1339,12 @@ const ProjectStatusDashboard = () => {
           left: '50%',
           transform: 'translateX(-50%)',
           zIndex: 300,
-          background: '#FF3B30',
+          background: cssVariables['--danger'],
           color: 'white',
           padding: '12px 20px',
           borderRadius: '20px',
           fontSize: '14px',
-          boxShadow: '0 4px 20px rgba(255, 59, 48, 0.3)',
-          animation: 'slideIn 0.3s ease-out'
+          boxShadow: '0 4px 20px rgba(255, 59, 48, 0.3)'
         }}>
           {error}
           <button 
@@ -1368,11 +1355,8 @@ const ProjectStatusDashboard = () => {
               border: 'none',
               color: 'white',
               cursor: 'pointer',
-              fontSize: '16px',
-              transition: 'opacity 0.2s ease'
+              fontSize: '16px'
             }}
-            onMouseEnter={(e) => e.target.style.opacity = '0.7'}
-            onMouseLeave={(e) => e.target.style.opacity = '1'}
           >
             ×
           </button>
@@ -1388,19 +1372,17 @@ const ProjectStatusDashboard = () => {
         display: 'flex',
         alignItems: 'center',
         gap: '8px',
-        background: 'var(--bg-primary)',
+        background: cssVariables['--bg-primary'],
         padding: '8px 12px',
         borderRadius: '20px',
-        boxShadow: 'var(--shadow)',
-        fontSize: '12px',
-        transition: 'all 0.3s ease'
+        boxShadow: cssVariables['--shadow'],
+        fontSize: '12px'
       }}>
         <div style={{
           width: '8px',
           height: '8px',
           borderRadius: '50%',
-          backgroundColor: connected ? '#34C759' : '#FF3B30',
-          transition: 'background-color 0.3s ease'
+          backgroundColor: connected ? cssVariables['--success'] : cssVariables['--danger']
         }}></div>
         {connected ? `Synced ${lastSync.toLocaleTimeString()}` : 'Reconnecting...'}
       </div>
@@ -1413,9 +1395,8 @@ const ProjectStatusDashboard = () => {
         position: 'sticky',
         top: 0,
         zIndex: 100,
-        borderBottom: '0.5px solid var(--separator)',
-        marginBottom: '24px',
-        transition: 'all 0.3s ease'
+        borderBottom: `0.5px solid ${cssVariables['--separator']}`,
+        marginBottom: '24px'
       }}>
         <div style={{
           maxWidth: '1400px',
@@ -1433,24 +1414,14 @@ const ProjectStatusDashboard = () => {
             <button
               onClick={() => loadInitialData()}
               style={{
-                background: 'var(--bg-secondary)',
-                color: 'var(--primary)',
+                background: cssVariables['--bg-secondary'],
+                color: cssVariables['--primary'],
                 border: 'none',
                 padding: '8px 16px',
                 borderRadius: '18px',
                 fontSize: '15px',
                 fontWeight: 500,
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                outline: 'none'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.background = 'var(--gray-3)';
-                e.target.style.transform = 'translateY(-1px)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.background = 'var(--bg-secondary)';
-                e.target.style.transform = 'translateY(0)';
+                cursor: 'pointer'
               }}
             >
               Refresh
@@ -1458,24 +1429,14 @@ const ProjectStatusDashboard = () => {
             <button
               onClick={handleAdminToggle}
               style={{
-                background: 'var(--bg-secondary)',
-                color: 'var(--primary)',
+                background: cssVariables['--bg-secondary'],
+                color: cssVariables['--primary'],
                 border: 'none',
                 padding: '8px 16px',
                 borderRadius: '18px',
                 fontSize: '15px',
                 fontWeight: 500,
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                outline: 'none'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.background = 'var(--gray-3)';
-                e.target.style.transform = 'translateY(-1px)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.background = 'var(--bg-secondary)';
-                e.target.style.transform = 'translateY(0)';
+                cursor: 'pointer'
               }}
             >
               {isAdmin ? 'Admin Mode' : 'Admin'}
@@ -1496,51 +1457,28 @@ const ProjectStatusDashboard = () => {
           textAlign: 'center',
           marginBottom: '32px',
           padding: '32px 20px',
-          background: 'var(--bg-primary)',
+          background: cssVariables['--bg-primary'],
           borderRadius: '20px',
-          boxShadow: 'var(--shadow)',
-          transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-          position: 'relative'
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'translateY(-2px)';
-          e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.1)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = 'translateY(0)';
-          e.currentTarget.style.boxShadow = 'var(--shadow)';
-        }}
-        >
+          boxShadow: cssVariables['--shadow']
+        }}>
           <div style={{
             display: 'flex',
             justifyContent: 'center',
-            alignItems: 'center',
-            animation: 'fadeInUp 0.6s ease-out'
+            alignItems: 'center'
           }}>
             <img 
               src="/zigert-logo.png"
               alt="Zigert Logo"
               style={{
                 width: '370px',
-                height: 'auto',
-                filter: 'grayscale(0)',
-                transition: 'all 0.3s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.transform = 'scale(1.05)';
-                e.target.style.filter = 'grayscale(0) brightness(1.1)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.transform = 'scale(1)';
-                e.target.style.filter = 'grayscale(0)';
+                height: 'auto'
               }}
             />
           </div>
           <div style={{
             fontSize: '14px',
-            color: 'var(--text-quaternary)',
-            marginTop: '16px',
-            animation: 'fadeInUp 0.6s ease-out 0.2s both'
+            color: cssVariables['--text-quaternary'],
+            marginTop: '16px'
           }}>
             Real-time collaborative workspace
           </div>
@@ -1554,13 +1492,13 @@ const ProjectStatusDashboard = () => {
           marginBottom: '24px'
         }}>
           <div style={{
-            background: 'var(--bg-primary)',
+            background: cssVariables['--bg-primary'],
             padding: '20px',
             borderRadius: '20px',
-            boxShadow: 'var(--shadow)',
+            boxShadow: cssVariables['--shadow'],
             textAlign: 'center'
           }}>
-            <div style={{ fontSize: '14px', color: 'var(--text-tertiary)', marginBottom: '4px' }}>
+            <div style={{ fontSize: '14px', color: cssVariables['--text-tertiary'], marginBottom: '4px' }}>
               Total Artists{isAdmin ? ' (admin controls)' : ''}
             </div>
             {isAdmin ? (
@@ -1569,7 +1507,7 @@ const ProjectStatusDashboard = () => {
                   onClick={() => updateTotalArtists(-1)}
                   disabled={state.totalArtists <= 1}
                   style={{
-                    background: state.totalArtists <= 1 ? 'var(--gray-4)' : 'var(--bg-secondary)',
+                    background: state.totalArtists <= 1 ? cssVariables['--gray-4'] : cssVariables['--bg-secondary'],
                     border: 'none',
                     width: '28px',
                     height: '28px',
@@ -1578,33 +1516,20 @@ const ProjectStatusDashboard = () => {
                     alignItems: 'center',
                     justifyContent: 'center',
                     cursor: state.totalArtists <= 1 ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.2s ease',
                     opacity: state.totalArtists <= 1 ? 0.5 : 1
-                  }}
-                  onMouseEnter={(e) => {
-                    if (state.totalArtists > 1) {
-                      e.target.style.background = 'var(--gray-3)';
-                      e.target.style.transform = 'translateY(-1px)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (state.totalArtists > 1) {
-                      e.target.style.background = 'var(--bg-secondary)';
-                      e.target.style.transform = 'translateY(0)';
-                    }
                   }}
                 >
                   <svg width="12" height="2" viewBox="0 0 12 2" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M1 1h10"/>
                   </svg>
                 </button>
-                <div style={{ fontSize: '32px', fontWeight: '600', color: 'var(--text-primary)', minWidth: '60px' }}>
+                <div style={{ fontSize: '32px', fontWeight: '600', color: cssVariables['--text-primary'], minWidth: '60px' }}>
                   {total}
                 </div>
                 <button
                   onClick={() => updateTotalArtists(1)}
                   style={{
-                    background: 'var(--bg-secondary)',
+                    background: cssVariables['--bg-secondary'],
                     border: 'none',
                     width: '28px',
                     height: '28px',
@@ -1612,16 +1537,7 @@ const ProjectStatusDashboard = () => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = 'var(--gray-3)';
-                    e.target.style.transform = 'translateY(-1px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = 'var(--bg-secondary)';
-                    e.target.style.transform = 'translateY(0)';
+                    cursor: 'pointer'
                   }}
                 >
                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1630,52 +1546,52 @@ const ProjectStatusDashboard = () => {
                 </button>
               </div>
             ) : (
-              <div style={{ fontSize: '32px', fontWeight: '600', color: 'var(--text-primary)' }}>{total}</div>
+              <div style={{ fontSize: '32px', fontWeight: '600', color: cssVariables['--text-primary'] }}>{total}</div>
             )}
           </div>
           <div style={{
-            background: 'var(--bg-primary)',
+            background: cssVariables['--bg-primary'],
             padding: '20px',
             borderRadius: '20px',
-            boxShadow: 'var(--shadow)',
+            boxShadow: cssVariables['--shadow'],
             textAlign: 'center'
           }}>
-            <div style={{ fontSize: '14px', color: 'var(--text-tertiary)', marginBottom: '4px' }}>Busy</div>
-            <div style={{ fontSize: '32px', fontWeight: '600', color: 'var(--danger)' }}>{busy}</div>
+            <div style={{ fontSize: '14px', color: cssVariables['--text-tertiary'], marginBottom: '4px' }}>Busy</div>
+            <div style={{ fontSize: '32px', fontWeight: '600', color: cssVariables['--danger'] }}>{busy}</div>
           </div>
           <div style={{
-            background: 'var(--bg-primary)',
+            background: cssVariables['--bg-primary'],
             padding: '20px',
             borderRadius: '20px',
-            boxShadow: 'var(--shadow)',
+            boxShadow: cssVariables['--shadow'],
             textAlign: 'center'
           }}>
-            <div style={{ fontSize: '14px', color: 'var(--text-tertiary)', marginBottom: '4px' }}>Free</div>
-            <div style={{ fontSize: '32px', fontWeight: '600', color: 'var(--success)' }}>{free}</div>
+            <div style={{ fontSize: '14px', color: cssVariables['--text-tertiary'], marginBottom: '4px' }}>Free</div>
+            <div style={{ fontSize: '32px', fontWeight: '600', color: cssVariables['--success'] }}>{free}</div>
           </div>
           <div style={{
-            background: 'var(--bg-primary)',
+            background: cssVariables['--bg-primary'],
             padding: '20px',
             borderRadius: '20px',
-            boxShadow: 'var(--shadow)',
+            boxShadow: cssVariables['--shadow'],
             textAlign: 'center'
           }}>
-            <div style={{ fontSize: '14px', color: 'var(--text-tertiary)', marginBottom: '4px' }}>Free %</div>
-            <div style={{ fontSize: '32px', fontWeight: '600', color: 'var(--success)' }}>{freePct}%</div>
+            <div style={{ fontSize: '14px', color: cssVariables['--text-tertiary'], marginBottom: '4px' }}>Free %</div>
+            <div style={{ fontSize: '32px', fontWeight: '600', color: cssVariables['--success'] }}>{freePct}%</div>
           </div>
         </div>
 
         {/* Calendar Section */}
         <div style={{
-          background: 'var(--bg-primary)',
+          background: cssVariables['--bg-primary'],
           borderRadius: '20px',
-          boxShadow: 'var(--shadow)',
+          boxShadow: cssVariables['--shadow'],
           marginBottom: '24px',
           overflow: 'hidden'
         }}>
           <div style={{
             padding: '20px 24px',
-            borderBottom: '0.5px solid var(--separator)',
+            borderBottom: `0.5px solid ${cssVariables['--separator']}`,
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center'
@@ -1684,7 +1600,7 @@ const ProjectStatusDashboard = () => {
               fontSize: '22px',
               fontWeight: '600',
               margin: 0,
-              color: 'var(--text-primary)'
+              color: cssVariables['--text-primary']
             }}>
               {monthNames[currentDate.month]} {currentDate.year}
             </h2>
@@ -1692,7 +1608,7 @@ const ProjectStatusDashboard = () => {
               <button
                 onClick={() => changeMonth(-1)}
                 style={{
-                  background: 'var(--bg-secondary)',
+                  background: cssVariables['--bg-secondary'],
                   border: 'none',
                   width: '32px',
                   height: '32px',
@@ -1700,16 +1616,7 @@ const ProjectStatusDashboard = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.background = 'var(--gray-3)';
-                  e.target.style.transform = 'translateY(-1px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.background = 'var(--bg-secondary)';
-                  e.target.style.transform = 'translateY(0)';
+                  cursor: 'pointer'
                 }}
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1719,22 +1626,13 @@ const ProjectStatusDashboard = () => {
               <button
                 onClick={goToToday}
                 style={{
-                  background: 'var(--bg-secondary)',
+                  background: cssVariables['--bg-secondary'],
                   border: 'none',
                   padding: '6px 12px',
                   borderRadius: '16px',
                   fontSize: '14px',
                   fontWeight: '500',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.background = 'var(--gray-3)';
-                  e.target.style.transform = 'translateY(-1px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.background = 'var(--bg-secondary)';
-                  e.target.style.transform = 'translateY(0)';
+                  cursor: 'pointer'
                 }}
               >
                 Today
@@ -1742,7 +1640,7 @@ const ProjectStatusDashboard = () => {
               <button
                 onClick={() => changeMonth(1)}
                 style={{
-                  background: 'var(--bg-secondary)',
+                  background: cssVariables['--bg-secondary'],
                   border: 'none',
                   width: '32px',
                   height: '32px',
@@ -1750,16 +1648,7 @@ const ProjectStatusDashboard = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.background = 'var(--gray-3)';
-                  e.target.style.transform = 'translateY(-1px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.background = 'var(--bg-secondary)';
-                  e.target.style.transform = 'translateY(0)';
+                  cursor: 'pointer'
                 }}
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1773,17 +1662,17 @@ const ProjectStatusDashboard = () => {
             display: 'grid',
             gridTemplateColumns: 'repeat(7, 1fr)',
             gap: '6px',
-            background: 'var(--separator)',
+            background: cssVariables['--separator'],
             padding: '8px'
           }}>
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
               <div key={day} style={{
-                background: 'var(--bg-primary)',
+                background: cssVariables['--bg-primary'],
                 padding: '12px',
                 textAlign: 'center',
                 fontSize: '14px',
                 fontWeight: '500',
-                color: 'var(--text-tertiary)',
+                color: cssVariables['--text-tertiary'],
                 borderRadius: '8px'
               }}>
                 {day}
@@ -1793,7 +1682,7 @@ const ProjectStatusDashboard = () => {
             {/* Empty cells for days before the first day of the month */}
             {Array.from({ length: firstDayIndex }).map((_, i) => (
               <div key={`empty-${i}`} style={{
-                background: 'var(--bg-secondary)',
+                background: cssVariables['--bg-secondary'],
                 minHeight: '28px',
                 borderRadius: '8px'
               }}></div>
@@ -1840,7 +1729,7 @@ const ProjectStatusDashboard = () => {
                     <span style={{
                       fontSize: '12px',
                       fontWeight: isToday ? '600' : '400',
-                      color: isToday ? 'var(--danger)' : 'var(--text-primary)',
+                      color: isToday ? cssVariables['--danger'] : cssVariables['--text-primary'],
                       background: isToday ? 'rgba(255, 255, 255, 0.9)' : 'transparent',
                       borderRadius: '8px',
                       padding: '1px 4px',
@@ -1891,33 +1780,22 @@ const ProjectStatusDashboard = () => {
             fontSize: '22px',
             fontWeight: '600',
             margin: 0,
-            color: 'var(--text-primary)'
+            color: cssVariables['--text-primary']
           }}>
             Projects ({state.projects.length})
           </h2>
-          {/* Показывать кнопку Add Project только в Admin режиме */}
           {isAdmin && (
             <button
               onClick={() => setIsAddModalOpen(true)}
               style={{
-                background: 'var(--primary)',
+                background: cssVariables['--primary'],
                 color: 'white',
                 border: 'none',
                 padding: '10px 20px',
                 borderRadius: '18px',
                 fontSize: '16px',
                 fontWeight: '500',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                outline: 'none'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.background = '#0056CC';
-                e.target.style.transform = 'translateY(-1px)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.background = 'var(--primary)';
-                e.target.style.transform = 'translateY(0)';
+                cursor: 'pointer'
               }}
             >
               Add Project
@@ -1936,20 +1814,11 @@ const ProjectStatusDashboard = () => {
             <div
               key={project.id}
               style={{
-                background: 'var(--bg-primary)',
+                background: cssVariables['--bg-primary'],
                 borderRadius: '20px',
-                boxShadow: 'var(--shadow)',
+                boxShadow: cssVariables['--shadow'],
                 padding: '20px',
-                transition: 'all 0.3s ease',
-                border: '0.5px solid var(--separator)'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 8px 30px rgba(0, 0, 0, 0.12)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = 'var(--shadow)';
+                border: `0.5px solid ${cssVariables['--separator']}`
               }}
             >
               {/* Project Header */}
@@ -1978,7 +1847,7 @@ const ProjectStatusDashboard = () => {
                     margin: 0,
                     fontSize: '18px',
                     fontWeight: '600',
-                    color: 'var(--text-primary)',
+                    color: cssVariables['--text-primary'],
                     whiteSpace: 'nowrap',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
@@ -1994,20 +1863,11 @@ const ProjectStatusDashboard = () => {
                     style={{
                       background: 'none',
                       border: 'none',
-                      color: 'var(--gray-1)',
+                      color: cssVariables['--gray-1'],
                       cursor: 'pointer',
                       padding: '4px',
                       borderRadius: '6px',
-                      transition: 'all 0.2s ease',
                       flexShrink: 0
-                    }}
-                    onMouseEnter={(e) => {
-                      e.target.style.background = 'var(--bg-secondary)';
-                      e.target.style.color = 'var(--text-primary)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.style.background = 'none';
-                      e.target.style.color = 'var(--gray-1)';
                     }}
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -2035,13 +1895,13 @@ const ProjectStatusDashboard = () => {
                     justifyContent: 'space-between',
                     alignItems: 'center'
                   }}>
-                    <span style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>Status:</span>
+                    <span style={{ fontSize: '14px', color: cssVariables['--text-tertiary'] }}>Status:</span>
                     <select
                       value={project.status}
                       disabled={!isAdmin}
                       onChange={(e) => updateProject(project.id, { status: e.target.value }, `${new Date().toLocaleString()}: Status changed to ${e.target.value}`)}
                       style={{
-                        background: statusColors[project.status] || 'var(--bg-secondary)',
+                        background: statusColors[project.status] || cssVariables['--bg-secondary'],
                         color: 'white',
                         border: 'none',
                         padding: '4px 8px',
@@ -2067,12 +1927,12 @@ const ProjectStatusDashboard = () => {
                     justifyContent: 'space-between',
                     alignItems: 'center'
                   }}>
-                    <span style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>Priority:</span>
+                    <span style={{ fontSize: '14px', color: cssVariables['--text-tertiary'] }}>Priority:</span>
                     <select
                       value={project.priority}
                       onChange={(e) => updateProject(project.id, { priority: e.target.value }, `${new Date().toLocaleString()}: Priority changed to ${e.target.value}`)}
                       style={{
-                        background: priorityColors[project.priority] || 'var(--bg-secondary)',
+                        background: priorityColors[project.priority] || cssVariables['--bg-secondary'],
                         color: 'white',
                         border: 'none',
                         padding: '4px 8px',
@@ -2103,7 +1963,7 @@ const ProjectStatusDashboard = () => {
                     justifyContent: 'space-between',
                     alignItems: 'center'
                   }}>
-                    <span style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>Start:</span>
+                    <span style={{ fontSize: '14px', color: cssVariables['--text-tertiary'] }}>Start:</span>
                     <input
                       type="date"
                       value={project.startDate}
@@ -2130,13 +1990,13 @@ const ProjectStatusDashboard = () => {
                         }
                       }}
                       style={{
-                        border: '0.5px solid var(--separator)',
+                        border: `0.5px solid ${cssVariables['--separator']}`,
                         padding: '4px 8px',
                         borderRadius: '6px',
                         fontSize: '12px',
                         outline: 'none',
                         width: '120px',
-                        background: 'var(--bg-primary)',
+                        background: cssVariables['--bg-primary'],
                         cursor: isAdmin ? 'pointer' : 'not-allowed',
                         opacity: isAdmin ? 1 : 0.7
                       }}
@@ -2147,7 +2007,7 @@ const ProjectStatusDashboard = () => {
                     justifyContent: 'space-between',
                     alignItems: 'center'
                   }}>
-                    <span style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>Due:</span>
+                    <span style={{ fontSize: '14px', color: cssVariables['--text-tertiary'] }}>Due:</span>
                     <input
                       type="date"
                       value={project.dueDate}
@@ -2167,13 +2027,13 @@ const ProjectStatusDashboard = () => {
                         }
                       }}
                       style={{
-                        border: '0.5px solid var(--separator)',
+                        border: `0.5px solid ${cssVariables['--separator']}`,
                         padding: '4px 8px',
                         borderRadius: '6px',
                         fontSize: '12px',
                         outline: 'none',
                         width: '120px',
-                        background: 'var(--bg-primary)'
+                        background: cssVariables['--bg-primary']
                       }}
                     />
                   </div>
@@ -2187,13 +2047,13 @@ const ProjectStatusDashboard = () => {
                 alignItems: 'center',
                 marginBottom: '16px'
               }}>
-                <span style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>Busy:</span>
+                <span style={{ fontSize: '14px', color: cssVariables['--text-tertiary'] }}>Busy:</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <button
                     onClick={() => updateProject(project.id, { busy: Math.max(0, project.busy - 1) }, `${new Date().toLocaleString()}: Busy decreased to ${Math.max(0, project.busy - 1)}`)}
                     disabled={project.busy <= 0 || !isAdmin}
                     style={{
-                      background: (project.busy <= 0 || !isAdmin) ? 'var(--gray-4)' : 'var(--bg-secondary)',
+                      background: (project.busy <= 0 || !isAdmin) ? cssVariables['--gray-4'] : cssVariables['--bg-secondary'],
                       border: 'none',
                       width: '28px',
                       height: '28px',
@@ -2202,20 +2062,7 @@ const ProjectStatusDashboard = () => {
                       alignItems: 'center',
                       justifyContent: 'center',
                       cursor: (project.busy <= 0 || !isAdmin) ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.2s ease',
                       opacity: (project.busy <= 0 || !isAdmin) ? 0.5 : 1
-                    }}
-                    onMouseEnter={(e) => {
-                      if (project.busy > 0 && isAdmin) {
-                        e.target.style.background = 'var(--gray-3)';
-                        e.target.style.transform = 'translateY(-1px)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (project.busy > 0 && isAdmin) {
-                        e.target.style.background = 'var(--bg-secondary)';
-                        e.target.style.transform = 'translateY(0)';
-                      }
                     }}
                   >
                     <svg width="12" height="2" viewBox="0 0 12 2" fill="none" stroke="currentColor" strokeWidth="2">
@@ -2225,7 +2072,7 @@ const ProjectStatusDashboard = () => {
                   <span style={{
                     fontSize: '16px',
                     fontWeight: '600',
-                    color: 'var(--text-primary)',
+                    color: cssVariables['--text-primary'],
                     minWidth: '20px',
                     textAlign: 'center'
                   }}>
@@ -2235,7 +2082,7 @@ const ProjectStatusDashboard = () => {
                     onClick={() => updateProject(project.id, { busy: project.busy + 1 }, `${new Date().toLocaleString()}: Busy increased to ${project.busy + 1}`)}
                     disabled={busy >= total || !isAdmin}
                     style={{
-                      background: (busy >= total || !isAdmin) ? 'var(--gray-4)' : 'var(--bg-secondary)',
+                      background: (busy >= total || !isAdmin) ? cssVariables['--gray-4'] : cssVariables['--bg-secondary'],
                       border: 'none',
                       width: '28px',
                       height: '28px',
@@ -2244,20 +2091,7 @@ const ProjectStatusDashboard = () => {
                       alignItems: 'center',
                       justifyContent: 'center',
                       cursor: (busy >= total || !isAdmin) ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.2s ease',
                       opacity: (busy >= total || !isAdmin) ? 0.5 : 1
-                    }}
-                    onMouseEnter={(e) => {
-                      if (busy < total && isAdmin) {
-                        e.target.style.background = 'var(--gray-3)';
-                        e.target.style.transform = 'translateY(-1px)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (busy < total && isAdmin) {
-                        e.target.style.background = 'var(--bg-secondary)';
-                        e.target.style.transform = 'translateY(0)';
-                      }
                     }}
                   >
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
@@ -2277,24 +2111,14 @@ const ProjectStatusDashboard = () => {
                   onClick={() => openComments(project.id)}
                   style={{
                     flex: 1,
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
+                    background: cssVariables['--bg-secondary'],
+                    color: cssVariables['--text-primary'],
                     border: 'none',
                     padding: '8px 12px',
                     borderRadius: '10px',
                     fontSize: '14px',
                     fontWeight: '500',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    outline: 'none'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = 'var(--gray-3)';
-                    e.target.style.transform = 'translateY(-1px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = 'var(--bg-secondary)';
-                    e.target.style.transform = 'translateY(0)';
+                    cursor: 'pointer'
                   }}
                 >
                   Comments ({project.comments?.filter(c => !c.ignored && !c.deleted).length || 0})
@@ -2303,24 +2127,14 @@ const ProjectStatusDashboard = () => {
                   onClick={() => openHistory(project.id)}
                   style={{
                     flex: 1,
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
+                    background: cssVariables['--bg-secondary'],
+                    color: cssVariables['--text-primary'],
                     border: 'none',
                     padding: '8px 12px',
                     borderRadius: '10px',
                     fontSize: '14px',
                     fontWeight: '500',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    outline: 'none'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = 'var(--gray-3)';
-                    e.target.style.transform = 'translateY(-1px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = 'var(--bg-secondary)';
-                    e.target.style.transform = 'translateY(0)';
+                    cursor: 'pointer'
                   }}
                 >
                   History
@@ -2332,24 +2146,16 @@ const ProjectStatusDashboard = () => {
                 <button
                   onClick={() => toggleCameras(project.id)}
                   style={{
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
+                    background: cssVariables['--bg-secondary'],
+                    color: cssVariables['--text-primary'],
                     border: 'none',
                     padding: '8px 12px',
                     borderRadius: '10px',
                     fontSize: '14px',
                     fontWeight: '500',
                     cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    outline: 'none',
                     width: '100%',
                     textAlign: 'left'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = 'var(--gray-3)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = 'var(--bg-secondary)';
                   }}
                 >
                   Images ({project.cameras ? project.cameras.length : 0})
@@ -2359,9 +2165,9 @@ const ProjectStatusDashboard = () => {
                   <div style={{
                     marginTop: '12px',
                     padding: '16px',
-                    background: 'var(--bg-secondary)',
+                    background: cssVariables['--bg-secondary'],
                     borderRadius: '12px',
-                    border: '0.5px solid var(--separator)'
+                    border: `0.5px solid ${cssVariables['--separator']}`
                   }}>
                     {/* Список камер */}
                     {project.cameras && project.cameras.map(camera => (
@@ -2370,9 +2176,9 @@ const ProjectStatusDashboard = () => {
                         justifyContent: 'space-between',
                         alignItems: 'center',
                         padding: '8px 0',
-                        borderBottom: '0.5px solid var(--separator)'
+                        borderBottom: `0.5px solid ${cssVariables['--separator']}`
                       }}>
-                        <span style={{ fontSize: '14px', color: 'var(--text-primary)' }}>{camera.name}</span>
+                        <span style={{ fontSize: '14px', color: cssVariables['--text-primary'] }}>{camera.name}</span>
                         
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           {/* Кнопка - */}
@@ -2380,7 +2186,7 @@ const ProjectStatusDashboard = () => {
                             disabled={!canDecreaseStage(camera.stage)}
                             onClick={() => decreaseStageIteration(project.id, camera.id)}
                             style={{
-                              background: 'var(--bg-primary)',
+                              background: cssVariables['--bg-primary'],
                               border: 'none',
                               width: '24px',
                               height: '24px',
@@ -2389,20 +2195,7 @@ const ProjectStatusDashboard = () => {
                               alignItems: 'center',
                               justifyContent: 'center',
                               cursor: canDecreaseStage(camera.stage) ? 'pointer' : 'not-allowed',
-                              opacity: canDecreaseStage(camera.stage) ? 1 : 0.5,
-                              transition: 'all 0.2s ease'
-                            }}
-                            onMouseEnter={(e) => {
-                              if (canDecreaseStage(camera.stage)) {
-                                e.target.style.background = 'var(--gray-3)';
-                                e.target.style.transform = 'translateY(-1px)';
-                              }
-                            }}
-                            onMouseLeave={(e) => {
-                              if (canDecreaseStage(camera.stage)) {
-                                e.target.style.background = 'var(--bg-primary)';
-                                e.target.style.transform = 'translateY(0)';
-                              }
+                              opacity: canDecreaseStage(camera.stage) ? 1 : 0.5
                             }}
                           >
                             <svg width="10" height="2" viewBox="0 0 10 2" fill="none" stroke="currentColor" strokeWidth="2">
@@ -2422,16 +2215,7 @@ const ProjectStatusDashboard = () => {
                               background: getStageColor(camera.stage),
                               cursor: 'pointer',
                               minWidth: '60px',
-                              textAlign: 'center',
-                              transition: 'all 0.2s ease'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.target.style.transform = 'translateY(-1px)';
-                              e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.target.style.transform = 'translateY(0)';
-                              e.target.style.boxShadow = 'none';
+                              textAlign: 'center'
                             }}
                           >
                             {camera.stage}
@@ -2442,7 +2226,7 @@ const ProjectStatusDashboard = () => {
                             disabled={!canIncreaseStage(camera.stage)}
                             onClick={() => increaseStageIteration(project.id, camera.id)}
                             style={{
-                              background: 'var(--bg-primary)',
+                              background: cssVariables['--bg-primary'],
                               border: 'none',
                               width: '24px',
                               height: '24px',
@@ -2451,20 +2235,7 @@ const ProjectStatusDashboard = () => {
                               alignItems: 'center',
                               justifyContent: 'center',
                               cursor: canIncreaseStage(camera.stage) ? 'pointer' : 'not-allowed',
-                              opacity: canIncreaseStage(camera.stage) ? 1 : 0.5,
-                              transition: 'all 0.2s ease'
-                            }}
-                            onMouseEnter={(e) => {
-                              if (canIncreaseStage(camera.stage)) {
-                                e.target.style.background = 'var(--gray-3)';
-                                e.target.style.transform = 'translateY(-1px)';
-                              }
-                            }}
-                            onMouseLeave={(e) => {
-                              if (canIncreaseStage(camera.stage)) {
-                                e.target.style.background = 'var(--bg-primary)';
-                                e.target.style.transform = 'translateY(0)';
-                              }
+                              opacity: canIncreaseStage(camera.stage) ? 1 : 0.5
                             }}
                           >
                             <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2">
@@ -2476,22 +2247,13 @@ const ProjectStatusDashboard = () => {
                             <button
                               onClick={() => setConfirmRemoveCameraModal({ open: true, projectId: project.id, cameraId: camera.id })}
                               style={{
-                                background: 'var(--danger)',
+                                background: cssVariables['--danger'],
                                 color: 'white',
                                 border: 'none',
                                 padding: '4px 8px',
                                 borderRadius: '6px',
                                 fontSize: '12px',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s ease'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.target.style.background = '#D70015';
-                                e.target.style.transform = 'translateY(-1px)';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.target.style.background = 'var(--danger)';
-                                e.target.style.transform = 'translateY(0)';
+                                cursor: 'pointer'
                               }}
                             >
                               Delete
@@ -2511,32 +2273,23 @@ const ProjectStatusDashboard = () => {
                           style={{
                             flex: 1,
                             padding: '8px 12px',
-                            border: '0.5px solid var(--separator)',
+                            border: `0.5px solid ${cssVariables['--separator']}`,
                             borderRadius: '8px',
                             fontSize: '14px',
                             outline: 'none',
-                            background: 'var(--bg-primary)'
+                            background: cssVariables['--bg-primary']
                           }}
                         />
                         <button
                           onClick={() => addCamera(project.id)}
                           style={{
-                            background: 'var(--primary)',
+                            background: cssVariables['--primary'],
                             color: 'white',
                             border: 'none',
                             padding: '8px 16px',
                             borderRadius: '8px',
                             fontSize: '14px',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.target.style.background = '#0056CC';
-                            e.target.style.transform = 'translateY(-1px)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.target.style.background = 'var(--primary)';
-                            e.target.style.transform = 'translateY(0)';
+                            cursor: 'pointer'
                           }}
                         >
                           Add
@@ -2554,29 +2307,20 @@ const ProjectStatusDashboard = () => {
                   gap: '8px',
                   marginTop: '12px',
                   paddingTop: '12px',
-                  borderTop: '0.5px solid var(--separator)'
+                  borderTop: `0.5px solid ${cssVariables['--separator']}`
                 }}>
                   <button
                     onClick={() => openColorPickerModal(project.id)}
                     style={{
                       flex: 1,
-                      background: 'var(--bg-secondary)',
-                      color: 'var(--text-primary)',
+                      background: cssVariables['--bg-secondary'],
+                      color: cssVariables['--text-primary'],
                       border: 'none',
                       padding: '6px 12px',
                       borderRadius: '8px',
                       fontSize: '12px',
                       fontWeight: '500',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.target.style.background = 'var(--gray-3)';
-                      e.target.style.transform = 'translateY(-1px)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.style.background = 'var(--bg-secondary)';
-                      e.target.style.transform = 'translateY(0)';
+                      cursor: 'pointer'
                     }}
                   >
                     Color
@@ -2586,28 +2330,15 @@ const ProjectStatusDashboard = () => {
                     disabled={project.status === 'Completed'}
                     style={{
                       flex: 1,
-                      background: project.status === 'Completed' ? 'var(--gray-4)' : 'var(--success)',
-                      color: project.status === 'Completed' ? 'var(--text-tertiary)' : 'white',
+                      background: project.status === 'Completed' ? cssVariables['--gray-4'] : cssVariables['--success'],
+                      color: project.status === 'Completed' ? cssVariables['--text-tertiary'] : 'white',
                       border: 'none',
                       padding: '6px 12px',
                       borderRadius: '8px',
                       fontSize: '12px',
                       fontWeight: '500',
                       cursor: project.status === 'Completed' ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.2s ease',
                       opacity: project.status === 'Completed' ? 0.6 : 1
-                    }}
-                    onMouseEnter={(e) => {
-                      if (project.status !== 'Completed') {
-                        e.target.style.background = '#2AA44F';
-                        e.target.style.transform = 'translateY(-1px)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (project.status !== 'Completed') {
-                        e.target.style.background = 'var(--success)';
-                        e.target.style.transform = 'translateY(0)';
-                      }
                     }}
                   >
                     Complete
@@ -2616,23 +2347,14 @@ const ProjectStatusDashboard = () => {
                     onClick={() => showConfirmDeleteModal(project.id)}
                     style={{
                       flex: 1,
-                      background: 'var(--danger)',
+                      background: cssVariables['--danger'],
                       color: 'white',
                       border: 'none',
                       padding: '6px 12px',
                       borderRadius: '8px',
                       fontSize: '12px',
                       fontWeight: '500',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.target.style.background = '#D70015';
-                      e.target.style.transform = 'translateY(-1px)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.style.background = 'var(--danger)';
-                      e.target.style.transform = 'translateY(0)';
+                      cursor: 'pointer'
                     }}
                   >
                     Delete
@@ -2658,7 +2380,7 @@ const ProjectStatusDashboard = () => {
             zIndex: 1000
           }}>
             <div style={{
-              background: 'var(--bg-primary)',
+              background: cssVariables['--bg-primary'],
               borderRadius: '20px',
               padding: '24px',
               width: '90%',
@@ -2669,7 +2391,7 @@ const ProjectStatusDashboard = () => {
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Project Name</label>
+                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: cssVariables['--text-tertiary'] }}>Project Name</label>
                   <input
                     type="text"
                     value={newProject.name}
@@ -2677,11 +2399,11 @@ const ProjectStatusDashboard = () => {
                     style={{
                       width: 'calc(100% - 24px)',
                       padding: '8px 12px',
-                      border: '0.5px solid var(--separator)',
+                      border: `0.5px solid ${cssVariables['--separator']}`,
                       borderRadius: '10px',
                       fontSize: '16px',
                       outline: 'none',
-                      background: 'var(--bg-primary)'
+                      background: cssVariables['--bg-primary']
                     }}
                     placeholder="Enter project name"
                   />
@@ -2689,7 +2411,7 @@ const ProjectStatusDashboard = () => {
                 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Start Date</label>
+                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: cssVariables['--text-tertiary'] }}>Start Date</label>
                     <input
                       type="date"
                       value={newProject.startDate}
@@ -2697,16 +2419,16 @@ const ProjectStatusDashboard = () => {
                       style={{
                         width: 'calc(100% - 24px)',
                         padding: '8px 12px',
-                        border: '0.5px solid var(--separator)',
+                        border: `0.5px solid ${cssVariables['--separator']}`,
                         borderRadius: '10px',
                         fontSize: '14px',
                         outline: 'none',
-                        background: 'var(--bg-primary)'
+                        background: cssVariables['--bg-primary']
                       }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Due Date</label>
+                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: cssVariables['--text-tertiary'] }}>Due Date</label>
                     <input
                       type="date"
                       value={newProject.dueDate}
@@ -2714,11 +2436,11 @@ const ProjectStatusDashboard = () => {
                       style={{
                         width: 'calc(100% - 24px)',
                         padding: '8px 12px',
-                        border: '0.5px solid var(--separator)',
+                        border: `0.5px solid ${cssVariables['--separator']}`,
                         borderRadius: '10px',
                         fontSize: '14px',
                         outline: 'none',
-                        background: 'var(--bg-primary)'
+                        background: cssVariables['--bg-primary']
                       }}
                     />
                   </div>
@@ -2726,18 +2448,18 @@ const ProjectStatusDashboard = () => {
                 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Status</label>
+                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: cssVariables['--text-tertiary'] }}>Status</label>
                     <select
                       value={newProject.status}
                       onChange={(e) => handleNewProjectStatusChange(e.target.value)}
                       style={{
                         width: '100%',
                         padding: '8px 12px',
-                        border: '0.5px solid var(--separator)',
+                        border: `0.5px solid ${cssVariables['--separator']}`,
                         borderRadius: '10px',
                         fontSize: '14px',
                         outline: 'none',
-                        background: 'var(--bg-primary)'
+                        background: cssVariables['--bg-primary']
                       }}
                     >
                       {Object.keys(statusColors).map(status => (
@@ -2746,18 +2468,18 @@ const ProjectStatusDashboard = () => {
                     </select>
                   </div>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Priority</label>
+                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: cssVariables['--text-tertiary'] }}>Priority</label>
                     <select
                       value={newProject.priority}
                       onChange={(e) => setNewProject({ ...newProject, priority: e.target.value })}
                       style={{
                         width: '100%',
                         padding: '8px 12px',
-                        border: '0.5px solid var(--separator)',
-                        borderRadius: '1010px',
+                        border: `0.5px solid ${cssVariables['--separator']}`,
+                        borderRadius: '10px',
                         fontSize: '14px',
                         outline: 'none',
-                        background: 'var(--bg-primary)'
+                        background: cssVariables['--bg-primary']
                       }}
                     >
                       {Object.keys(priorityColors).map(priority => (
@@ -2768,12 +2490,12 @@ const ProjectStatusDashboard = () => {
                 </div>
                 
                 <div>
-                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Busy Artists</label>
+                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: cssVariables['--text-tertiary'] }}>Busy Artists</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <button
                       onClick={() => handleNewProjectBusyChange(Math.max(0, newProject.busy - 1))}
                       style={{
-                        background: 'var(--bg-secondary)',
+                        background: cssVariables['--bg-secondary'],
                         border: 'none',
                         width: '32px',
                         height: '32px',
@@ -2781,16 +2503,7 @@ const ProjectStatusDashboard = () => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.target.style.background = 'var(--gray-3)';
-                        e.target.style.transform = 'translateY(-1px)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.background = 'var(--bg-secondary)';
-                        e.target.style.transform = 'translateY(0)';
+                        cursor: 'pointer'
                       }}
                     >
                       <svg width="14" height="2" viewBox="0 0 14 2" fill="none" stroke="currentColor" strokeWidth="2">
@@ -2803,7 +2516,7 @@ const ProjectStatusDashboard = () => {
                     <button
                       onClick={() => handleNewProjectBusyChange(newProject.busy + 1)}
                       style={{
-                        background: 'var(--bg-secondary)',
+                        background: cssVariables['--bg-secondary'],
                         border: 'none',
                         width: '32px',
                         height: '32px',
@@ -2811,16 +2524,7 @@ const ProjectStatusDashboard = () => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.target.style.background = 'var(--gray-3)';
-                        e.target.style.transform = 'translateY(-1px)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.background = 'var(--bg-secondary)';
-                        e.target.style.transform = 'translateY(0)';
+                        cursor: 'pointer'
                       }}
                     >
                       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2">
@@ -2835,23 +2539,14 @@ const ProjectStatusDashboard = () => {
                 <button
                   onClick={() => setIsAddModalOpen(false)}
                   style={{
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
+                    background: cssVariables['--bg-secondary'],
+                    color: cssVariables['--text-primary'],
                     border: 'none',
                     padding: '10px 20px',
                     borderRadius: '14px',
                     fontSize: '16px',
                     fontWeight: '500',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = 'var(--gray-3)';
-                    e.target.style.transform = 'translateY(-1px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = 'var(--bg-secondary)';
-                    e.target.style.transform = 'translateY(0)';
+                    cursor: 'pointer'
                   }}
                 >
                   Cancel
@@ -2859,1015 +2554,18 @@ const ProjectStatusDashboard = () => {
                 <button
                   onClick={addProject}
                   style={{
-                    background: 'var(--primary)',
+                    background: cssVariables['--primary'],
                     color: 'white',
                     border: 'none',
                     padding: '10px 20px',
                     borderRadius: '14px',
                     fontSize: '16px',
                     fontWeight: '500',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = '#0056CC';
-                    e.target.style.transform = 'translateY(-1px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = 'var(--primary)';
-                    e.target.style.transform = 'translateY(0)';
+                    cursor: 'pointer'
                   }}
                 >
                   Add Project
                 </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Comments Modal */}
-        {commentsForId && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000
-          }}>
-            <div style={{
-              background: 'var(--bg-primary)',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '500px',
-              maxHeight: '80vh',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.2)'
-            }}>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '20px'
-              }}>
-                <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '600' }}>
-                  Comments for {state.projects.find(p => p.id === commentsForId)?.name}
-                </h3>
-                <button
-                  onClick={closeComments}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    fontSize: '24px',
-                    cursor: 'pointer',
-                    color: 'var(--text-tertiary)',
-                    transition: 'color 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => e.target.style.color = 'var(--text-primary)'}
-                  onMouseLeave={(e) => e.target.style.color = 'var(--text-tertiary)'}
-                >
-                  ×
-                </button>
-              </div>
-
-              <div style={{
-                flex: 1,
-                overflowY: 'auto',
-                marginBottom: '20px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '12px'
-              }}>
-                {state.projects.find(p => p.id === commentsForId)?.comments
-                  ?.filter(c => !c.deleted)
-                  .sort((a, b) => new Date(b.ts) - new Date(a.ts))
-                  .map(comment => (
-                    <div key={comment.id} style={{
-                      background: comment.ignored ? 'var(--bg-secondary)' : 'var(--bg-primary)',
-                      border: `0.5px solid ${comment.ignored ? 'var(--gray-4)' : 'var(--separator)'}`,
-                      borderRadius: '12px',
-                      padding: '12px',
-                      opacity: comment.ignored ? 0.6 : 1
-                    }}>
-                      {editingId === comment.id ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          <textarea
-                            value={editingText}
-                            onChange={(e) => setEditingText(e.target.value)}
-                            style={{
-                              width: '100%',
-                              minHeight: '60px',
-                              padding: '8px',
-                              border: '0.5px solid var(--separator)',
-                              borderRadius: '8px',
-                              fontSize: '14px',
-                              outline: 'none',
-                              resize: 'vertical',
-                              background: 'var(--bg-primary)'
-                            }}
-                          />
-                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                            <button
-                              onClick={() => setEditingId(null)}
-                              style={{
-                                background: 'var(--bg-secondary)',
-                                color: 'var(--text-primary)',
-                                border: 'none',
-                                padding: '6px 12px',
-                                borderRadius: '8px',
-                                fontSize: '14px',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              onClick={() => saveEdit(comment.id)}
-                              style={{
-                                background: 'var(--primary)',
-                                color: 'white',
-                                border: 'none',
-                                padding: '6px 12px',
-                                borderRadius: '8px',
-                                fontSize: '14px',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              Save
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div>
-                          <div style={{ 
-                            fontSize: '14px', 
-                            color: 'var(--text-secondary)',
-                            marginBottom: '4px'
-                          }}>
-                            {new Date(comment.ts).toLocaleString()}
-                          </div>
-                          <div style={{ 
-                            fontSize: '16px', 
-                            color: 'var(--text-primary)',
-                            marginBottom: '8px',
-                            whiteSpace: 'pre-wrap'
-                          }}>
-                            {comment.text}
-                          </div>
-                          <div style={{ display: 'flex', gap: '8px' }}>
-                            {isAdmin && (
-                              <>
-                                <button
-                                  onClick={() => startEdit(comment.id, comment.text)}
-                                  style={{
-                                    background: 'var(--bg-secondary)',
-                                    color: 'var(--text-primary)',
-                                    border: 'none',
-                                    padding: '4px 8px',
-                                    borderRadius: '6px',
-                                    fontSize: '12px',
-                                    cursor: 'pointer'
-                                  }}
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  onClick={() => confirmIgnoreComment(comment.id)}
-                                  style={{
-                                    background: 'var(--warning)',
-                                    color: 'white',
-                                    border: 'none',
-                                    padding: '4px 8px',
-                                    borderRadius: '6px',
-                                    fontSize: '12px',
-                                    cursor: 'pointer'
-                                  }}
-                                >
-                                  {comment.ignored ? 'Unignore' : 'Ignore'}
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <textarea
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  placeholder="Add a comment..."
-                  style={{
-                    width: 'calc(100% - 24px)',
-                    minHeight: '60px',
-                    padding: '12px',
-                    border: '0.5px solid var(--separator)',
-                    borderRadius: '12px',
-                    fontSize: '16px',
-                    outline: 'none',
-                    resize: 'vertical',
-                    background: 'var(--bg-primary)'
-                  }}
-                />
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  {isAdmin && (
-                    <button
-                      onClick={() => setClearCommentsModal(commentsForId)}
-                      style={{
-                        background: 'var(--danger)',
-                        color: 'white',
-                        border: 'none',
-                        padding: '8px 16px',
-                        borderRadius: '10px',
-                        fontSize: '14px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Clear All
-                    </button>
-                  )}
-                  <button
-                    onClick={() => setConfirmAddOpen(true)}
-                    disabled={!draft.trim()}
-                    style={{
-                      background: draft.trim() ? 'var(--primary)' : 'var(--gray-4)',
-                      color: draft.trim() ? 'white' : 'var(--text-tertiary)',
-                      border: 'none',
-                      padding: '8px 16px',
-                      borderRadius: '10px',
-                      fontSize: '14px',
-                      cursor: draft.trim() ? 'pointer' : 'not-allowed',
-                      marginLeft: 'auto'
-                    }}
-                  >
-                    Add Comment
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* History Modal */}
-        {historyForId && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000
-          }}>
-            <div style={{
-              background: 'var(--bg-primary)',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '600px',
-              maxHeight: '80vh',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.2)'
-            }}>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '20px'
-              }}>
-                <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '600' }}>
-                  History for {state.projects.find(p => p.id === historyForId)?.name}
-                </h3>
-                <button
-                  onClick={closeHistory}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    fontSize: '24px',
-                    cursor: 'pointer',
-                    color: 'var(--text-tertiary)',
-                    transition: 'color 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => e.target.style.color = 'var(--text-primary)'}
-                  onMouseLeave={(e) => e.target.style.color = 'var(--text-tertiary)'}
-                >
-                  ×
-                </button>
-              </div>
-
-              <div style={{
-                flex: 1,
-                overflowY: 'auto',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px'
-              }}>
-                {state.projects.find(p => p.id === historyForId)?.history?.map((entry, index) => (
-                  <div key={index} style={{
-                    padding: '8px 12px',
-                    background: 'var(--bg-secondary)',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    color: 'var(--text-secondary)'
-                  }}>
-                    {entry}
-                  </div>
-                ))}
-              </div>
-
-              {isAdmin && (
-                <div style={{ marginTop: '16px', textAlign: 'right' }}>
-                  <button
-                    onClick={() => setClearHistoryModal(historyForId)}
-                    style={{
-                      background: 'var(--danger)',
-                      color: 'white',
-                      border: 'none',
-                      padding: '8px 16px',
-                      borderRadius: '10px',
-                      fontSize: '14px',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Clear History
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Password Modal */}
-        {passwordModal && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000
-          }}>
-            <div style={{
-              background: 'var(--bg-primary)',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '400px',
-              textAlign: 'center'
-            }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: '600' }}>Admin Access</h3>
-              <p style={{ margin: '0 0 20px 0', color: 'var(--text-tertiary)' }}>Enter admin password:</p>
-              <input
-                type="password"
-                value={passwordInput}
-                onChange={(e) => setPasswordInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && checkPassword()}
-                style={{
-                  width: 'calc(100% - 24px)',
-                  padding: '12px',
-                  border: '0.5px solid var(--separator)',
-                  borderRadius: '12px',
-                  fontSize: '16px',
-                  outline: 'none',
-                  background: 'var(--bg-primary)',
-                  marginBottom: '20px'
-                }}
-                placeholder="Password"
-              />
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                <button
-                  onClick={() => {
-                    setPasswordModal(false);
-                    setPasswordInput('');
-                  }}
-                  style={{
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={checkPassword}
-                  style={{
-                    background: 'var(--primary)',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Enter
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Alert Modal */}
-        {isAlertOpen && (
-          <div style={{
-            position: 'fixed',
-            bottom: '20px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 1000,
-            background: 'var(--text-primary)',
-            color: 'var(--bg-primary)',
-            padding: '12px 20px',
-            borderRadius: '20px',
-            fontSize: '14px',
-            fontWeight: '500',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-            animation: 'slideInUp 0.3s ease-out'
-          }}>
-            {alertMessage}
-          </div>
-        )}
-
-        {/* Project Name Modal */}
-        {projectNameModal.open && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000
-          }}>
-            <div style={{
-              background: 'var(--bg-primary)',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '400px',
-              textAlign: 'center'
-            }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: '600' }}>Edit Project Name</h3>
-              <input
-                type="text"
-                value={projectNameModal.name}
-                onChange={(e) => setProjectNameModal(prev => ({ ...prev, name: e.target.value }))}
-                style={{
-                  width: 'calc(100% - 24px)',
-                  padding: '12px',
-                  border: '0.5px solid var(--separator)',
-                  borderRadius: '12px',
-                  fontSize: '16px',
-                  outline: 'none',
-                  background: 'var(--bg-primary)',
-                  marginBottom: '20px'
-                }}
-                placeholder="Project name"
-              />
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                <button
-                  onClick={closeProjectNameModal}
-                  style={{
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={saveProjectName}
-                  style={{
-                    background: 'var(--primary)',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Save
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Color Picker Modal */}
-        {colorPickerModal.open && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000
-          }}>
-            <div style={{
-              background: 'var(--bg-primary)',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '400px',
-              textAlign: 'center'
-            }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: '600' }}>Choose Project Color</h3>
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(6, 1fr)',
-                gap: '8px',
-                marginBottom: '20px'
-              }}>
-                {projectColors.map(color => (
-                  <button
-                    key={color}
-                    onClick={() => setColorPickerModal(prev => ({ ...prev, currentColor: color }))}
-                    style={{
-                      width: '32px',
-                      height: '32px',
-                      borderRadius: '50%',
-                      background: color,
-                      border: colorPickerModal.currentColor === color ? '2px solid var(--primary)' : 'none',
-                      cursor: 'pointer',
-                      transition: 'transform 0.2s ease'
-                    }}
-                    onMouseEnter={(e) => e.target.style.transform = 'scale(1.1)'}
-                    onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
-                  />
-                ))}
-              </div>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                <button
-                  onClick={closeColorPickerModal}
-                  style={{
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={saveProjectColor}
-                  style={{
-                    background: 'var(--primary)',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Save
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Confirm Add Comment Modal */}
-        {confirmAddOpen && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1100
-          }}>
-            <div style={{
-              background: 'var(--bg-primary)',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '400px',
-              textAlign: 'center'
-            }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: '600' }}>Add Comment?</h3>
-              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>Are you sure you want to add this comment?</p>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                <button
-                  onClick={() => setConfirmAddOpen(false)}
-                  style={{
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={addCommentConfirmed}
-                  style={{
-                    background: 'var(--primary)',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Add
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Confirm Ignore Comment Modal */}
-        {confirmIgnore && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1100
-          }}>
-            <div style={{
-              background: 'var(--bg-primary)',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '400px',
-              textAlign: 'center'
-            }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: '600' }}>Ignore Comment?</h3>
-              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>Are you sure you want to ignore this comment?</p>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                <button
-                  onClick={() => setConfirmIgnore(null)}
-                  style={{
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={doIgnore}
-                  style={{
-                    background: 'var(--warning)',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Ignore
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Clear Comments Modal */}
-        {clearCommentsModal && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1100
-          }}>
-            <div style={{
-              background: 'var(--bg-primary)',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '400px',
-              textAlign: 'center'
-            }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: '600' }}>Clear All Comments?</h3>
-              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>This action cannot be undone.</p>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                <button
-                  onClick={() => setClearCommentsModal(null)}
-                  style={{
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => clearComments(clearCommentsModal)}
-                  style={{
-                    background: 'var(--danger)',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Clear
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Clear History Modal */}
-        {clearHistoryModal && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1100
-          }}>
-            <div style={{
-              background: 'var(--bg-primary)',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '400px',
-              textAlign: 'center'
-            }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: '600' }}>Clear History?</h3>
-              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>This action cannot be undone.</p>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                <button
-                  onClick={() => setClearHistoryModal(null)}
-                  style={{
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => clearHistory(clearHistoryModal)}
-                  style={{
-                    background: 'var(--danger)',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Clear
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Custom Confirm Delete Modal */}
-        {confirmDeleteModal.open && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1100
-          }}>
-            <div style={{
-              background: 'var(--bg-primary)',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '400px',
-              textAlign: 'center'
-            }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: '600' }}>Delete Project?</h3>
-              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>This action cannot be undone.</p>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                <button
-                  onClick={closeConfirmDeleteModal}
-                  style={{
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => deleteProject(confirmDeleteModal.projectId)}
-                  style={{
-                    background: 'var(--danger)',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Custom Confirm Complete Modal */}
-        {confirmCompleteModal.open && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1100
-          }}>
-            <div style={{
-              background: 'var(--bg-primary)',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '400px',
-              textAlign: 'center'
-            }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: '600' }}>Complete Project?</h3>
-              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>Mark this project as completed?</p>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                <button
-                  onClick={closeConfirmCompleteModal}
-                  style={{
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => completeProject(confirmCompleteModal.projectId)}
-                  style={{
-                    background: 'var(--success)',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Complete
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Date Validation Modal */}
-        {dateValidationModal.open && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1100
-          }}>
-            <div style={{
-              background: 'var(--bg-primary)',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '400px',
-              textAlign: 'center'
-            }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: '600' }}>Date Error</h3>
-              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>{dateValidationModal.message}</p>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                <button
-                  onClick={closeDateValidationModal}
-                  style={{
-                    background: dateValidationModal.callback ? 'var(--bg-secondary)' : 'var(--primary)',
-                    color: dateValidationModal.callback ? 'var(--text-primary)' : 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  {dateValidationModal.callback ? 'Cancel' : 'OK'}
-                </button>
-                {dateValidationModal.callback && (
-                  <button
-                    onClick={() => {
-                      dateValidationModal.callback();
-                      closeDateValidationModal();
-                    }}
-                    style={{
-                      background: 'var(--primary)',
-                      color: 'white',
-                      border: 'none',
-                      padding: '10px 20px',
-                      borderRadius: '14px',
-                      fontSize: '16px',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Adjust Dates
-                  </button>
-                )}
               </div>
             </div>
           </div>
@@ -3888,7 +2586,7 @@ const ProjectStatusDashboard = () => {
             zIndex: 1000
           }}>
             <div style={{
-              background: 'var(--bg-primary)',
+              background: cssVariables['--bg-primary'],
               borderRadius: '20px',
               padding: '24px',
               width: '90%',
@@ -3924,16 +2622,7 @@ const ProjectStatusDashboard = () => {
                         color: 'white',
                         fontSize: '16px',
                         fontWeight: '500',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.target.style.transform = 'translateY(-1px)';
-                        e.target.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.transform = 'translateY(0)';
-                        e.target.style.boxShadow = 'none';
+                        cursor: 'pointer'
                       }}
                     >
                       {stage}
@@ -3946,22 +2635,13 @@ const ProjectStatusDashboard = () => {
                 onClick={closeStageModal}
                 style={{
                   marginTop: '20px',
-                  background: 'var(--bg-secondary)',
-                  color: 'var(--text-primary)',
+                  background: cssVariables['--bg-secondary'],
+                  color: cssVariables['--text-primary'],
                   border: 'none',
                   padding: '10px 20px',
                   borderRadius: '14px',
                   fontSize: '16px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.background = 'var(--gray-3)';
-                  e.target.style.transform = 'translateY(-1px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.background = 'var(--bg-secondary)';
-                  e.target.style.transform = 'translateY(0)';
+                  cursor: 'pointer'
                 }}
               >
                 Cancel
@@ -3985,7 +2665,7 @@ const ProjectStatusDashboard = () => {
             zIndex: 1100
           }}>
             <div style={{
-              background: 'var(--bg-primary)',
+              background: cssVariables['--bg-primary'],
               borderRadius: '20px',
               padding: '24px',
               width: '90%',
@@ -3993,13 +2673,13 @@ const ProjectStatusDashboard = () => {
               textAlign: 'center'
             }}>
               <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: '600' }}>Delete Camera?</h3>
-              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>This action cannot be undone.</p>
+              <p style={{ margin: '0 0 24px 0', color: cssVariables['--text-tertiary'] }}>This action cannot be undone.</p>
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
                 <button
                   onClick={() => setConfirmRemoveCameraModal({ open: false, projectId: null, cameraId: null })}
                   style={{
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
+                    background: cssVariables['--bg-secondary'],
+                    color: cssVariables['--text-primary'],
                     border: 'none',
                     padding: '10px 20px',
                     borderRadius: '14px',
@@ -4012,7 +2692,7 @@ const ProjectStatusDashboard = () => {
                 <button
                   onClick={() => removeCamera(confirmRemoveCameraModal.projectId, confirmRemoveCameraModal.cameraId)}
                   style={{
-                    background: 'var(--danger)',
+                    background: cssVariables['--danger'],
                     color: 'white',
                     border: 'none',
                     padding: '10px 20px',
@@ -4028,52 +2708,33 @@ const ProjectStatusDashboard = () => {
           </div>
         )}
 
+        {/* Alert Message */}
+        {isAlertOpen && (
+          <div style={{
+            position: 'fixed',
+            top: '20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: cssVariables['--danger'],
+            color: 'white',
+            padding: '12px 24px',
+            borderRadius: '20px',
+            zIndex: 2000
+          }}>
+            {alertMessage}
+          </div>
+        )}
+
         {/* Footer */}
         <div style={{
           textAlign: 'center',
           padding: '20px',
-          color: 'var(--text-quaternary)',
+          color: cssVariables['--text-quaternary'],
           fontSize: '14px'
         }}>
           Zigert Project Management System • {new Date().getFullYear()}
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes slideIn {
-          from { transform: translate(-50%, -20px); opacity: 0; }
-          to { transform: translate(-50%, 0); opacity: 1; }
-        }
-        
-        @keyframes slideInUp {
-          from { transform: translate(-50%, 20px); opacity: 0; }
-          to { transform: translate(-50%, 0); opacity: 1; }
-        }
-        
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        
-        /* Scrollbar styling for webkit browsers */
-        ::-webkit-scrollbar {
-          width: 6px;
-        }
-        
-        ::-webkit-scrollbar-track {
-          background: var(--bg-secondary);
-          border-radius: 3px;
-        }
-        
-        ::-webkit-scrollbar-thumb {
-          background: var(--gray-2);
-          border-radius: 3px;
-        }
-        
-        ::-webkit-scrollbar-thumb:hover {
-          background: var(--gray-1);
-        }
-      `}</style>
     </div>
   );
 };
