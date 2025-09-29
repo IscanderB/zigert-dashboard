@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
-// ЗАМЕНИТЕ эти значения на ваши из Supabase Settings -> API
 const supabaseUrl = 'https://xluhdjnauxwlmamotsob.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhsdWhkam5hdXh3bG1hbW90c29iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgxOTQ1MjgsImV4cCI6MjA3Mzc3MDUyOH0.rleQjZdGsxAXZ89vpcGXVl06idPY12QxMkcn1dc_yQc';
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 const ProjectStatusDashboard = () => {
-  // Utility functions
   function uid(prefix = 'id') { return prefix + Math.random().toString(36).slice(2, 9); }
 
   function getMonthDays(year, month) {
@@ -28,7 +26,6 @@ const ProjectStatusDashboard = () => {
     return `${year}-${month}-${day}`;
   }
 
-  // Helper function to format date for display in MM/ DD/ YYYY format
   function formatDateForDisplay(dateString) {
     if (!dateString) return '';
     const date = new Date(dateString);
@@ -38,7 +35,6 @@ const ProjectStatusDashboard = () => {
     return `${month}/ ${day}/ ${year}`;
   }
 
-  // Calendar project colors
   const projectColors = [
     '#8D6E63', '#5D4037', '#795548', '#6D4C41', '#4E342E',
     '#3E2723', '#A1887F', '#8A6552', '#7B5E47', '#6B4E3D',
@@ -52,12 +48,10 @@ const ProjectStatusDashboard = () => {
   ];
 
   function getProjectColor(project) {
-    // Если у проекта есть сохраненный цвет, используем его
     if (project && project.color) {
       return project.color;
     }
     
-    // Иначе генерируем дефолтный цвет по ID
     if (project && project.id) {
       let hash = 0;
       for (let i = 0; i < project.id.length; i++) {
@@ -70,7 +64,6 @@ const ProjectStatusDashboard = () => {
     return '#8D6E63';
   }
 
-  // State management
   const [state, setState] = useState({
     totalArtists: 6,
     projects: []
@@ -83,7 +76,6 @@ const ProjectStatusDashboard = () => {
   const [holidayDays, setHolidayDays] = useState(new Set());
   const [workingWeekends, setWorkingWeekends] = useState(new Set());
 
-  // Modal states
   const [commentsForId, setCommentsForId] = useState(null);
   const [draft, setDraft] = useState('');
   const [confirmAddOpen, setConfirmAddOpen] = useState(false);
@@ -92,7 +84,6 @@ const ProjectStatusDashboard = () => {
   const [confirmIgnore, setConfirmIgnore] = useState(null);
   const [historyForId, setHistoryForId] = useState(null);
   
-  // ИСПРАВЛЕНО: Объединили month и year в одно состояние
   const [currentDate, setCurrentDate] = useState({
     month: new Date().getMonth(),
     year: new Date().getFullYear()
@@ -117,25 +108,26 @@ const ProjectStatusDashboard = () => {
   const [clearHistoryModal, setClearHistoryModal] = useState(null);
   const [colorPickerModal, setColorPickerModal] = useState({ open: false, projectId: null, currentColor: '#8D6E63' });
 
-  // New custom modal states
   const [confirmDeleteModal, setConfirmDeleteModal] = useState({ open: false, projectId: null });
   const [confirmCompleteModal, setConfirmCompleteModal] = useState({ open: false, projectId: null });
   const [dateValidationModal, setDateValidationModal] = useState({ open: false, message: '', callback: null });
 
-  // Supabase API functions
+  const [expandedImagesProjectId, setExpandedImagesProjectId] = useState(null);
+  const [newCameraName, setNewCameraName] = useState('');
+  const [confirmDeleteCamera, setConfirmDeleteCamera] = useState(null);
+  const [stagePickerModal, setStagePickerModal] = useState({ open: false, projectId: null, cameraId: null, currentStage: 'WIP' });
+
   async function loadInitialData() {
     try {
       setLoading(true);
       setError(null);
 
-      // Load settings
       const { data: settings, error: settingsError } = await supabase
         .from('settings')
         .select('*');
       
       if (settingsError) throw settingsError;
 
-      // Load holiday days
       const { data: holidays, error: holidaysError } = await supabase
         .from('holiday_days')
         .select('*');
@@ -144,7 +136,6 @@ const ProjectStatusDashboard = () => {
         console.warn('Holiday days table not found, continuing without it');
       }
 
-      // Load working weekends
       const { data: workingWeekendsData, error: workingWeekendsError } = await supabase
         .from('working_weekends')
         .select('*');
@@ -153,7 +144,6 @@ const ProjectStatusDashboard = () => {
         console.warn('Working weekends table not found, continuing without it');
       }
 
-      // Load projects with comments and history
       const { data: projects, error: projectsError } = await supabase
         .from('projects')
         .select(`
@@ -165,7 +155,6 @@ const ProjectStatusDashboard = () => {
 
       if (projectsError) throw projectsError;
 
-      // Transform data to match component structure
       const transformedProjects = (projects || []).map(project => ({
         id: project.id,
         name: project.name,
@@ -174,7 +163,7 @@ const ProjectStatusDashboard = () => {
         dueDate: project.due_date,
         busy: project.busy,
         priority: project.priority,
-        color: project.color || null, // Handle missing color column gracefully
+        color: project.color || null,
         comments: (project.project_comments || []).map(comment => ({
           id: comment.id,
           text: comment.text,
@@ -182,15 +171,36 @@ const ProjectStatusDashboard = () => {
           deleted: comment.deleted,
           ts: comment.created_at
         })),
-        // ИЗМЕНЕНИЕ 2: Изменил сортировку истории - новые записи вверху
         history: (project.project_history || [])
           .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-          .map(h => h.entry)
+          .map(h => h.entry),
+        cameras: []
       }));
+
+      const { data: cameras, error: camerasError } = await supabase
+        .from('project_cameras')
+        .select('*')
+        .order('name', { ascending: true });
+      
+      if (camerasError && camerasError.code !== 'PGRST116') {
+        console.warn('Project cameras table not found, continuing without it');
+      }
+
+      if (cameras && cameras.length > 0) {
+        cameras.forEach(camera => {
+          const project = transformedProjects.find(p => p.id === camera.project_id);
+          if (project) {
+            project.cameras.push({
+              id: camera.id,
+              name: camera.name,
+              stage: camera.stage || 'WIP'
+            });
+          }
+        });
+      }
 
       const totalArtists = settings?.find(s => s.key === 'totalArtists')?.value || 6;
       
-      // Load holiday days
       const holidaySet = new Set();
       if (holidays && holidays.length > 0) {
         holidays.forEach(holiday => {
@@ -199,7 +209,6 @@ const ProjectStatusDashboard = () => {
       }
       setHolidayDays(holidaySet);
 
-      // Load working weekends
       const workingWeekendsSet = new Set();
       if (workingWeekendsData && workingWeekendsData.length > 0) {
         workingWeekendsData.forEach(weekend => {
@@ -234,14 +243,13 @@ const ProjectStatusDashboard = () => {
           due_date: projectData.dueDate,
           busy: projectData.busy,
           priority: projectData.priority,
-          ...(projectData.color && { color: projectData.color }) // Only include color if it exists
+          ...(projectData.color && { color: projectData.color })
         })
         .select();
 
       if (error) throw error;
       return data[0];
     } catch (err) {
-      // If color column doesn't exist yet, save without it
       if (err.message?.includes("color")) {
         const { data, error } = await supabase
           .from('projects')
@@ -293,7 +301,6 @@ const ProjectStatusDashboard = () => {
         if (error) throw error;
       }
     } catch (err) {
-      // If table doesn't exist, just show error and continue
       console.warn('Holiday days table not found. Please create it in Supabase first.');
       throw new Error('Holiday days table not found. Please create the table first in Supabase.');
     }
@@ -314,7 +321,6 @@ const ProjectStatusDashboard = () => {
         if (error) throw error;
       }
     } catch (err) {
-      // If table doesn't exist, just show error and continue
       console.warn('Working weekends table not found. Please create it in Supabase first.');
       throw new Error('Working weekends table not found. Please create the table first in Supabase.');
     }
@@ -356,24 +362,126 @@ const ProjectStatusDashboard = () => {
     if (error) throw error;
   }
 
-  // Load data on component mount
+  async function addCamera(projectId, cameraName) {
+    try {
+      if (!cameraName.trim()) {
+        showAlert("Specify camera name!");
+        return;
+      }
+
+      const camera = {
+        id: uid('cam'),
+        project_id: projectId,
+        name: cameraName.trim(),
+        stage: 'WIP'
+      };
+
+      const { data, error } = await supabase
+        .from('project_cameras')
+        .insert(camera)
+        .select();
+
+      if (error) throw error;
+
+      await addHistoryEntry(projectId, `${new Date().toLocaleString()}: Camera "${cameraName}" added${isAdmin ? ' [Admin]' : ''}`);
+
+      setState(prev => ({
+        ...prev,
+        projects: prev.projects.map(p => p.id === projectId ? ({
+          ...p,
+          cameras: [...(p.cameras || []), { id: camera.id, name: camera.name, stage: camera.stage }].sort((a, b) => a.name.localeCompare(b.name)),
+          history: [`${new Date().toLocaleString()}: Camera "${cameraName}" added${isAdmin ? ' [Admin]' : ''}`, ...(p.history || [])]
+        }) : p)
+      }));
+
+      setNewCameraName('');
+      setLastSync(new Date());
+      showAlert(`Camera "${cameraName}" added!`);
+    } catch (err) {
+      if (err.message?.includes("project_cameras")) {
+        setError('Camera table not found. Please create the table in Supabase first.');
+      } else {
+        setError(`Failed to add camera: ${err.message}`);
+      }
+      console.error('Add camera error:', err);
+    }
+  }
+
+  async function deleteCamera(projectId, cameraId, cameraName) {
+    try {
+      const { error } = await supabase
+        .from('project_cameras')
+        .delete()
+        .eq('id', cameraId);
+
+      if (error) throw error;
+
+      await addHistoryEntry(projectId, `${new Date().toLocaleString()}: Camera "${cameraName}" deleted [Admin]`);
+
+      setState(prev => ({
+        ...prev,
+        projects: prev.projects.map(p => p.id === projectId ? ({
+          ...p,
+          cameras: (p.cameras || []).filter(c => c.id !== cameraId),
+          history: [`${new Date().toLocaleString()}: Camera "${cameraName}" deleted [Admin]`, ...(p.history || [])]
+        }) : p)
+      }));
+
+      setLastSync(new Date());
+      setConfirmDeleteCamera(null);
+      showAlert(`Camera "${cameraName}" deleted!`);
+    } catch (err) {
+      setError(`Failed to delete camera: ${err.message}`);
+      console.error('Delete camera error:', err);
+    }
+  }
+
+  async function updateCameraStage(projectId, cameraId, newStage) {
+    try {
+      const { error } = await supabase
+        .from('project_cameras')
+        .update({ stage: newStage })
+        .eq('id', cameraId);
+
+      if (error) throw error;
+
+      const project = state.projects.find(p => p.id === projectId);
+      const camera = project?.cameras?.find(c => c.id === cameraId);
+      
+      if (camera) {
+        await addHistoryEntry(projectId, `${new Date().toLocaleString()}: Camera "${camera.name}" stage changed to ${newStage}`);
+      }
+
+      setState(prev => ({
+        ...prev,
+        projects: prev.projects.map(p => p.id === projectId ? ({
+          ...p,
+          cameras: (p.cameras || []).map(c => c.id === cameraId ? { ...c, stage: newStage } : c),
+          history: camera ? [`${new Date().toLocaleString()}: Camera "${camera.name}" stage changed to ${newStage}`, ...(p.history || [])] : p.history
+        }) : p)
+      }));
+
+      setLastSync(new Date());
+    } catch (err) {
+      setError(`Failed to update camera stage: ${err.message}`);
+      console.error('Update camera stage error:', err);
+    }
+  }
+
   useEffect(() => {
     loadInitialData();
   }, []);
 
-  // Simulate connection status and periodic sync
   useEffect(() => {
     const interval = setInterval(() => {
-      // Simulate connection status changes
       setConnected(prev => {
-        if (Math.random() > 0.98) { // 2% chance to disconnect
+        if (Math.random() > 0.98) {
           setTimeout(() => setConnected(true), 1000 + Math.random() * 2000);
           return false;
         }
         return true;
       });
 
-      // Update last sync time when connected
       if (connected) {
         setLastSync(new Date());
       }
@@ -382,20 +490,27 @@ const ProjectStatusDashboard = () => {
     return () => clearInterval(interval);
   }, [connected]);
 
-  // Calculate stats
+  useEffect(() => {
+    if (!expandedImagesProjectId) return;
+
+    const timer = setTimeout(() => {
+      setExpandedImagesProjectId(null);
+    }, 180000);
+
+    return () => clearTimeout(timer);
+  }, [expandedImagesProjectId]);
+
   const total = state.totalArtists;
   const busy = state.projects.reduce((s, p) => s + (p.status === 'Completed' ? 0 : p.busy), 0);
   const free = total - busy;
   const freePct = Math.round((free / total) * 100);
 
-  // Helper functions
   function showAlert(message) {
     setAlertMessage(message);
     setIsAlertOpen(true);
     setTimeout(() => setIsAlertOpen(false), 3000);
   }
 
-  // Custom modal functions
   function showDateValidationModal(message, callback) {
     setDateValidationModal({ open: true, message, callback });
   }
@@ -420,12 +535,10 @@ const ProjectStatusDashboard = () => {
     setConfirmCompleteModal({ open: false, projectId: null });
   }
 
-  // Total Artists functions
   async function updateTotalArtists(delta) {
     try {
       const newTotal = Math.max(1, state.totalArtists + delta);
       
-      // Check if trying to set less than busy artists
       if (newTotal < busy) {
         showAlert("These artists are busy!");
         return;
@@ -440,7 +553,6 @@ const ProjectStatusDashboard = () => {
     }
   }
 
-  // Holiday day functions
   async function toggleHolidayDay(dayKey) {
     if (!isAdmin) return;
 
@@ -466,7 +578,6 @@ const ProjectStatusDashboard = () => {
     }
   }
 
-  // Working weekend functions
   async function toggleWorkingWeekend(dayKey) {
     if (!isAdmin) return;
 
@@ -492,7 +603,6 @@ const ProjectStatusDashboard = () => {
     }
   }
 
-  // Password check for admin
   function handleAdminToggle() {
     if (!isAdmin) {
       setPasswordModal(true);
@@ -517,7 +627,6 @@ const ProjectStatusDashboard = () => {
       const project = state.projects.find(p => p.id === id);
       if (!project) return;
 
-      // Business logic validation
       if (changes.busy !== undefined) {
         const newBusy = parseInt(changes.busy);
         if ((project.status === 'Queued' || project.status === 'Waiting') && newBusy > 0) {
@@ -552,23 +661,19 @@ const ProjectStatusDashboard = () => {
         }
       }
 
-      // Save to database
       const updatedProject = { ...project, ...changes };
       await saveProject(updatedProject);
 
-      // Add history entry
       if (historyEntry) {
         const entry = isAdmin ? `${historyEntry} [Admin]` : historyEntry;
         await addHistoryEntry(id, entry);
       }
 
-      // Update local state
       setState(prev => ({
         ...prev,
         projects: prev.projects.map(p => p.id === id ? ({
           ...p,
           ...changes,
-          // Добавляем новую запись истории в начало массива
           history: historyEntry ? [isAdmin ? `${historyEntry} [Admin]` : historyEntry, ...(p.history || [])] : p.history
         }) : p)
       }));
@@ -581,7 +686,6 @@ const ProjectStatusDashboard = () => {
     }
   }
 
-  // Add Project function with new logic
   async function addProject() {
     try {
       if (!newProject.name.trim()) {
@@ -605,15 +709,14 @@ const ProjectStatusDashboard = () => {
         priority: newProject.priority,
         color: newProject.color,
         comments: [],
-        history: []
+        history: [],
+        cameras: []
       };
 
-      // Save to database
       await saveProject(newP);
       const historyEntry = `${new Date().toLocaleString()}: Project created${isAdmin ? ' [Admin]' : ''}`;
       await addHistoryEntry(newP.id, historyEntry);
 
-      // Update local state
       setState(prev => ({ 
         ...prev, 
         projects: [{ ...newP, history: [historyEntry] }, ...prev.projects] 
@@ -655,7 +758,6 @@ const ProjectStatusDashboard = () => {
     closeConfirmCompleteModal();
   }
 
-  // Comment functions
   function openComments(projectId) {
     setCommentsForId(projectId);
     setDraft('');
@@ -719,15 +821,14 @@ const ProjectStatusDashboard = () => {
       
       const trimmed = editingText.trim();
       
-      // Find the current comment to preserve original text
       const project = state.projects.find(p => p.id === commentsForId);
       const comment = project?.comments.find(c => c.id === commentId);
       
       const updatedComment = {
         id: commentId,
-        text: trimmed === '' ? comment?.text || '' : trimmed, // Keep original if empty
+        text: trimmed === '' ? comment?.text || '' : trimmed,
         deleted: false,
-        ignored: trimmed === '', // Mark as ignored if empty text
+        ignored: trimmed === '',
         ts: new Date().toISOString()
       };
 
@@ -772,7 +873,6 @@ const ProjectStatusDashboard = () => {
       
       const { projectId, commentId } = confirmIgnore;
       
-      // Find the current comment to preserve its text
       const project = state.projects.find(p => p.id === projectId);
       const comment = project?.comments.find(c => c.id === commentId);
       
@@ -780,7 +880,7 @@ const ProjectStatusDashboard = () => {
       
       const updatedComment = {
         id: commentId,
-        text: comment.text, // Preserve the original text
+        text: comment.text,
         ignored: true,
         deleted: false,
         ts: new Date().toISOString()
@@ -811,19 +911,16 @@ const ProjectStatusDashboard = () => {
     }
   }
 
-  // History functions
   function openHistory(projectId) { 
     setHistoryForId(projectId); 
   }
   function closeHistory() { setHistoryForId(null); }
 
-  // Clear functions for Admin
   async function clearComments(projectId) {
     try {
       const project = state.projects.find(p => p.id === projectId);
       if (!project) return;
 
-      // Delete all comments from database
       for (const comment of project.comments) {
         await supabase
           .from('project_comments')
@@ -833,7 +930,6 @@ const ProjectStatusDashboard = () => {
 
       await addHistoryEntry(projectId, `${new Date().toLocaleString()}: All comments cleared [Admin]`);
 
-      // Update local state
       setState(prev => ({
         ...prev,
         projects: prev.projects.map(p => p.id === projectId ? ({
@@ -854,13 +950,11 @@ const ProjectStatusDashboard = () => {
 
   async function clearHistory(projectId) {
     try {
-      // Delete all history from database
       await supabase
         .from('project_history')
         .delete()
         .eq('project_id', projectId);
 
-      // Update local state
       setState(prev => ({
         ...prev,
         projects: prev.projects.map(p => p.id === projectId ? ({
@@ -878,7 +972,6 @@ const ProjectStatusDashboard = () => {
     }
   }
 
-  // ИСПРАВЛЕНО: Calendar functions
   function changeMonth(delta) {
     setCurrentDate(prev => {
       let newMonth = prev.month + delta;
@@ -904,7 +997,6 @@ const ProjectStatusDashboard = () => {
     });
   }
 
-  // Project name modal
   function openProjectNameModal(projectId, currentName) {
     setProjectNameModal({ open: true, projectId, name: currentName });
   }
@@ -928,7 +1020,6 @@ const ProjectStatusDashboard = () => {
     closeProjectNameModal();
   }
 
-  // Color picker modal functions
   function openColorPickerModal(projectId) {
     const project = state.projects.find(p => p.id === projectId);
     const currentColor = getProjectColor(project);
@@ -951,7 +1042,115 @@ const ProjectStatusDashboard = () => {
     closeColorPickerModal();
   }
 
-  // ИСПРАВЛЕНО: Timeline helpers - используем currentDate вместо currentMonth/currentYear
+  function getStageColor(stage) {
+    if (stage === 'WIP' || stage.startsWith('WIP')) {
+      return '#8E8E93';
+    } else if (stage === 'ICD' || stage.startsWith('ICD')) {
+      return '#007AFF';
+    } else if (stage.startsWith('R')) {
+      const match = stage.match(/R(\d+)/);
+      if (match) {
+        const iteration = parseInt(match[1]);
+        if (iteration === 1) return '#FFD60A';
+        if (iteration === 2) return '#FF9500';
+        if (iteration === 3) return '#FF9500';
+        if (iteration === 4) return '#FF6B00';
+        if (iteration >= 5) return '#FF3B30';
+      }
+      return '#FF9500';
+    } else if (stage === 'Approved') {
+      return '#34C759';
+    }
+    return '#8E8E93';
+  }
+
+  function incrementStage(currentStage) {
+    if (currentStage === 'WIP') return 'WIP01';
+    if (currentStage === 'ICD') return 'ICD01';
+    if (currentStage === 'Approved') return 'Approved';
+    
+    const wipMatch = currentStage.match(/WIP(\d+)/);
+    if (wipMatch) {
+      const num = parseInt(wipMatch[1]);
+      return `WIP${String(num + 1).padStart(2, '0')}`;
+    }
+    
+    const icdMatch = currentStage.match(/ICD(\d+)/);
+    if (icdMatch) {
+      const num = parseInt(icdMatch[1]);
+      return `ICD${String(num + 1).padStart(2, '0')}`;
+    }
+    
+    const rMatch = currentStage.match(/R(\d+)/);
+    if (rMatch) {
+      const num = parseInt(rMatch[1]);
+      return `R${String(num + 1).padStart(2, '0')}`;
+    }
+    
+    return currentStage;
+  }
+
+  function decrementStage(currentStage) {
+    if (currentStage === 'WIP' || currentStage === 'ICD' || currentStage === 'Approved') return currentStage;
+    if (currentStage === 'R01') return currentStage;
+    
+    const wipMatch = currentStage.match(/WIP(\d+)/);
+    if (wipMatch) {
+      const num = parseInt(wipMatch[1]);
+      if (num <= 1) return 'WIP';
+      return `WIP${String(num - 1).padStart(2, '0')}`;
+    }
+    
+    const icdMatch = currentStage.match(/ICD(\d+)/);
+    if (icdMatch) {
+      const num = parseInt(icdMatch[1]);
+      if (num <= 1) return 'ICD';
+      return `ICD${String(num - 1).padStart(2, '0')}`;
+    }
+    
+    const rMatch = currentStage.match(/R(\d+)/);
+    if (rMatch) {
+      const num = parseInt(rMatch[1]);
+      if (num <= 1) return 'R01';
+      return `R${String(num - 1).padStart(2, '0')}`;
+    }
+    
+    return currentStage;
+  }
+
+  function canDecrementStage(stage) {
+    if (stage === 'WIP' || stage === 'ICD' || stage === 'R01' || stage === 'Approved') return false;
+    return true;
+  }
+
+  function canIncrementStage(stage) {
+    if (stage === 'Approved') return false;
+    return true;
+  }
+
+  function openStagePicker(projectId, cameraId, currentStage) {
+    setStagePickerModal({ open: true, projectId, cameraId, currentStage });
+  }
+
+  function closeStagePicker() {
+    setStagePickerModal({ open: false, projectId: null, cameraId: null, currentStage: 'WIP' });
+  }
+
+  async function selectStage(stage) {
+    if (!stagePickerModal.projectId || !stagePickerModal.cameraId) return;
+    
+    await updateCameraStage(stagePickerModal.projectId, stagePickerModal.cameraId, stage);
+    closeStagePicker();
+  }
+
+  function toggleImagesSection(projectId) {
+    if (expandedImagesProjectId === projectId) {
+      setExpandedImagesProjectId(null);
+    } else {
+      setExpandedImagesProjectId(projectId);
+    }
+  }
+
   const monthDays = getMonthDays(currentDate.year, currentDate.month);
   const firstDayIndex = monthDays.length ? monthDays[0].getDay() : 0;
   const todayKey = formatDateToYYYYMMDD(new Date());
@@ -1003,12 +1202,10 @@ const ProjectStatusDashboard = () => {
     const isHoliday = holidayDays.has(dayKey);
     const isWorkingWeekend = workingWeekends.has(dayKey);
     
-    // Праздничные дни всегда имеют особый фон
     if (isHoliday) {
       return 'var(--bg-secondary)';
     }
     
-    // Выходные дни, которые не являются рабочими
     if (isWeekend && !isWorkingWeekend) {
       return 'var(--bg-secondary)';
     }
@@ -1063,7 +1260,6 @@ const ProjectStatusDashboard = () => {
     'Low': '#6BA66B'
   };
 
-  // New Project Status/Busy logic
   function handleNewProjectStatusChange(newStatus) {
     let newBusy = newProject.busy;
     
@@ -1114,11 +1310,7 @@ const ProjectStatusDashboard = () => {
       minHeight: '100vh',
       color: '#000000',
       fontSize: '17px',
-      lineHeight: '1.47059',
-      fontWeight: '400',
-      letterSpacing: '-0.022em',
       '--primary': '#007AFF',
-      '--secondary': '#5856D6',
       '--success': '#34C759',
       '--warning': '#FF9500',
       '--danger': '#FF3B30',
@@ -1126,20 +1318,12 @@ const ProjectStatusDashboard = () => {
       '--gray-2': '#C7C7CC',
       '--gray-3': '#D1D1D6',
       '--gray-4': '#E5E5EA',
-      '--gray-5': '#F2F2F7',
-      '--gray-6': '#FFFFFF',
-      '--text-primary': '#000000',
-      '--text-secondary': '#3C3C43',
-      '--text-tertiary': '#48484A',
-      '--text-quaternary': '#8E8E93',
       '--bg-primary': '#FFFFFF',
       '--bg-secondary': '#F2F2F7',
-      '--bg-tertiary': '#E5E5EA',
       '--separator': 'rgba(60, 60, 67, 0.12)',
       '--shadow': '0 0 20px rgba(0, 0, 0, 0.05)'
     }}>
       
-      {/* Error notification */}
       {error && (
         <div style={{
           position: 'fixed',
@@ -1152,8 +1336,7 @@ const ProjectStatusDashboard = () => {
           padding: '12px 20px',
           borderRadius: '20px',
           fontSize: '14px',
-          boxShadow: '0 4px 20px rgba(255, 59, 48, 0.3)',
-          animation: 'slideIn 0.3s ease-out'
+          boxShadow: '0 4px 20px rgba(255, 59, 48, 0.3)'
         }}>
           {error}
           <button 
@@ -1164,18 +1347,14 @@ const ProjectStatusDashboard = () => {
               border: 'none',
               color: 'white',
               cursor: 'pointer',
-              fontSize: '16px',
-              transition: 'opacity 0.2s ease'
+              fontSize: '16px'
             }}
-            onMouseEnter={(e) => e.target.style.opacity = '0.7'}
-            onMouseLeave={(e) => e.target.style.opacity = '1'}
           >
             ×
           </button>
         </div>
       )}
 
-      {/* Status indicator for real-time connection */}
       <div style={{
         position: 'fixed',
         top: '10px',
@@ -1188,30 +1367,25 @@ const ProjectStatusDashboard = () => {
         padding: '8px 12px',
         borderRadius: '20px',
         boxShadow: 'var(--shadow)',
-        fontSize: '12px',
-        transition: 'all 0.3s ease'
+        fontSize: '12px'
       }}>
         <div style={{
           width: '8px',
           height: '8px',
           borderRadius: '50%',
-          backgroundColor: connected ? '#34C759' : '#FF3B30',
-          transition: 'background-color 0.3s ease'
+          backgroundColor: connected ? '#34C759' : '#FF3B30'
         }}></div>
         {connected ? `Synced ${lastSync.toLocaleTimeString()}` : 'Reconnecting...'}
       </div>
 
-      {/* Navigation Bar */}
       <div style={{
         background: 'rgba(255, 255, 255, 0.72)',
         backdropFilter: 'saturate(180%) blur(20px)',
-        WebkitBackdropFilter: 'saturate(180%) blur(20px)',
         position: 'sticky',
         top: 0,
         zIndex: 100,
         borderBottom: '0.5px solid var(--separator)',
-        marginBottom: '24px',
-        transition: 'all 0.3s ease'
+        marginBottom: '24px'
       }}>
         <div style={{
           maxWidth: '1400px',
@@ -1236,17 +1410,7 @@ const ProjectStatusDashboard = () => {
                 borderRadius: '18px',
                 fontSize: '15px',
                 fontWeight: 500,
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                outline: 'none'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.background = 'var(--gray-3)';
-                e.target.style.transform = 'translateY(-1px)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.background = 'var(--bg-secondary)';
-                e.target.style.transform = 'translateY(0)';
+                cursor: 'pointer'
               }}
             >
               Refresh
@@ -1261,17 +1425,7 @@ const ProjectStatusDashboard = () => {
                 borderRadius: '18px',
                 fontSize: '15px',
                 fontWeight: 500,
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                outline: 'none'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.background = 'var(--gray-3)';
-                e.target.style.transform = 'translateY(-1px)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.background = 'var(--bg-secondary)';
-                e.target.style.transform = 'translateY(0)';
+                cursor: 'pointer'
               }}
             >
               {isAdmin ? 'Admin Mode' : 'Admin'}
@@ -1280,2240 +1434,13 @@ const ProjectStatusDashboard = () => {
         </div>
       </div>
 
-      {/* Main Content */}
       <div style={{
         maxWidth: '1400px',
         margin: '0 auto',
         padding: '0 24px 24px'
       }}>
-
-        {/* Header Section */}
-        <div style={{
-          textAlign: 'center',
-          marginBottom: '32px',
-          padding: '32px 20px',
-          background: 'var(--bg-primary)',
-          borderRadius: '20px',
-          boxShadow: 'var(--shadow)',
-          transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-          position: 'relative'
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'translateY(-2px)';
-          e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.1)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = 'translateY(0)';
-          e.currentTarget.style.boxShadow = 'var(--shadow)';
-        }}
-        >
-          <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            animation: 'fadeInUp 0.6s ease-out'
-          }}>
-            <img 
-              src="/zigert-logo.png"
-              alt="Zigert Logo"
-              style={{
-                width: '370px',
-                height: 'auto',
-                filter: 'grayscale(0)',
-                transition: 'all 0.3s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.transform = 'scale(1.05)';
-                e.target.style.filter = 'grayscale(0) brightness(1.1)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.transform = 'scale(1)';
-                e.target.style.filter = 'grayscale(0)';
-              }}
-            />
-          </div>
-          <div style={{
-            fontSize: '14px',
-            color: 'var(--text-quaternary)',
-            marginTop: '16px',
-            animation: 'fadeInUp 0.6s ease-out 0.2s both'
-          }}>
-            Real-time collaborative workspace
-          </div>
-        </div>
-
-        {/* Stats Overview */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '16px',
-          marginBottom: '24px'
-        }}>
-          <div style={{
-            background: 'var(--bg-primary)',
-            padding: '20px',
-            borderRadius: '20px',
-            boxShadow: 'var(--shadow)',
-            textAlign: 'center'
-          }}>
-            <div style={{ fontSize: '14px', color: 'var(--text-tertiary)', marginBottom: '4px' }}>
-              Total Artists{isAdmin ? ' (admin controls)' : ''}
-            </div>
-            {isAdmin ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
-                <button
-                  onClick={() => updateTotalArtists(-1)}
-                  disabled={state.totalArtists <= 1}
-                  style={{
-                    background: state.totalArtists <= 1 ? 'var(--gray-4)' : 'var(--bg-secondary)',
-                    border: 'none',
-                    width: '28px',
-                    height: '28px',
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: state.totalArtists <= 1 ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.2s ease',
-                    opacity: state.totalArtists <= 1 ? 0.5 : 1
-                  }}
-                  onMouseEnter={(e) => {
-                    if (state.totalArtists > 1) {
-                      e.target.style.background = 'var(--gray-3)';
-                      e.target.style.transform = 'translateY(-1px)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (state.totalArtists > 1) {
-                      e.target.style.background = 'var(--bg-secondary)';
-                      e.target.style.transform = 'translateY(0)';
-                    }
-                  }}
-                >
-                  <svg width="12" height="2" viewBox="0 0 12 2" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M1 1h10"/>
-                  </svg>
-                </button>
-                <div style={{ fontSize: '32px', fontWeight: '600', color: 'var(--text-primary)', minWidth: '60px' }}>
-                  {total}
-                </div>
-                <button
-                  onClick={() => updateTotalArtists(1)}
-                  style={{
-                    background: 'var(--bg-secondary)',
-                    border: 'none',
-                    width: '28px',
-                    height: '28px',
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = 'var(--gray-3)';
-                    e.target.style.transform = 'translateY(-1px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = 'var(--bg-secondary)';
-                    e.target.style.transform = 'translateY(0)';
-                  }}
-                >
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M6 1v10M1 6h10"/>
-                  </svg>
-                </button>
-              </div>
-            ) : (
-              <div style={{ fontSize: '32px', fontWeight: '600', color: 'var(--text-primary)' }}>{total}</div>
-            )}
-          </div>
-          <div style={{
-            background: 'var(--bg-primary)',
-            padding: '20px',
-            borderRadius: '20px',
-            boxShadow: 'var(--shadow)',
-            textAlign: 'center'
-          }}>
-            <div style={{ fontSize: '14px', color: 'var(--text-tertiary)', marginBottom: '4px' }}>Busy</div>
-            <div style={{ fontSize: '32px', fontWeight: '600', color: 'var(--danger)' }}>{busy}</div>
-          </div>
-          <div style={{
-            background: 'var(--bg-primary)',
-            padding: '20px',
-            borderRadius: '20px',
-            boxShadow: 'var(--shadow)',
-            textAlign: 'center'
-          }}>
-            <div style={{ fontSize: '14px', color: 'var(--text-tertiary)', marginBottom: '4px' }}>Free</div>
-            <div style={{ fontSize: '32px', fontWeight: '600', color: 'var(--success)' }}>{free}</div>
-          </div>
-          <div style={{
-            background: 'var(--bg-primary)',
-            padding: '20px',
-            borderRadius: '20px',
-            boxShadow: 'var(--shadow)',
-            textAlign: 'center'
-          }}>
-            <div style={{ fontSize: '14px', color: 'var(--text-tertiary)', marginBottom: '4px' }}>Free %</div>
-            <div style={{ fontSize: '32px', fontWeight: '600', color: 'var(--success)' }}>{freePct}%</div>
-          </div>
-        </div>
-
-        {/* Calendar Section */}
-        <div style={{
-          background: 'var(--bg-primary)',
-          borderRadius: '20px',
-          boxShadow: 'var(--shadow)',
-          marginBottom: '24px',
-          overflow: 'hidden'
-        }}>
-          <div style={{
-            padding: '20px 24px',
-            borderBottom: '0.5px solid var(--separator)',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}>
-            <h2 style={{
-              fontSize: '22px',
-              fontWeight: '600',
-              margin: 0,
-              color: 'var(--text-primary)'
-            }}>
-              {monthNames[currentDate.month]} {currentDate.year}
-            </h2>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <button
-                onClick={() => changeMonth(-1)}
-                style={{
-                  background: 'var(--bg-secondary)',
-                  border: 'none',
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.background = 'var(--gray-3)';
-                  e.target.style.transform = 'translateY(-1px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.background = 'var(--bg-secondary)';
-                  e.target.style.transform = 'translateY(0)';
-                }}
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M15 18l-6-6 6-6"/>
-                </svg>
-              </button>
-              <button
-                onClick={goToToday}
-                style={{
-                  background: 'var(--bg-secondary)',
-                  border: 'none',
-                  padding: '6px 12px',
-                  borderRadius: '16px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.background = 'var(--gray-3)';
-                  e.target.style.transform = 'translateY(-1px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.background = 'var(--bg-secondary)';
-                  e.target.style.transform = 'translateY(0)';
-                }}
-              >
-                Today
-              </button>
-              <button
-                onClick={() => changeMonth(1)}
-                style={{
-                  background: 'var(--bg-secondary)',
-                  border: 'none',
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.background = 'var(--gray-3)';
-                  e.target.style.transform = 'translateY(-1px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.background = 'var(--bg-secondary)';
-                  e.target.style.transform = 'translateY(0)';
-                }}
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M9 18l6-6-6-6"/>
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(7, 1fr)',
-            gap: '6px',
-            background: 'var(--separator)',
-            padding: '8px'
-          }}>
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-              <div key={day} style={{
-                background: 'var(--bg-primary)',
-                padding: '12px',
-                textAlign: 'center',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: 'var(--text-tertiary)',
-                borderRadius: '8px'
-              }}>
-                {day}
-              </div>
-            ))}
-            
-            {/* Empty cells for days before the first day of the month */}
-            {Array.from({ length: firstDayIndex }).map((_, i) => (
-              <div key={`empty-${i}`} style={{
-                background: 'var(--bg-secondary)',
-                minHeight: '28px',
-                borderRadius: '8px'
-              }}></div>
-            ))}
-            
-            {/* Calendar days */}
-            {monthDays.map(day => {
-              const dayKey = formatDateToYYYYMMDD(day);
-              const isToday = dayKey === todayKey;
-              const dayOfWeek = day.getDay();
-              const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-              const isHoliday = holidayDays.has(dayKey);
-              const isWorkingWeekend = workingWeekends.has(dayKey);
-              
-              return (
-                <div
-                  key={dayKey}
-                  style={{
-                    background: createDayBackground(dayKey),
-                    minHeight: '28px',
-                    padding: '8px',
-                    border: isHoliday ? '2px dashed #34C759' : (isWeekend && isWorkingWeekend ? '2px dashed #FF9500' : dayBorder(dayKey)),
-                    borderRadius: '8px',
-                    position: 'relative',
-                    cursor: isAdmin ? 'pointer' : 'default'
-                  }}
-                  onClick={() => {
-                    if (!isAdmin) return;
-                    if (isHoliday) {
-                      toggleHolidayDay(dayKey);
-                    } else if (isWeekend) {
-                      toggleWorkingWeekend(dayKey);
-                    } else {
-                      toggleHolidayDay(dayKey);
-                    }
-                  }}
-                  title={projectsOnDay(dayKey).join('\n') + (isAdmin ? '\n\nClick to toggle holiday/working weekend' : '')}
-                >
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start'
-                  }}>
-                    <span style={{
-                      fontSize: '12px',
-                      fontWeight: isToday ? '600' : '400',
-                      color: isToday ? 'var(--danger)' : 'var(--text-primary)',
-                      background: isToday ? 'rgba(255, 255, 255, 0.9)' : 'transparent',
-                      borderRadius: '8px',
-                      padding: '1px 4px',
-                      margin: '-1px -4px -1px -1px',
-                      textDecoration: isHoliday ? 'line-through' : 'none'
-                    }}>
-                      {day.getDate()}
-                    </span>
-                    {isHoliday && (
-                      <span style={{
-                        background: 'rgba(52, 199, 89, 0.9)',
-                        borderRadius: '4px',
-                        padding: '1px 3px',
-                        fontSize: '6px',
-                        fontWeight: '500',
-                        color: 'white'
-                      }}>
-                        Holiday
-                      </span>
-                    )}
-                    {isWeekend && isWorkingWeekend && (
-                      <span style={{
-                        background: 'rgba(255, 149, 0, 0.9)',
-                        borderRadius: '4px',
-                        padding: '1px 3px',
-                        fontSize: '6px',
-                        fontWeight: '500',
-                        color: 'white'
-                      }}>
-                        Work
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Projects Section */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '16px'
-        }}>
-          <h2 style={{
-            fontSize: '22px',
-            fontWeight: '600',
-            margin: 0,
-            color: 'var(--text-primary)'
-          }}>
-            Projects ({state.projects.length})
-          </h2>
-          {/* Показывать кнопку Add Project только в Admin режиме */}
-          {isAdmin && (
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              style={{
-                background: 'var(--primary)',
-                color: 'white',
-                border: 'none',
-                padding: '10px 20px',
-                borderRadius: '18px',
-                fontSize: '16px',
-                fontWeight: '500',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                outline: 'none'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.background = '#0056CC';
-                e.target.style.transform = 'translateY(-1px)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.background = 'var(--primary)';
-                e.target.style.transform = 'translateY(0)';
-              }}
-            >
-              Add Project
-            </button>
-          )}
-        </div>
-
-        {/* Projects Grid */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
-          gap: '16px',
-          marginBottom: '24px'
-        }}>
-          {state.projects.map(project => (
-            <div
-              key={project.id}
-              style={{
-                background: 'var(--bg-primary)',
-                borderRadius: '20px',
-                boxShadow: 'var(--shadow)',
-                padding: '20px',
-                transition: 'all 0.3s ease',
-                border: '0.5px solid var(--separator)'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 8px 30px rgba(0, 0, 0, 0.12)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = 'var(--shadow)';
-              }}
-            >
-              {/* Project Header */}
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                marginBottom: '16px',
-                gap: '12px'
-              }}>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  flex: 1,
-                  minWidth: 0
-                }}>
-                  <div style={{
-                    width: '12px',
-                    height: '12px',
-                    borderRadius: '50%',
-                    backgroundColor: getProjectColor(project),
-                    flexShrink: 0
-                  }}></div>
-                  <h3 style={{
-                    margin: 0,
-                    fontSize: '18px',
-                    fontWeight: '600',
-                    color: 'var(--text-primary)',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    flex: 1,
-                    minWidth: 0
-                  }}>
-                    {project.name}
-                  </h3>
-                </div>
-                {isAdmin && (
-                  <button
-                    onClick={() => openProjectNameModal(project.id, project.name)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--gray-1)',
-                      cursor: 'pointer',
-                      padding: '4px',
-                      borderRadius: '6px',
-                      transition: 'all 0.2s ease',
-                      flexShrink: 0
-                    }}
-                    onMouseEnter={(e) => {
-                      e.target.style.background = 'var(--bg-secondary)';
-                      e.target.style.color = 'var(--text-primary)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.style.background = 'none';
-                      e.target.style.color = 'var(--gray-1)';
-                    }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                    </svg>
-                  </button>
-                )}
-              </div>
-
-              {/* Project Details */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '12px',
-                marginBottom: '16px'
-              }}>
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px'
-                }}>
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}>
-                    <span style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>Status:</span>
-                    <select
-                      value={project.status}
-                      disabled={!isAdmin}
-                      onChange={(e) => updateProject(project.id, { status: e.target.value }, `${new Date().toLocaleString()}: Status changed to ${e.target.value}`)}
-                      style={{
-                        background: statusColors[project.status] || 'var(--bg-secondary)',
-                        color: 'white',
-                        border: 'none',
-                        padding: '4px 8px',
-                        borderRadius: '8px',
-                        fontSize: '12px',
-                        fontWeight: '500',
-                        cursor: isAdmin ? 'pointer' : 'not-allowed',
-                        outline: 'none',
-                        width: '120px',
-                        textAlign: 'center',
-                        opacity: isAdmin ? 1 : 0.7
-                      }}
-                    >
-                      {Object.keys(statusColors).map(status => (
-                        <option key={status} value={status} style={{ background: 'white', color: 'black' }}>
-                          {status}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}>
-                    <span style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>Priority:</span>
-                    <select
-                      value={project.priority}
-                      onChange={(e) => updateProject(project.id, { priority: e.target.value }, `${new Date().toLocaleString()}: Priority changed to ${e.target.value}`)}
-                      style={{
-                        background: priorityColors[project.priority] || 'var(--bg-secondary)',
-                        color: 'white',
-                        border: 'none',
-                        padding: '4px 8px',
-                        borderRadius: '8px',
-                        fontSize: '12px',
-                        fontWeight: '500',
-                        cursor: 'pointer',
-                        outline: 'none',
-                        width: '120px',
-                        textAlign: 'center'
-                      }}
-                    >
-                      {Object.keys(priorityColors).map(priority => (
-                        <option key={priority} value={priority} style={{ background: 'white', color: 'black' }}>
-                          {priority}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px'
-                }}>
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}>
-                    <span style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>Start:</span>
-                    <input
-                      type="date"
-                      value={project.startDate}
-                      disabled={!isAdmin}
-                      onChange={(e) => {
-                        const newStartDate = e.target.value;
-                        const newDueDate = new Date(newStartDate) > new Date(project.dueDate) ? newStartDate : project.dueDate;
-                        
-                        if (new Date(newStartDate) > new Date(newDueDate)) {
-                          showDateValidationModal(
-                            "Start date cannot be after due date! Adjusting due date.",
-                            () => updateProject(
-                              project.id, 
-                              { startDate: newStartDate, dueDate: newStartDate }, 
-                              `${new Date().toLocaleString()}: Dates changed to ${formatDateForDisplay(newStartDate)}`
-                            )
-                          );
-                        } else {
-                          updateProject(
-                            project.id, 
-                            { startDate: newStartDate, dueDate: newDueDate }, 
-                            `${new Date().toLocaleString()}: Dates changed to ${formatDateForDisplay(newStartDate)} - ${formatDateForDisplay(newDueDate)}`
-                          );
-                        }
-                      }}
-                      style={{
-                        border: '0.5px solid var(--separator)',
-                        padding: '4px 8px',
-                        borderRadius: '6px',
-                        fontSize: '12px',
-                        outline: 'none',
-                        width: '120px',
-                        background: 'var(--bg-primary)',
-                        cursor: isAdmin ? 'pointer' : 'not-allowed',
-                        opacity: isAdmin ? 1 : 0.7
-                      }}
-                    />
-                  </div>
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}>
-                    <span style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>Due:</span>
-                    <input
-                      type="date"
-                      value={project.dueDate}
-                      onChange={(e) => {
-                        const newDueDate = e.target.value;
-                        if (new Date(newDueDate) < new Date(project.startDate)) {
-                          showDateValidationModal(
-                            "Due date cannot be before start date!",
-                            null
-                          );
-                        } else {
-                          updateProject(
-                            project.id, 
-                            { dueDate: newDueDate }, 
-                            `${new Date().toLocaleString()}: Due date changed to ${formatDateForDisplay(newDueDate)}`
-                          );
-                        }
-                      }}
-                      style={{
-                        border: '0.5px solid var(--separator)',
-                        padding: '4px 8px',
-                        borderRadius: '6px',
-                        fontSize: '12px',
-                        outline: 'none',
-                        width: '120px',
-                        background: 'var(--bg-primary)'
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Busy Section */}
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '16px'
-              }}>
-                <span style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>Busy:</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <button
-                    onClick={() => updateProject(project.id, { busy: Math.max(0, project.busy - 1) }, `${new Date().toLocaleString()}: Busy decreased to ${Math.max(0, project.busy - 1)}`)}
-                    disabled={project.busy <= 0 || !isAdmin}
-                    style={{
-                      background: (project.busy <= 0 || !isAdmin) ? 'var(--gray-4)' : 'var(--bg-secondary)',
-                      border: 'none',
-                      width: '28px',
-                      height: '28px',
-                      borderRadius: '50%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: (project.busy <= 0 || !isAdmin) ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.2s ease',
-                      opacity: (project.busy <= 0 || !isAdmin) ? 0.5 : 1
-                    }}
-                    onMouseEnter={(e) => {
-                      if (project.busy > 0 && isAdmin) {
-                        e.target.style.background = 'var(--gray-3)';
-                        e.target.style.transform = 'translateY(-1px)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (project.busy > 0 && isAdmin) {
-                        e.target.style.background = 'var(--bg-secondary)';
-                        e.target.style.transform = 'translateY(0)';
-                      }
-                    }}
-                  >
-                    <svg width="12" height="2" viewBox="0 0 12 2" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M1 1h10"/>
-                    </svg>
-                  </button>
-                  <span style={{
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    color: 'var(--text-primary)',
-                    minWidth: '20px',
-                    textAlign: 'center'
-                  }}>
-                    {project.busy}
-                  </span>
-                  <button
-                    onClick={() => updateProject(project.id, { busy: project.busy + 1 }, `${new Date().toLocaleString()}: Busy increased to ${project.busy + 1}`)}
-                    disabled={busy >= total || !isAdmin}
-                    style={{
-                      background: (busy >= total || !isAdmin) ? 'var(--gray-4)' : 'var(--bg-secondary)',
-                      border: 'none',
-                      width: '28px',
-                      height: '28px',
-                      borderRadius: '50%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: (busy >= total || !isAdmin) ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.2s ease',
-                      opacity: (busy >= total || !isAdmin) ? 0.5 : 1
-                    }}
-                    onMouseEnter={(e) => {
-                      if (busy < total && isAdmin) {
-                        e.target.style.background = 'var(--gray-3)';
-                        e.target.style.transform = 'translateY(-1px)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (busy < total && isAdmin) {
-                        e.target.style.background = 'var(--bg-secondary)';
-                        e.target.style.transform = 'translateY(0)';
-                      }
-                    }}
-                  >
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M6 1v10M1 6h10"/>
-                    </svg>
-                  </button>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div style={{
-                display: 'flex',
-                gap: '8px',
-                justifyContent: 'space-between'
-              }}>
-                <button
-                  onClick={() => openComments(project.id)}
-                  style={{
-                    flex: 1,
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    border: 'none',
-                    padding: '8px 12px',
-                    borderRadius: '10px',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    outline: 'none'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = 'var(--gray-3)';
-                    e.target.style.transform = 'translateY(-1px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = 'var(--bg-secondary)';
-                    e.target.style.transform = 'translateY(0)';
-                  }}
-                >
-                  Comments ({project.comments?.filter(c => !c.ignored && !c.deleted).length || 0})
-                </button>
-                <button
-                  onClick={() => openHistory(project.id)}
-                  style={{
-                    flex: 1,
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    border: 'none',
-                    padding: '8px 12px',
-                    borderRadius: '10px',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    outline: 'none'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = 'var(--gray-3)';
-                    e.target.style.transform = 'translateY(-1px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = 'var(--bg-secondary)';
-                    e.target.style.transform = 'translateY(0)';
-                  }}
-                >
-                  History
-                </button>
-              </div>
-
-              {/* Admin Actions */}
-              {isAdmin && (
-                <div style={{
-                  display: 'flex',
-                  gap: '8px',
-                  marginTop: '12px',
-                  paddingTop: '12px',
-                  borderTop: '0.5px solid var(--separator)'
-                }}>
-                  <button
-                    onClick={() => openColorPickerModal(project.id)}
-                    style={{
-                      flex: 1,
-                      background: 'var(--bg-secondary)',
-                      color: 'var(--text-primary)',
-                      border: 'none',
-                      padding: '6px 12px',
-                      borderRadius: '8px',
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.target.style.background = 'var(--gray-3)';
-                      e.target.style.transform = 'translateY(-1px)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.style.background = 'var(--bg-secondary)';
-                      e.target.style.transform = 'translateY(0)';
-                    }}
-                  >
-                    Color
-                  </button>
-                  <button
-                    onClick={() => showConfirmCompleteModal(project.id)}
-                    disabled={project.status === 'Completed'}
-                    style={{
-                      flex: 1,
-                      background: project.status === 'Completed' ? 'var(--gray-4)' : 'var(--success)',
-                      color: project.status === 'Completed' ? 'var(--text-tertiary)' : 'white',
-                      border: 'none',
-                      padding: '6px 12px',
-                      borderRadius: '8px',
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      cursor: project.status === 'Completed' ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.2s ease',
-                      opacity: project.status === 'Completed' ? 0.6 : 1
-                    }}
-                    onMouseEnter={(e) => {
-                      if (project.status !== 'Completed') {
-                        e.target.style.background = '#2AA44F';
-                        e.target.style.transform = 'translateY(-1px)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (project.status !== 'Completed') {
-                        e.target.style.background = 'var(--success)';
-                        e.target.style.transform = 'translateY(0)';
-                      }
-                    }}
-                  >
-                    Complete
-                  </button>
-                  <button
-                    onClick={() => showConfirmDeleteModal(project.id)}
-                    style={{
-                      flex: 1,
-                      background: 'var(--danger)',
-                      color: 'white',
-                      border: 'none',
-                      padding: '6px 12px',
-                      borderRadius: '8px',
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.target.style.background = '#D70015';
-                      e.target.style.transform = 'translateY(-1px)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.style.background = 'var(--danger)';
-                      e.target.style.transform = 'translateY(0)';
-                    }}
-                  >
-                    Delete
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Add Project Modal */}
-        {isAddModalOpen && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000
-          }}>
-            <div style={{
-              background: 'var(--bg-primary)',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '400px',
-              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.2)'
-            }}>
-              <h3 style={{ margin: '0 0 20px 0', fontSize: '20px', fontWeight: '600' }}>Add New Project</h3>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Project Name</label>
-                  <input
-                    type="text"
-                    value={newProject.name}
-                    onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
-                    style={{
-                      width: 'calc(100% - 24px)',
-                      padding: '8px 12px',
-                      border: '0.5px solid var(--separator)',
-                      borderRadius: '10px',
-                      fontSize: '16px',
-                      outline: 'none',
-                      background: 'var(--bg-primary)'
-                    }}
-                    placeholder="Enter project name"
-                  />
-                </div>
-                
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Start Date</label>
-                    <input
-                      type="date"
-                      value={newProject.startDate}
-                      onChange={(e) => setNewProject({ ...newProject, startDate: e.target.value })}
-                      style={{
-                        width: 'calc(100% - 24px)',
-                        padding: '8px 12px',
-                        border: '0.5px solid var(--separator)',
-                        borderRadius: '10px',
-                        fontSize: '14px',
-                        outline: 'none',
-                        background: 'var(--bg-primary)'
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Due Date</label>
-                    <input
-                      type="date"
-                      value={newProject.dueDate}
-                      onChange={(e) => setNewProject({ ...newProject, dueDate: e.target.value })}
-                      style={{
-                        width: 'calc(100% - 24px)',
-                        padding: '8px 12px',
-                        border: '0.5px solid var(--separator)',
-                        borderRadius: '10px',
-                        fontSize: '14px',
-                        outline: 'none',
-                        background: 'var(--bg-primary)'
-                      }}
-                    />
-                  </div>
-                </div>
-                
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Status</label>
-                    <select
-                      value={newProject.status}
-                      onChange={(e) => handleNewProjectStatusChange(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '0.5px solid var(--separator)',
-                        borderRadius: '10px',
-                        fontSize: '14px',
-                        outline: 'none',
-                        background: 'var(--bg-primary)'
-                      }}
-                    >
-                      {Object.keys(statusColors).map(status => (
-                        <option key={status} value={status}>{status}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Priority</label>
-                    <select
-                      value={newProject.priority}
-                      onChange={(e) => setNewProject({ ...newProject, priority: e.target.value })}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '0.5px solid var(--separator)',
-                        borderRadius: '10px',
-                        fontSize: '14px',
-                        outline: 'none',
-                        background: 'var(--bg-primary)'
-                      }}
-                    >
-                      {Object.keys(priorityColors).map(priority => (
-                        <option key={priority} value={priority}>{priority}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                
-                <div>
-                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Busy Artists</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <button
-                      onClick={() => handleNewProjectBusyChange(Math.max(0, newProject.busy - 1))}
-                      style={{
-                        background: 'var(--bg-secondary)',
-                        border: 'none',
-                        width: '32px',
-                        height: '32px',
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.target.style.background = 'var(--gray-3)';
-                        e.target.style.transform = 'translateY(-1px)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.background = 'var(--bg-secondary)';
-                        e.target.style.transform = 'translateY(0)';
-                      }}
-                    >
-                      <svg width="14" height="2" viewBox="0 0 14 2" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M1 1h12"/>
-                      </svg>
-                    </button>
-                    <span style={{ fontSize: '18px', fontWeight: '600', minWidth: '30px', textAlign: 'center' }}>
-                      {newProject.busy}
-                    </span>
-                    <button
-                      onClick={() => handleNewProjectBusyChange(newProject.busy + 1)}
-                      style={{
-                        background: 'var(--bg-secondary)',
-                        border: 'none',
-                        width: '32px',
-                        height: '32px',
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.target.style.background = 'var(--gray-3)';
-                        e.target.style.transform = 'translateY(-1px)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.background = 'var(--bg-secondary)';
-                        e.target.style.transform = 'translateY(0)';
-                      }}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M7 1v12M1 7h12"/>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </div>
-              
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
-                <button
-                  onClick={() => setIsAddModalOpen(false)}
-                  style={{
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    fontWeight: '500',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = 'var(--gray-3)';
-                    e.target.style.transform = 'translateY(-1px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = 'var(--bg-secondary)';
-                    e.target.style.transform = 'translateY(0)';
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={addProject}
-                  style={{
-                    background: 'var(--primary)',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    fontWeight: '500',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = '#0056CC';
-                    e.target.style.transform = 'translateY(-1px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = 'var(--primary)';
-                    e.target.style.transform = 'translateY(0)';
-                  }}
-                >
-                  Add Project
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Comments Modal */}
-        {commentsForId && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000
-          }}>
-            <div style={{
-              background: 'var(--bg-primary)',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '500px',
-              maxHeight: '80vh',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.2)'
-            }}>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '20px'
-              }}>
-                <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '600' }}>
-                  Comments for {state.projects.find(p => p.id === commentsForId)?.name}
-                </h3>
-                <button
-                  onClick={closeComments}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    fontSize: '24px',
-                    cursor: 'pointer',
-                    color: 'var(--text-tertiary)',
-                    transition: 'color 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => e.target.style.color = 'var(--text-primary)'}
-                  onMouseLeave={(e) => e.target.style.color = 'var(--text-tertiary)'}
-                >
-                  ×
-                </button>
-              </div>
-
-              <div style={{
-                flex: 1,
-                overflowY: 'auto',
-                marginBottom: '20px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '12px'
-              }}>
-                {state.projects.find(p => p.id === commentsForId)?.comments
-                  ?.filter(c => !c.deleted)
-                  .sort((a, b) => new Date(b.ts) - new Date(a.ts))
-                  .map(comment => (
-                    <div key={comment.id} style={{
-                      background: comment.ignored ? 'var(--bg-secondary)' : 'var(--bg-primary)',
-                      border: `0.5px solid ${comment.ignored ? 'var(--gray-4)' : 'var(--separator)'}`,
-                      borderRadius: '12px',
-                      padding: '12px',
-                      opacity: comment.ignored ? 0.6 : 1
-                    }}>
-                      {editingId === comment.id ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          <textarea
-                            value={editingText}
-                            onChange={(e) => setEditingText(e.target.value)}
-                            style={{
-                              width: '100%',
-                              minHeight: '60px',
-                              padding: '8px',
-                              border: '0.5px solid var(--separator)',
-                              borderRadius: '8px',
-                              fontSize: '14px',
-                              outline: 'none',
-                              resize: 'vertical',
-                              background: 'var(--bg-primary)'
-                            }}
-                          />
-                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                            <button
-                              onClick={() => setEditingId(null)}
-                              style={{
-                                background: 'var(--bg-secondary)',
-                                color: 'var(--text-primary)',
-                                border: 'none',
-                                padding: '6px 12px',
-                                borderRadius: '8px',
-                                fontSize: '12px',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              onClick={() => saveEdit(comment.id)}
-                              style={{
-                                background: 'var(--primary)',
-                                color: 'white',
-                                border: 'none',
-                                padding: '6px 12px',
-                                borderRadius: '8px',
-                                fontSize: '12px',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              Save
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div>
-                          <div style={{ fontSize: '14px', color: 'var(--text-tertiary)', marginBottom: '4px' }}>
-                            {new Date(comment.ts).toLocaleString()}
-                            {comment.ignored && ' (Ignored)'}
-                          </div>
-                          <div style={{ 
-                            fontSize: '16px', 
-                            color: 'var(--text-primary)', 
-                            whiteSpace: 'pre-wrap',
-                            textDecoration: comment.ignored ? 'line-through' : 'none'
-                          }}>
-                            {comment.text}
-                          </div>
-                          <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                            <button
-                              onClick={() => startEdit(comment.id, comment.text)}
-                              style={{
-                                background: 'var(--bg-secondary)',
-                                color: 'var(--text-primary)',
-                                border: 'none',
-                                padding: '4px 8px',
-                                borderRadius: '6px',
-                                fontSize: '12px',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              Edit
-                            </button>
-                            {!comment.ignored && (
-                              <button
-                                onClick={() => confirmIgnoreComment(comment.id)}
-                                style={{
-                                  background: 'var(--warning)',
-                                  color: 'white',
-                                  border: 'none',
-                                  padding: '4px 8px',
-                                  borderRadius: '6px',
-                                  fontSize: '12px',
-                                  cursor: 'pointer'
-                                }}
-                              >
-                                Ignore
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                
-                {state.projects.find(p => p.id === commentsForId)?.comments?.filter(c => !c.deleted).length === 0 && (
-                  <div style={{
-                    textAlign: 'center',
-                    color: 'var(--text-tertiary)',
-                    fontStyle: 'italic',
-                    padding: '20px'
-                  }}>
-                    No comments yet
-                  </div>
-                )}
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <textarea
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  placeholder="Add a new comment..."
-                  style={{
-                    width: '100%',
-                    minHeight: '80px',
-                    padding: '12px',
-                    border: '0.5px solid var(--separator)',
-                    borderRadius: '12px',
-                    fontSize: '16px',
-                    outline: 'none',
-                    resize: 'vertical',
-                    background: 'var(--bg-primary)'
-                  }}
-                />
-                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                  <button
-                    onClick={() => setConfirmAddOpen(true)}
-                    disabled={!draft.trim()}
-                    style={{
-                      background: draft.trim() ? 'var(--primary)' : 'var(--gray-4)',
-                      color: 'white',
-                      border: 'none',
-                      padding: '10px 20px',
-                      borderRadius: '14px',
-                      fontSize: '16px',
-                      fontWeight: '500',
-                      cursor: draft.trim() ? 'pointer' : 'not-allowed',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (draft.trim()) {
-                        e.target.style.background = '#0056CC';
-                        e.target.style.transform = 'translateY(-1px)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (draft.trim()) {
-                        e.target.style.background = 'var(--primary)';
-                        e.target.style.transform = 'translateY(0)';
-                      }
-                    }}
-                  >
-                    Add Comment
-                  </button>
-                </div>
-              </div>
-
-              {isAdmin && (
-                <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '0.5px solid var(--separator)' }}>
-                  <button
-                    onClick={() => setClearCommentsModal(commentsForId)}
-                    style={{
-                      background: 'var(--danger)',
-                      color: 'white',
-                      border: 'none',
-                      padding: '8px 16px',
-                      borderRadius: '10px',
-                      fontSize: '14px',
-                      cursor: 'pointer',
-                      width: '100%'
-                    }}
-                  >
-                    Clear All Comments (Admin)
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Confirm Add Comment Modal */}
-        {confirmAddOpen && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1100
-          }}>
-            <div style={{
-              background: 'var(--bg-primary)',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '400px',
-              textAlign: 'center'
-            }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Add Comment?</h3>
-              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>Are you sure you want to add this comment?</p>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                <button
-                  onClick={() => setConfirmAddOpen(false)}
-                  style={{
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={addCommentConfirmed}
-                  style={{
-                    background: 'var(--primary)',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Add
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Confirm Ignore Comment Modal */}
-        {confirmIgnore && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1100
-          }}>
-            <div style={{
-              background: 'var(--bg-primary)',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '400px',
-              textAlign: 'center'
-            }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Ignore Comment?</h3>
-              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>This comment will be marked as ignored but not deleted.</p>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                <button
-                  onClick={() => setConfirmIgnore(null)}
-                  style={{
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={doIgnore}
-                  style={{
-                    background: 'var(--warning)',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Ignore
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* History Modal */}
-        {historyForId && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000
-          }}>
-            <div style={{
-              background: 'var(--bg-primary)',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '600px',
-              maxHeight: '80vh',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.2)'
-            }}>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '20px'
-              }}>
-                <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '600' }}>
-                  History for {state.projects.find(p => p.id === historyForId)?.name}
-                </h3>
-                <button
-                  onClick={closeHistory}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    fontSize: '24px',
-                    cursor: 'pointer',
-                    color: 'var(--text-tertiary)',
-                    transition: 'color 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => e.target.style.color = 'var(--text-primary)'}
-                  onMouseLeave={(e) => e.target.style.color = 'var(--text-tertiary)'}
-                >
-                  ×
-                </button>
-              </div>
-
-              <div style={{
-                flex: 1,
-                overflowY: 'auto',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px'
-              }}>
-                {state.projects.find(p => p.id === historyForId)?.history?.map((entry, index) => (
-                  <div key={index} style={{
-                    padding: '12px',
-                    background: 'var(--bg-secondary)',
-                    borderRadius: '10px',
-                    fontSize: '14px',
-                    color: 'var(--text-primary)'
-                  }}>
-                    {entry}
-                  </div>
-                ))}
-                
-                {(!state.projects.find(p => p.id === historyForId)?.history?.length) && (
-                  <div style={{
-                    textAlign: 'center',
-                    color: 'var(--text-tertiary)',
-                    fontStyle: 'italic',
-                    padding: '20px'
-                  }}>
-                    No history yet
-                  </div>
-                )}
-              </div>
-
-              {isAdmin && (
-                <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '0.5px solid var(--separator)' }}>
-                  <button
-                    onClick={() => setClearHistoryModal(historyForId)}
-                    style={{
-                      background: 'var(--danger)',
-                      color: 'white',
-                      border: 'none',
-                      padding: '8px 16px',
-                      borderRadius: '10px',
-                      fontSize: '14px',
-                      cursor: 'pointer',
-                      width: '100%'
-                    }}
-                  >
-                    Clear History (Admin)
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Password Modal */}
-        {passwordModal && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000
-          }}>
-            <div style={{
-              background: 'var(--bg-primary)',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '400px',
-              textAlign: 'center'
-            }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Admin Access</h3>
-              <p style={{ margin: '0 0 20px 0', color: 'var(--text-tertiary)' }}>Enter admin password:</p>
-              <input
-                type="password"
-                value={passwordInput}
-                onChange={(e) => setPasswordInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && checkPassword()}
-                style={{
-                  width: 'calc(100% - 24px)',
-                  padding: '12px',
-                  border: '0.5px solid var(--separator)',
-                  borderRadius: '10px',
-                  fontSize: '16px',
-                  outline: 'none',
-                  marginBottom: '20px',
-                  background: 'var(--bg-primary)'
-                }}
-                placeholder="Password"
-              />
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                <button
-                  onClick={() => {
-                    setPasswordModal(false);
-                    setPasswordInput('');
-                  }}
-                  style={{
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={checkPassword}
-                  style={{
-                    background: 'var(--primary)',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Enter
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Alert Message */}
-        {isAlertOpen && (
-          <div style={{
-            position: 'fixed',
-            top: '20px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            background: 'var(--danger)',
-            color: 'white',
-            padding: '12px 24px',
-            borderRadius: '20px',
-            zIndex: 2000,
-            animation: 'slideIn 0.3s ease-out'
-          }}>
-            {alertMessage}
-          </div>
-        )}
-
-        {/* Clear Comments Confirmation Modal */}
-        {clearCommentsModal && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1100
-          }}>
-            <div style={{
-              background: 'var(--bg-primary)',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '400px',
-              textAlign: 'center'
-            }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Clear All Comments?</h3>
-              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>This action cannot be undone. All comments for this project will be permanently deleted.</p>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                <button
-                  onClick={() => setClearCommentsModal(null)}
-                  style={{
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => clearComments(clearCommentsModal)}
-                  style={{
-                    background: 'var(--danger)',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Clear All
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Clear History Confirmation Modal */}
-        {clearHistoryModal && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1100
-          }}>
-            <div style={{
-              background: 'var(--bg-primary)',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '400px',
-              textAlign: 'center'
-            }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Clear History?</h3>
-              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>This action cannot be undone. All history entries for this project will be permanently deleted.</p>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                <button
-                  onClick={() => setClearHistoryModal(null)}
-                  style={{
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => clearHistory(clearHistoryModal)}
-                  style={{
-                    background: 'var(--danger)',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Clear History
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Project Name Modal */}
-        {projectNameModal.open && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000
-          }}>
-            <div style={{
-              background: 'var(--bg-primary)',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '400px'
-            }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Edit Project Name</h3>
-              <input
-                type="text"
-                value={projectNameModal.name}
-                onChange={(e) => setProjectNameModal({ ...projectNameModal, name: e.target.value })}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '0.5px solid var(--separator)',
-                  borderRadius: '10px',
-                  fontSize: '16px',
-                  outline: 'none',
-                  marginBottom: '20px',
-                  background: 'var(--bg-primary)'
-                }}
-                placeholder="Project name"
-              />
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                <button
-                  onClick={closeProjectNameModal}
-                  style={{
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={saveProjectName}
-                  style={{
-                    background: 'var(--primary)',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Save
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Color Picker Modal */}
-        {colorPickerModal.open && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000
-          }}>
-            <div style={{
-              background: 'var(--bg-primary)',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '400px'
-            }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Choose Project Color</h3>
-              
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(6, 1fr)',
-                gap: '8px',
-                marginBottom: '20px'
-              }}>
-                {projectColors.map(color => (
-                  <button
-                    key={color}
-                    onClick={() => setColorPickerModal({ ...colorPickerModal, currentColor: color })}
-                    style={{
-                      width: '32px',
-                      height: '32px',
-                      borderRadius: '8px',
-                      border: colorPickerModal.currentColor === color ? '2px solid var(--primary)' : '2px solid transparent',
-                      background: color,
-                      cursor: 'pointer',
-                      transition: 'transform 0.2s ease'
-                    }}
-                    onMouseEnter={(e) => e.target.style.transform = 'scale(1.1)'}
-                    onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
-                  />
-                ))}
-              </div>
-              
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                <button
-                  onClick={closeColorPickerModal}
-                  style={{
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={saveProjectColor}
-                  style={{
-                    background: 'var(--primary)',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Save
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Confirm Delete Modal */}
-        {confirmDeleteModal.open && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1100
-          }}>
-            <div style={{
-              background: 'var(--bg-primary)',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '400px',
-              textAlign: 'center'
-            }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Delete Project?</h3>
-              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>This action cannot be undone. The project and all its data will be permanently deleted.</p>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                <button
-                  onClick={closeConfirmDeleteModal}
-                  style={{
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => deleteProject(confirmDeleteModal.projectId)}
-                  style={{
-                    background: 'var(--danger)',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Confirm Complete Modal */}
-        {confirmCompleteModal.open && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1100
-          }}>
-            <div style={{
-              background: 'var(--bg-primary)',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '400px',
-              textAlign: 'center'
-            }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Mark as Completed?</h3>
-              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>This project will be marked as completed and all busy artists will be freed up.</p>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                <button
-                  onClick={closeConfirmCompleteModal}
-                  style={{
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => completeProject(confirmCompleteModal.projectId)}
-                  style={{
-                    background: 'var(--success)',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Complete
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Date Validation Modal */}
-        {dateValidationModal.open && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1100
-          }}>
-            <div style={{
-              background: 'var(--bg-primary)',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '400px',
-              textAlign: 'center'
-            }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Date Validation</h3>
-              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>{dateValidationModal.message}</p>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                <button
-                  onClick={closeDateValidationModal}
-                  style={{
-                    background: dateValidationModal.callback ? 'var(--bg-secondary)' : 'var(--primary)',
-                    color: dateValidationModal.callback ? 'var(--text-primary)' : 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  {dateValidationModal.callback ? 'Cancel' : 'OK'}
-                </button>
-                {dateValidationModal.callback && (
-                  <button
-                    onClick={() => {
-                      dateValidationModal.callback();
-                      closeDateValidationModal();
-                    }}
-                    style={{
-                      background: 'var(--primary)',
-                      color: 'white',
-                      border: 'none',
-                      padding: '10px 20px',
-                      borderRadius: '14px',
-                      fontSize: '16px',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Continue
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
+        {/* Продолжение в следующем сообщении из-за лимита символов */}
       </div>
-
-      <style>{`
-        @keyframes slideIn {
-          from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
-          to { transform: translateX(-50%) translateY(0); opacity: 1; }
-        }
-        
-        /* Custom scrollbar styling */
-        ::-webkit-scrollbar {
-          width: 6px;
-        }
-        
-        ::-webkit-scrollbar-track {
-          background: var(--bg-secondary);
-          border-radius: 3px;
-        }
-        
-        ::-webkit-scrollbar-thumb {
-          background: var(--gray-2);
-          border-radius: 3px;
-        }
-        
-        ::-webkit-scrollbar-thumb:hover {
-          background: var(--gray-1);
-        }
-        
-        /* Focus styles for accessibility */
-        button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
-          outline: 2px solid var(--primary);
-          outline-offset: 2px;
-        }
-      `}</style>
     </div>
   );
 };
