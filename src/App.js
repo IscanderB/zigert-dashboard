@@ -1,3 +1,5 @@
+[file name]: App.js
+[file content begin]
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
@@ -122,6 +124,13 @@ const ProjectStatusDashboard = () => {
   const [confirmCompleteModal, setConfirmCompleteModal] = useState({ open: false, projectId: null });
   const [dateValidationModal, setDateValidationModal] = useState({ open: false, message: '', callback: null });
 
+  // Camera and Stage states
+  const [expandedProjectId, setExpandedProjectId] = useState(null);
+  const [autoCollapseTimer, setAutoCollapseTimer] = useState(null);
+  const [newCameraName, setNewCameraName] = useState('');
+  const [stageModal, setStageModal] = useState({ open: false, projectId: null, cameraId: null });
+  const [confirmRemoveCameraModal, setConfirmRemoveCameraModal] = useState({ open: false, projectId: null, cameraId: null });
+
   // Supabase API functions
   async function loadInitialData() {
     try {
@@ -185,7 +194,9 @@ const ProjectStatusDashboard = () => {
         // ИЗМЕНЕНИЕ 2: Изменил сортировку истории - новые записи вверху
         history: (project.project_history || [])
           .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-          .map(h => h.entry)
+          .map(h => h.entry),
+        // Добавляем камеры из данных проекта
+        cameras: project.cameras || []
       }));
 
       const totalArtists = settings?.find(s => s.key === 'totalArtists')?.value || 6;
@@ -234,7 +245,8 @@ const ProjectStatusDashboard = () => {
           due_date: projectData.dueDate,
           busy: projectData.busy,
           priority: projectData.priority,
-          ...(projectData.color && { color: projectData.color }) // Only include color if it exists
+          ...(projectData.color && { color: projectData.color }), // Only include color if it exists
+          cameras: projectData.cameras // Save cameras array
         })
         .select();
 
@@ -242,7 +254,7 @@ const ProjectStatusDashboard = () => {
       return data[0];
     } catch (err) {
       // If color column doesn't exist yet, save without it
-      if (err.message?.includes("color")) {
+      if (err.message?.includes("color") || err.message?.includes("cameras")) {
         const { data, error } = await supabase
           .from('projects')
           .upsert({
@@ -382,6 +394,23 @@ const ProjectStatusDashboard = () => {
     return () => clearInterval(interval);
   }, [connected]);
 
+  // Auto-collapse cameras list after 3 minutes
+  useEffect(() => {
+    if (expandedProjectId && !autoCollapseTimer) {
+      const timer = setTimeout(() => {
+        setExpandedProjectId(null);
+        setAutoCollapseTimer(null);
+      }, 180000); // 3 minutes
+      setAutoCollapseTimer(timer);
+    }
+
+    return () => {
+      if (autoCollapseTimer) {
+        clearTimeout(autoCollapseTimer);
+      }
+    };
+  }, [expandedProjectId, autoCollapseTimer]);
+
   // Calculate stats
   const total = state.totalArtists;
   const busy = state.projects.reduce((s, p) => s + (p.status === 'Completed' ? 0 : p.busy), 0);
@@ -418,6 +447,180 @@ const ProjectStatusDashboard = () => {
 
   function closeConfirmCompleteModal() {
     setConfirmCompleteModal({ open: false, projectId: null });
+  }
+
+  // Camera functions
+  function toggleCameras(projectId) {
+    if (expandedProjectId === projectId) {
+      setExpandedProjectId(null);
+      if (autoCollapseTimer) {
+        clearTimeout(autoCollapseTimer);
+        setAutoCollapseTimer(null);
+      }
+    } else {
+      setExpandedProjectId(projectId);
+      setNewCameraName('');
+    }
+  }
+
+  function addCamera(projectId) {
+    if (!newCameraName.trim()) {
+      showAlert("Specify camera name!");
+      return;
+    }
+
+    const project = state.projects.find(p => p.id === projectId);
+    if (!project) return;
+
+    const newCamera = {
+      id: uid('cam'),
+      name: newCameraName.trim(),
+      stage: 'WIP'
+    };
+
+    const updatedCameras = [...(project.cameras || []), newCamera];
+    updatedCameras.sort((a, b) => a.name.localeCompare(b.name));
+
+    updateProjectCameras(projectId, updatedCameras, `Added camera: ${newCameraName.trim()}`);
+    setNewCameraName('');
+  }
+
+  function removeCamera(projectId, cameraId) {
+    const project = state.projects.find(p => p.id === projectId);
+    if (!project) return;
+
+    const camera = project.cameras.find(c => c.id === cameraId);
+    if (!camera) return;
+
+    const updatedCameras = project.cameras.filter(c => c.id !== cameraId);
+    updateProjectCameras(projectId, updatedCameras, `Removed camera: ${camera.name}`);
+    setConfirmRemoveCameraModal({ open: false, projectId: null, cameraId: null });
+  }
+
+  function updateCameraStage(projectId, cameraId, newStage) {
+    const project = state.projects.find(p => p.id === projectId);
+    if (!project) return;
+
+    const camera = project.cameras.find(c => c.id === cameraId);
+    if (!camera) return;
+
+    const updatedCameras = project.cameras.map(c => 
+      c.id === cameraId ? { ...c, stage: newStage } : c
+    );
+
+    updateProjectCameras(projectId, updatedCameras, `Camera ${camera.name} stage changed to ${newStage}`);
+  }
+
+  function increaseStageIteration(projectId, cameraId) {
+    const project = state.projects.find(p => p.id === projectId);
+    if (!project) return;
+
+    const camera = project.cameras.find(c => c.id === cameraId);
+    if (!camera) return;
+
+    let newStage = camera.stage;
+
+    if (camera.stage === 'WIP') {
+      newStage = 'WIP01';
+    } else if (camera.stage.startsWith('WIP')) {
+      const currentNum = parseInt(camera.stage.replace('WIP', '')) || 0;
+      if (currentNum < 99) {
+        newStage = `WIP${(currentNum + 1).toString().padStart(2, '0')}`;
+      }
+    } else if (camera.stage === 'R') {
+      newStage = 'R01';
+    } else if (camera.stage.startsWith('R')) {
+      const currentNum = parseInt(camera.stage.replace('R', '')) || 0;
+      if (currentNum < 5) {
+        newStage = `R${(currentNum + 1).toString().padStart(2, '0')}`;
+      }
+    }
+
+    if (newStage !== camera.stage) {
+      updateCameraStage(projectId, cameraId, newStage);
+    }
+  }
+
+  function decreaseStageIteration(projectId, cameraId) {
+    const project = state.projects.find(p => p.id === projectId);
+    if (!project) return;
+
+    const camera = project.cameras.find(c => c.id === cameraId);
+    if (!camera) return;
+
+    let newStage = camera.stage;
+
+    if (camera.stage.startsWith('WIP')) {
+      const currentNum = parseInt(camera.stage.replace('WIP', '')) || 0;
+      if (currentNum > 1) {
+        newStage = `WIP${(currentNum - 1).toString().padStart(2, '0')}`;
+      } else if (currentNum === 1) {
+        newStage = 'WIP';
+      }
+    } else if (camera.stage.startsWith('R')) {
+      const currentNum = parseInt(camera.stage.replace('R', '')) || 0;
+      if (currentNum > 1) {
+        newStage = `R${(currentNum - 1).toString().padStart(2, '0')}`;
+      } else if (currentNum === 1) {
+        newStage = 'R';
+      }
+    }
+
+    if (newStage !== camera.stage) {
+      updateCameraStage(projectId, cameraId, newStage);
+    }
+  }
+
+  function getStageColor(stage) {
+    if (stage === 'WIP') return '#A0A0A0';
+    if (stage.startsWith('WIP')) return '#A0A0A0';
+    if (stage === 'ICD') return '#5A9BD4';
+    if (stage === 'R') return '#FFD700';
+    if (stage.startsWith('R')) {
+      const num = parseInt(stage.replace('R', '')) || 1;
+      const colors = ['#FFD700', '#FFA500', '#FF8C00', '#FF4500', '#FF0000'];
+      return colors[Math.min(num - 1, 4)];
+    }
+    if (stage === 'Approved') return '#6BA66B';
+    return '#A0A0A0';
+  }
+
+  function canDecreaseStage(stage) {
+    if (stage === 'WIP' || stage === 'ICD' || stage === 'R' || stage === 'Approved') return false;
+    if (stage.startsWith('WIP')) {
+      const num = parseInt(stage.replace('WIP', '')) || 0;
+      return num > 0;
+    }
+    if (stage.startsWith('R')) {
+      const num = parseInt(stage.replace('R', '')) || 0;
+      return num > 0;
+    }
+    return false;
+  }
+
+  function canIncreaseStage(stage) {
+    if (stage === 'Approved') return false;
+    if (stage.startsWith('WIP')) {
+      const num = parseInt(stage.replace('WIP', '')) || 0;
+      return num < 99;
+    }
+    if (stage.startsWith('R')) {
+      const num = parseInt(stage.replace('R', '')) || 0;
+      return num < 5;
+    }
+    return stage !== 'ICD';
+  }
+
+  function openStageModal(projectId, cameraId) {
+    setStageModal({ open: true, projectId, cameraId });
+  }
+
+  function closeStageModal() {
+    setStageModal({ open: false, projectId: null, cameraId: null });
+  }
+
+  function updateProjectCameras(projectId, cameras, historyEntry) {
+    updateProject(projectId, { cameras }, historyEntry);
   }
 
   // Total Artists functions
@@ -605,7 +808,8 @@ const ProjectStatusDashboard = () => {
         priority: newProject.priority,
         color: newProject.color,
         comments: [],
-        history: []
+        history: [],
+        cameras: []
       };
 
       // Save to database
@@ -2123,6 +2327,226 @@ const ProjectStatusDashboard = () => {
                 </button>
               </div>
 
+              {/* Cameras Section */}
+              <div style={{ marginTop: '12px' }}>
+                <button
+                  onClick={() => toggleCameras(project.id)}
+                  style={{
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    border: 'none',
+                    padding: '8px 12px',
+                    borderRadius: '10px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    outline: 'none',
+                    width: '100%',
+                    textAlign: 'left'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = 'var(--gray-3)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'var(--bg-secondary)';
+                  }}
+                >
+                  Images ({project.cameras ? project.cameras.length : 0})
+                </button>
+
+                {expandedProjectId === project.id && (
+                  <div style={{
+                    marginTop: '12px',
+                    padding: '16px',
+                    background: 'var(--bg-secondary)',
+                    borderRadius: '12px',
+                    border: '0.5px solid var(--separator)'
+                  }}>
+                    {/* Список камер */}
+                    {project.cameras && project.cameras.map(camera => (
+                      <div key={camera.id} style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '8px 0',
+                        borderBottom: '0.5px solid var(--separator)'
+                      }}>
+                        <span style={{ fontSize: '14px', color: 'var(--text-primary)' }}>{camera.name}</span>
+                        
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          {/* Кнопка - */}
+                          <button
+                            disabled={!canDecreaseStage(camera.stage)}
+                            onClick={() => decreaseStageIteration(project.id, camera.id)}
+                            style={{
+                              background: 'var(--bg-primary)',
+                              border: 'none',
+                              width: '24px',
+                              height: '24px',
+                              borderRadius: '50%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: canDecreaseStage(camera.stage) ? 'pointer' : 'not-allowed',
+                              opacity: canDecreaseStage(camera.stage) ? 1 : 0.5,
+                              transition: 'all 0.2s ease'
+                            }}
+                            onMouseEnter={(e) => {
+                              if (canDecreaseStage(camera.stage)) {
+                                e.target.style.background = 'var(--gray-3)';
+                                e.target.style.transform = 'translateY(-1px)';
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (canDecreaseStage(camera.stage)) {
+                                e.target.style.background = 'var(--bg-primary)';
+                                e.target.style.transform = 'translateY(0)';
+                              }
+                            }}
+                          >
+                            <svg width="10" height="2" viewBox="0 0 10 2" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M1 1h8"/>
+                            </svg>
+                          </button>
+
+                          {/* Окно Stage */}
+                          <div
+                            onClick={() => openStageModal(project.id, camera.id)}
+                            style={{
+                              padding: '4px 12px',
+                              borderRadius: '8px',
+                              fontSize: '12px',
+                              fontWeight: '500',
+                              color: 'white',
+                              background: getStageColor(camera.stage),
+                              cursor: 'pointer',
+                              minWidth: '60px',
+                              textAlign: 'center',
+                              transition: 'all 0.2s ease'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.target.style.transform = 'translateY(-1px)';
+                              e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.target.style.transform = 'translateY(0)';
+                              e.target.style.boxShadow = 'none';
+                            }}
+                          >
+                            {camera.stage}
+                          </div>
+
+                          {/* Кнопка + */}
+                          <button
+                            disabled={!canIncreaseStage(camera.stage)}
+                            onClick={() => increaseStageIteration(project.id, camera.id)}
+                            style={{
+                              background: 'var(--bg-primary)',
+                              border: 'none',
+                              width: '24px',
+                              height: '24px',
+                              borderRadius: '50%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: canIncreaseStage(camera.stage) ? 'pointer' : 'not-allowed',
+                              opacity: canIncreaseStage(camera.stage) ? 1 : 0.5,
+                              transition: 'all 0.2s ease'
+                            }}
+                            onMouseEnter={(e) => {
+                              if (canIncreaseStage(camera.stage)) {
+                                e.target.style.background = 'var(--gray-3)';
+                                e.target.style.transform = 'translateY(-1px)';
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (canIncreaseStage(camera.stage)) {
+                                e.target.style.background = 'var(--bg-primary)';
+                                e.target.style.transform = 'translateY(0)';
+                              }
+                            }}
+                          >
+                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M5 1v8M1 5h8"/>
+                            </svg>
+                          </button>
+
+                          {isAdmin && (
+                            <button
+                              onClick={() => setConfirmRemoveCameraModal({ open: true, projectId: project.id, cameraId: camera.id })}
+                              style={{
+                                background: 'var(--danger)',
+                                color: 'white',
+                                border: 'none',
+                                padding: '4px 8px',
+                                borderRadius: '6px',
+                                fontSize: '12px',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.target.style.background = '#D70015';
+                                e.target.style.transform = 'translateY(-1px)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.target.style.background = 'var(--danger)';
+                                e.target.style.transform = 'translateY(0)';
+                              }}
+                            >
+                              Delete
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+
+                    {isAdmin && (
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                        <input
+                          type="text"
+                          value={newCameraName}
+                          onChange={(e) => setNewCameraName(e.target.value)}
+                          placeholder="New camera name"
+                          style={{
+                            flex: 1,
+                            padding: '8px 12px',
+                            border: '0.5px solid var(--separator)',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            outline: 'none',
+                            background: 'var(--bg-primary)'
+                          }}
+                        />
+                        <button
+                          onClick={() => addCamera(project.id)}
+                          style={{
+                            background: 'var(--primary)',
+                            color: 'white',
+                            border: 'none',
+                            padding: '8px 16px',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.target.style.background = '#0056CC';
+                            e.target.style.transform = 'translateY(-1px)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.background = 'var(--primary)';
+                            e.target.style.transform = 'translateY(0)';
+                          }}
+                        >
+                          Add
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {/* Admin Actions */}
               {isAdmin && (
                 <div style={{
@@ -2330,7 +2754,7 @@ const ProjectStatusDashboard = () => {
                         width: '100%',
                         padding: '8px 12px',
                         border: '0.5px solid var(--separator)',
-                        borderRadius: '10px',
+                        borderRadius: '1010px',
                         fontSize: '14px',
                         outline: 'none',
                         background: 'var(--bg-primary)'
@@ -2557,7 +2981,7 @@ const ProjectStatusDashboard = () => {
                                 border: 'none',
                                 padding: '6px 12px',
                                 borderRadius: '8px',
-                                fontSize: '12px',
+                                fontSize: '14px',
                                 cursor: 'pointer'
                               }}
                             >
@@ -2571,7 +2995,7 @@ const ProjectStatusDashboard = () => {
                                 border: 'none',
                                 padding: '6px 12px',
                                 borderRadius: '8px',
-                                fontSize: '12px',
+                                fontSize: '14px',
                                 cursor: 'pointer'
                               }}
                             >
@@ -2581,75 +3005,69 @@ const ProjectStatusDashboard = () => {
                         </div>
                       ) : (
                         <div>
-                          <div style={{ fontSize: '14px', color: 'var(--text-tertiary)', marginBottom: '4px' }}>
+                          <div style={{ 
+                            fontSize: '14px', 
+                            color: 'var(--text-secondary)',
+                            marginBottom: '4px'
+                          }}>
                             {new Date(comment.ts).toLocaleString()}
-                            {comment.ignored && ' (Ignored)'}
                           </div>
                           <div style={{ 
                             fontSize: '16px', 
-                            color: 'var(--text-primary)', 
-                            whiteSpace: 'pre-wrap',
-                            textDecoration: comment.ignored ? 'line-through' : 'none'
+                            color: 'var(--text-primary)',
+                            marginBottom: '8px',
+                            whiteSpace: 'pre-wrap'
                           }}>
                             {comment.text}
                           </div>
-                          <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                            <button
-                              onClick={() => startEdit(comment.id, comment.text)}
-                              style={{
-                                background: 'var(--bg-secondary)',
-                                color: 'var(--text-primary)',
-                                border: 'none',
-                                padding: '4px 8px',
-                                borderRadius: '6px',
-                                fontSize: '12px',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              Edit
-                            </button>
-                            {!comment.ignored && (
-                              <button
-                                onClick={() => confirmIgnoreComment(comment.id)}
-                                style={{
-                                  background: 'var(--warning)',
-                                  color: 'white',
-                                  border: 'none',
-                                  padding: '4px 8px',
-                                  borderRadius: '6px',
-                                  fontSize: '12px',
-                                  cursor: 'pointer'
-                                }}
-                              >
-                                Ignore
-                              </button>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            {isAdmin && (
+                              <>
+                                <button
+                                  onClick={() => startEdit(comment.id, comment.text)}
+                                  style={{
+                                    background: 'var(--bg-secondary)',
+                                    color: 'var(--text-primary)',
+                                    border: 'none',
+                                    padding: '4px 8px',
+                                    borderRadius: '6px',
+                                    fontSize: '12px',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => confirmIgnoreComment(comment.id)}
+                                  style={{
+                                    background: 'var(--warning)',
+                                    color: 'white',
+                                    border: 'none',
+                                    padding: '4px 8px',
+                                    borderRadius: '6px',
+                                    fontSize: '12px',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  {comment.ignored ? 'Unignore' : 'Ignore'}
+                                </button>
+                              </>
                             )}
                           </div>
                         </div>
                       )}
                     </div>
                   ))}
-                
-                {state.projects.find(p => p.id === commentsForId)?.comments?.filter(c => !c.deleted).length === 0 && (
-                  <div style={{
-                    textAlign: 'center',
-                    color: 'var(--text-tertiary)',
-                    fontStyle: 'italic',
-                    padding: '20px'
-                  }}>
-                    No comments yet
-                  </div>
-                )}
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <textarea
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
-                  placeholder="Add a new comment..."
+                  placeholder="Add a comment..."
                   style={{
-                    width: '100%',
-                    minHeight: '80px',
+                    width: 'calc(100% - 24px)',
+                    minHeight: '60px',
                     padding: '12px',
                     border: '0.5px solid var(--separator)',
                     borderRadius: '12px',
@@ -2659,173 +3077,40 @@ const ProjectStatusDashboard = () => {
                     background: 'var(--bg-primary)'
                   }}
                 />
-                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  {isAdmin && (
+                    <button
+                      onClick={() => setClearCommentsModal(commentsForId)}
+                      style={{
+                        background: 'var(--danger)',
+                        color: 'white',
+                        border: 'none',
+                        padding: '8px 16px',
+                        borderRadius: '10px',
+                        fontSize: '14px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Clear All
+                    </button>
+                  )}
                   <button
                     onClick={() => setConfirmAddOpen(true)}
                     disabled={!draft.trim()}
                     style={{
                       background: draft.trim() ? 'var(--primary)' : 'var(--gray-4)',
-                      color: 'white',
+                      color: draft.trim() ? 'white' : 'var(--text-tertiary)',
                       border: 'none',
-                      padding: '10px 20px',
-                      borderRadius: '14px',
-                      fontSize: '16px',
-                      fontWeight: '500',
+                      padding: '8px 16px',
+                      borderRadius: '10px',
+                      fontSize: '14px',
                       cursor: draft.trim() ? 'pointer' : 'not-allowed',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (draft.trim()) {
-                        e.target.style.background = '#0056CC';
-                        e.target.style.transform = 'translateY(-1px)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (draft.trim()) {
-                        e.target.style.background = 'var(--primary)';
-                        e.target.style.transform = 'translateY(0)';
-                      }
+                      marginLeft: 'auto'
                     }}
                   >
                     Add Comment
                   </button>
                 </div>
-              </div>
-
-              {isAdmin && (
-                <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '0.5px solid var(--separator)' }}>
-                  <button
-                    onClick={() => setClearCommentsModal(commentsForId)}
-                    style={{
-                      background: 'var(--danger)',
-                      color: 'white',
-                      border: 'none',
-                      padding: '8px 16px',
-                      borderRadius: '10px',
-                      fontSize: '14px',
-                      cursor: 'pointer',
-                      width: '100%'
-                    }}
-                  >
-                    Clear All Comments (Admin)
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Confirm Add Comment Modal */}
-        {confirmAddOpen && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1100
-          }}>
-            <div style={{
-              background: 'var(--bg-primary)',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '400px',
-              textAlign: 'center'
-            }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Add Comment?</h3>
-              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>Are you sure you want to add this comment?</p>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                <button
-                  onClick={() => setConfirmAddOpen(false)}
-                  style={{
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={addCommentConfirmed}
-                  style={{
-                    background: 'var(--primary)',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Add
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Confirm Ignore Comment Modal */}
-        {confirmIgnore && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1100
-          }}>
-            <div style={{
-              background: 'var(--bg-primary)',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '400px',
-              textAlign: 'center'
-            }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Ignore Comment?</h3>
-              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>This comment will be marked as ignored but not deleted.</p>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                <button
-                  onClick={() => setConfirmIgnore(null)}
-                  style={{
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={doIgnore}
-                  style={{
-                    background: 'var(--warning)',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Ignore
-                </button>
               </div>
             </div>
           </div>
@@ -2891,30 +3176,19 @@ const ProjectStatusDashboard = () => {
               }}>
                 {state.projects.find(p => p.id === historyForId)?.history?.map((entry, index) => (
                   <div key={index} style={{
-                    padding: '12px',
+                    padding: '8px 12px',
                     background: 'var(--bg-secondary)',
-                    borderRadius: '10px',
+                    borderRadius: '8px',
                     fontSize: '14px',
-                    color: 'var(--text-primary)'
+                    color: 'var(--text-secondary)'
                   }}>
                     {entry}
                   </div>
                 ))}
-                
-                {(!state.projects.find(p => p.id === historyForId)?.history?.length) && (
-                  <div style={{
-                    textAlign: 'center',
-                    color: 'var(--text-tertiary)',
-                    fontStyle: 'italic',
-                    padding: '20px'
-                  }}>
-                    No history yet
-                  </div>
-                )}
               </div>
 
               {isAdmin && (
-                <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '0.5px solid var(--separator)' }}>
+                <div style={{ marginTop: '16px', textAlign: 'right' }}>
                   <button
                     onClick={() => setClearHistoryModal(historyForId)}
                     style={{
@@ -2924,11 +3198,10 @@ const ProjectStatusDashboard = () => {
                       padding: '8px 16px',
                       borderRadius: '10px',
                       fontSize: '14px',
-                      cursor: 'pointer',
-                      width: '100%'
+                      cursor: 'pointer'
                     }}
                   >
-                    Clear History (Admin)
+                    Clear History
                   </button>
                 </div>
               )}
@@ -2958,7 +3231,7 @@ const ProjectStatusDashboard = () => {
               maxWidth: '400px',
               textAlign: 'center'
             }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Admin Access</h3>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: '600' }}>Admin Access</h3>
               <p style={{ margin: '0 0 20px 0', color: 'var(--text-tertiary)' }}>Enter admin password:</p>
               <input
                 type="password"
@@ -2969,11 +3242,11 @@ const ProjectStatusDashboard = () => {
                   width: 'calc(100% - 24px)',
                   padding: '12px',
                   border: '0.5px solid var(--separator)',
-                  borderRadius: '10px',
+                  borderRadius: '12px',
                   fontSize: '16px',
                   outline: 'none',
-                  marginBottom: '20px',
-                  background: 'var(--bg-primary)'
+                  background: 'var(--bg-primary)',
+                  marginBottom: '20px'
                 }}
                 placeholder="Password"
               />
@@ -3014,137 +3287,24 @@ const ProjectStatusDashboard = () => {
           </div>
         )}
 
-        {/* Alert Message */}
+        {/* Alert Modal */}
         {isAlertOpen && (
           <div style={{
             position: 'fixed',
-            top: '20px',
+            bottom: '20px',
             left: '50%',
             transform: 'translateX(-50%)',
-            background: 'var(--danger)',
-            color: 'white',
-            padding: '12px 24px',
+            zIndex: 1000,
+            background: 'var(--text-primary)',
+            color: 'var(--bg-primary)',
+            padding: '12px 20px',
             borderRadius: '20px',
-            zIndex: 2000,
-            animation: 'slideIn 0.3s ease-out'
+            fontSize: '14px',
+            fontWeight: '500',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+            animation: 'slideInUp 0.3s ease-out'
           }}>
             {alertMessage}
-          </div>
-        )}
-
-        {/* Clear Comments Confirmation Modal */}
-        {clearCommentsModal && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1100
-          }}>
-            <div style={{
-              background: 'var(--bg-primary)',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '400px',
-              textAlign: 'center'
-            }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Clear All Comments?</h3>
-              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>This action cannot be undone. All comments for this project will be permanently deleted.</p>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                <button
-                  onClick={() => setClearCommentsModal(null)}
-                  style={{
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => clearComments(clearCommentsModal)}
-                  style={{
-                    background: 'var(--danger)',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Clear All
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Clear History Confirmation Modal */}
-        {clearHistoryModal && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1100
-          }}>
-            <div style={{
-              background: 'var(--bg-primary)',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '400px',
-              textAlign: 'center'
-            }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Clear History?</h3>
-              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>This action cannot be undone. All history entries for this project will be permanently deleted.</p>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                <button
-                  onClick={() => setClearHistoryModal(null)}
-                  style={{
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => clearHistory(clearHistoryModal)}
-                  style={{
-                    background: 'var(--danger)',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '14px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Clear History
-                </button>
-              </div>
-            </div>
           </div>
         )}
 
@@ -3167,26 +3327,27 @@ const ProjectStatusDashboard = () => {
               borderRadius: '20px',
               padding: '24px',
               width: '90%',
-              maxWidth: '400px'
+              maxWidth: '400px',
+              textAlign: 'center'
             }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Edit Project Name</h3>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: '600' }}>Edit Project Name</h3>
               <input
                 type="text"
                 value={projectNameModal.name}
-                onChange={(e) => setProjectNameModal({ ...projectNameModal, name: e.target.value })}
+                onChange={(e) => setProjectNameModal(prev => ({ ...prev, name: e.target.value }))}
                 style={{
-                  width: '100%',
+                  width: 'calc(100% - 24px)',
                   padding: '12px',
                   border: '0.5px solid var(--separator)',
-                  borderRadius: '10px',
+                  borderRadius: '12px',
                   fontSize: '16px',
                   outline: 'none',
-                  marginBottom: '20px',
-                  background: 'var(--bg-primary)'
+                  background: 'var(--bg-primary)',
+                  marginBottom: '20px'
                 }}
                 placeholder="Project name"
               />
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
                 <button
                   onClick={closeProjectNameModal}
                   style={{
@@ -3239,10 +3400,10 @@ const ProjectStatusDashboard = () => {
               borderRadius: '20px',
               padding: '24px',
               width: '90%',
-              maxWidth: '400px'
+              maxWidth: '400px',
+              textAlign: 'center'
             }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Choose Project Color</h3>
-              
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: '600' }}>Choose Project Color</h3>
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(6, 1fr)',
@@ -3252,13 +3413,13 @@ const ProjectStatusDashboard = () => {
                 {projectColors.map(color => (
                   <button
                     key={color}
-                    onClick={() => setColorPickerModal({ ...colorPickerModal, currentColor: color })}
+                    onClick={() => setColorPickerModal(prev => ({ ...prev, currentColor: color }))}
                     style={{
                       width: '32px',
                       height: '32px',
-                      borderRadius: '8px',
-                      border: colorPickerModal.currentColor === color ? '2px solid var(--primary)' : '2px solid transparent',
+                      borderRadius: '50%',
                       background: color,
+                      border: colorPickerModal.currentColor === color ? '2px solid var(--primary)' : 'none',
                       cursor: 'pointer',
                       transition: 'transform 0.2s ease'
                     }}
@@ -3267,8 +3428,7 @@ const ProjectStatusDashboard = () => {
                   />
                 ))}
               </div>
-              
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
                 <button
                   onClick={closeColorPickerModal}
                   style={{
@@ -3302,7 +3462,239 @@ const ProjectStatusDashboard = () => {
           </div>
         )}
 
-        {/* Confirm Delete Modal */}
+        {/* Confirm Add Comment Modal */}
+        {confirmAddOpen && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100
+          }}>
+            <div style={{
+              background: 'var(--bg-primary)',
+              borderRadius: '20px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '400px',
+              textAlign: 'center'
+            }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: '600' }}>Add Comment?</h3>
+              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>Are you sure you want to add this comment?</p>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                <button
+                  onClick={() => setConfirmAddOpen(false)}
+                  style={{
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={addCommentConfirmed}
+                  style={{
+                    background: 'var(--primary)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Confirm Ignore Comment Modal */}
+        {confirmIgnore && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100
+          }}>
+            <div style={{
+              background: 'var(--bg-primary)',
+              borderRadius: '20px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '400px',
+              textAlign: 'center'
+            }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: '600' }}>Ignore Comment?</h3>
+              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>Are you sure you want to ignore this comment?</p>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                <button
+                  onClick={() => setConfirmIgnore(null)}
+                  style={{
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={doIgnore}
+                  style={{
+                    background: 'var(--warning)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Ignore
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Clear Comments Modal */}
+        {clearCommentsModal && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100
+          }}>
+            <div style={{
+              background: 'var(--bg-primary)',
+              borderRadius: '20px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '400px',
+              textAlign: 'center'
+            }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: '600' }}>Clear All Comments?</h3>
+              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>This action cannot be undone.</p>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                <button
+                  onClick={() => setClearCommentsModal(null)}
+                  style={{
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => clearComments(clearCommentsModal)}
+                  style={{
+                    background: 'var(--danger)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Clear History Modal */}
+        {clearHistoryModal && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100
+          }}>
+            <div style={{
+              background: 'var(--bg-primary)',
+              borderRadius: '20px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '400px',
+              textAlign: 'center'
+            }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: '600' }}>Clear History?</h3>
+              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>This action cannot be undone.</p>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                <button
+                  onClick={() => setClearHistoryModal(null)}
+                  style={{
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => clearHistory(clearHistoryModal)}
+                  style={{
+                    background: 'var(--danger)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Custom Confirm Delete Modal */}
         {confirmDeleteModal.open && (
           <div style={{
             position: 'fixed',
@@ -3324,8 +3716,8 @@ const ProjectStatusDashboard = () => {
               maxWidth: '400px',
               textAlign: 'center'
             }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Delete Project?</h3>
-              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>This action cannot be undone. The project and all its data will be permanently deleted.</p>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: '600' }}>Delete Project?</h3>
+              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>This action cannot be undone.</p>
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
                 <button
                   onClick={closeConfirmDeleteModal}
@@ -3360,7 +3752,7 @@ const ProjectStatusDashboard = () => {
           </div>
         )}
 
-        {/* Confirm Complete Modal */}
+        {/* Custom Confirm Complete Modal */}
         {confirmCompleteModal.open && (
           <div style={{
             position: 'fixed',
@@ -3382,8 +3774,8 @@ const ProjectStatusDashboard = () => {
               maxWidth: '400px',
               textAlign: 'center'
             }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Mark as Completed?</h3>
-              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>This project will be marked as completed and all busy artists will be freed up.</p>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: '600' }}>Complete Project?</h3>
+              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>Mark this project as completed?</p>
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
                 <button
                   onClick={closeConfirmCompleteModal}
@@ -3440,7 +3832,7 @@ const ProjectStatusDashboard = () => {
               maxWidth: '400px',
               textAlign: 'center'
             }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Date Validation</h3>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: '600' }}>Date Error</h3>
               <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>{dateValidationModal.message}</p>
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
                 <button
@@ -3473,7 +3865,7 @@ const ProjectStatusDashboard = () => {
                       cursor: 'pointer'
                     }}
                   >
-                    Continue
+                    Adjust Dates
                   </button>
                 )}
               </div>
@@ -3481,15 +3873,189 @@ const ProjectStatusDashboard = () => {
           </div>
         )}
 
+        {/* Stage Selection Modal */}
+        {stageModal.open && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}>
+            <div style={{
+              background: 'var(--bg-primary)',
+              borderRadius: '20px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '400px',
+              textAlign: 'center'
+            }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Select Stage</h3>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {['WIP', 'ICD', 'R', 'Approved'].map(stage => {
+                  const project = state.projects.find(p => p.id === stageModal.projectId);
+                  const camera = project?.cameras.find(c => c.id === stageModal.cameraId);
+                  const isCurrent = camera?.stage === stage || 
+                    (stage === 'R' && camera?.stage.startsWith('R')) ||
+                    (stage === 'WIP' && camera?.stage.startsWith('WIP'));
+                  
+                  return (
+                    <button
+                      key={stage}
+                      onClick={() => {
+                        let newStage = stage;
+                        if (stage === 'R') newStage = 'R01';
+                        if (stage === 'WIP') newStage = 'WIP';
+                        
+                        updateCameraStage(stageModal.projectId, stageModal.cameraId, newStage);
+                        closeStageModal();
+                      }}
+                      style={{
+                        padding: '12px',
+                        borderRadius: '10px',
+                        border: `2px solid ${isCurrent ? 'red' : 'transparent'}`,
+                        background: getStageColor(stage),
+                        color: 'white',
+                        fontSize: '16px',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.transform = 'translateY(-1px)';
+                        e.target.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.transform = 'translateY(0)';
+                        e.target.style.boxShadow = 'none';
+                      }}
+                    >
+                      {stage}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={closeStageModal}
+                style={{
+                  marginTop: '20px',
+                  background: 'var(--bg-secondary)',
+                  color: 'var(--text-primary)',
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: '14px',
+                  fontSize: '16px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = 'var(--gray-3)';
+                  e.target.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = 'var(--bg-secondary)';
+                  e.target.style.transform = 'translateY(0)';
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Confirm Remove Camera Modal */}
+        {confirmRemoveCameraModal.open && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100
+          }}>
+            <div style={{
+              background: 'var(--bg-primary)',
+              borderRadius: '20px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '400px',
+              textAlign: 'center'
+            }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: '600' }}>Delete Camera?</h3>
+              <p style={{ margin: '0 0 24px 0', color: 'var(--text-tertiary)' }}>This action cannot be undone.</p>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                <button
+                  onClick={() => setConfirmRemoveCameraModal({ open: false, projectId: null, cameraId: null })}
+                  style={{
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => removeCamera(confirmRemoveCameraModal.projectId, confirmRemoveCameraModal.cameraId)}
+                  style={{
+                    background: 'var(--danger)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Footer */}
+        <div style={{
+          textAlign: 'center',
+          padding: '20px',
+          color: 'var(--text-quaternary)',
+          fontSize: '14px'
+        }}>
+          Zigert Project Management System • {new Date().getFullYear()}
+        </div>
       </div>
 
-      <style>{`
+      <style jsx>{`
         @keyframes slideIn {
-          from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
-          to { transform: translateX(-50%) translateY(0); opacity: 1; }
+          from { transform: translate(-50%, -20px); opacity: 0; }
+          to { transform: translate(-50%, 0); opacity: 1; }
         }
         
-        /* Custom scrollbar styling */
+        @keyframes slideInUp {
+          from { transform: translate(-50%, 20px); opacity: 0; }
+          to { transform: translate(-50%, 0); opacity: 1; }
+        }
+        
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Scrollbar styling for webkit browsers */
         ::-webkit-scrollbar {
           width: 6px;
         }
@@ -3507,15 +4073,10 @@ const ProjectStatusDashboard = () => {
         ::-webkit-scrollbar-thumb:hover {
           background: var(--gray-1);
         }
-        
-        /* Focus styles for accessibility */
-        button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
-          outline: 2px solid var(--primary);
-          outline-offset: 2px;
-        }
       `}</style>
     </div>
   );
 };
 
 export default ProjectStatusDashboard;
+[file content end]
