@@ -134,7 +134,7 @@ const ProjectStatusDashboard = () => {
   const [addCameraModal, setAddCameraModal] = useState({ open: false, projectId: null, cameraName: '' });
   const [deleteCameraModal, setDeleteCameraModal] = useState({ open: false, projectId: null, cameraId: null, cameraName: '' });
   const [stageModal, setStageModal] = useState({ open: false, projectId: null, cameraId: null, currentStage: 'WIP' });
-  const [editCameraNameModal, setEditCameraNameModal] = useState({ open: false, projectId: null, cameraId: null, cameraName: '' });
+  const [editCameraModal, setEditCameraModal] = useState({ open: false, projectId: null, cameraId: null, cameraName: '' });
 
   async function loadInitialData() {
     try {
@@ -783,41 +783,43 @@ const ProjectStatusDashboard = () => {
     }
   }
 
-  function openEditCameraNameModal(projectId, cameraId, currentName) {
-    setEditCameraNameModal({ open: true, projectId, cameraId, cameraName: currentName });
+  function openEditCameraModal(projectId, cameraId, currentName) {
+    setEditCameraModal({ open: true, projectId, cameraId, cameraName: currentName });
   }
 
-  function closeEditCameraNameModal() {
-    setEditCameraNameModal({ open: false, projectId: null, cameraId: null, cameraName: '' });
+  function closeEditCameraModal() {
+    setEditCameraModal({ open: false, projectId: null, cameraId: null, cameraName: '' });
   }
 
   async function saveCameraName() {
     try {
-      if (!editCameraNameModal.cameraName.trim()) {
+      if (!editCameraModal.cameraName.trim()) {
         showAlert("Specify camera name!");
         return;
       }
 
-      const project = state.projects.find(p => p.id === editCameraNameModal.projectId);
-      const camera = project?.cameras.find(c => c.id === editCameraNameModal.cameraId);
+      const project = state.projects.find(p => p.id === editCameraModal.projectId);
+      const camera = project?.cameras.find(c => c.id === editCameraModal.cameraId);
       
       if (!camera) return;
 
-      const updatedCamera = { ...camera, name: editCameraNameModal.cameraName.trim() };
-      await saveCamera(editCameraNameModal.projectId, updatedCamera);
-      await addHistoryEntry(editCameraNameModal.projectId, `${new Date().toLocaleString()}: Camera name changed to "${updatedCamera.name}" [Admin]`);
+      const oldName = camera.name;
+      const updatedCamera = { ...camera, name: editCameraModal.cameraName.trim() };
+      
+      await saveCamera(editCameraModal.projectId, updatedCamera);
+      await addHistoryEntry(editCameraModal.projectId, `${new Date().toLocaleString()}: Camera renamed from "${oldName}" to "${updatedCamera.name}" [Admin]`);
 
       setState(prev => ({
         ...prev,
-        projects: prev.projects.map(p => p.id === editCameraNameModal.projectId ? ({
+        projects: prev.projects.map(p => p.id === editCameraModal.projectId ? ({
           ...p,
-          cameras: (p.cameras || []).map(c => c.id === editCameraNameModal.cameraId ? updatedCamera : c).sort((a, b) => a.name.localeCompare(b.name)),
-          history: [`${new Date().toLocaleString()}: Camera name changed to "${updatedCamera.name}" [Admin]`, ...(p.history || [])]
+          cameras: (p.cameras || []).map(c => c.id === editCameraModal.cameraId ? updatedCamera : c).sort((a, b) => a.name.localeCompare(b.name)),
+          history: [`${new Date().toLocaleString()}: Camera renamed from "${oldName}" to "${updatedCamera.name}" [Admin]`, ...(p.history || [])]
         }) : p)
       }));
 
       setLastSync(new Date());
-      closeEditCameraNameModal();
+      closeEditCameraModal();
     } catch (err) {
       setError(`Failed to update camera name: ${err.message}`);
       console.error('Update camera name error:', err);
@@ -1961,175 +1963,166 @@ const ProjectStatusDashboard = () => {
             {project.cameras && project.cameras.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {project.cameras.map((camera, index) => (
-  <div key={camera.id} style={{
-    display: 'flex',
-    alignItems: 'flex-start',  // Изменено с 'center' на 'flex-start'
-    gap: '8px',
-    padding: '8px',
-    background: 'var(--bg-secondary)',
-    borderRadius: '8px'
-  }}>
-    <span style={{
-      fontSize: '13px',
-      fontWeight: '500',
-      color: 'var(--text-tertiary)',
-      minWidth: '25px',
-      flexShrink: 0,
-      paddingTop: '2px'  // Добавлено для выравнивания с текстом
-    }}>
-      {index + 1}.
-    </span>
-    <span 
-      onClick={() => isAdmin && !isArchived && openEditCameraNameModal(project.id, camera.id, camera.name)}
-      style={{
-        flex: 1,
-        minWidth: 0,  // КРИТИЧНО для работы переноса во flex-контейнере
-        fontSize: '14px',
-        color: 'var(--text-primary)',
-        wordWrap: 'break-word',
-        overflowWrap: 'break-word',
-        wordBreak: 'break-word',  // Добавлено
-        whiteSpace: 'normal',
-        cursor: (isAdmin && !isArchived) ? 'pointer' : 'default',
-        transition: 'color 0.2s ease',
-        lineHeight: '1.4'  // Добавлено для лучшей читаемости многострочного текста
-      }}
-      onMouseEnter={(e) => {
-        if (isAdmin && !isArchived) {
-          e.target.style.color = 'var(--primary)';
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (isAdmin && !isArchived) {
-          e.target.style.color = 'var(--text-primary)';
-        }
-      }}
-    >
-      {camera.name}
-    </span>
-    
-    {!isArchived && (
-      <>
-        <button
-          onClick={() => decrementStage(project.id, camera.id, camera.stage)}
-          disabled={camera.stage === 'WIP' || camera.stage === 'ICD' || camera.stage === 'R01' || camera.stage === 'Approved'}
-          style={{
-            background: (camera.stage === 'WIP' || camera.stage === 'ICD' || camera.stage === 'R01' || camera.stage === 'Approved') ? 'var(--gray-4)' : 'var(--bg-primary)',
-            border: '0.5px solid var(--separator)',
-            width: '24px',
-            height: '24px',
-            borderRadius: '6px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: (camera.stage === 'WIP' || camera.stage === 'ICD' || camera.stage === 'R01' || camera.stage === 'Approved') ? 'not-allowed' : 'pointer',
-            opacity: (camera.stage === 'WIP' || camera.stage === 'ICD' || camera.stage === 'R01' || camera.stage === 'Approved') ? 0.5 : 1,
-            transition: 'all 0.2s ease',
-            flexShrink: 0,
-            alignSelf: 'flex-start',  // Добавлено
-            marginTop: '2px'  // Добавлено для выравнивания
-          }}
-        >
-          <svg width="10" height="2" viewBox="0 0 10 2" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M1 1h8"/>
-          </svg>
-        </button>
-      </>
-    )}
-    
-    <div
-      onClick={() => !isArchived && openStageModal(project.id, camera.id, camera.stage)}
-      style={{
-        background: getStageColor(camera.stage),
-        color: 'white',
-        padding: '4px 12px',
-        borderRadius: '8px',
-        fontSize: '12px',
-        fontWeight: '600',
-        cursor: isArchived ? 'default' : 'pointer',
-        minWidth: '60px',
-        textAlign: 'center',
-        transition: 'all 0.2s ease',
-        opacity: isArchived ? 0.7 : 1,
-        flexShrink: 0,
-        alignSelf: 'flex-start',  // Добавлено
-        marginTop: '2px'  // Добавлено для выравнивания
-      }}
-      onMouseEnter={(e) => {
-        if (!isArchived) {
-          e.target.style.transform = 'scale(1.05)';
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (!isArchived) {
-          e.target.style.transform = 'scale(1)';
-        }
-      }}
-    >
-      {camera.stage}
-    </div>
-    
-    {!isArchived && (
-      <>
-        <button
-          onClick={() => incrementStage(project.id, camera.id, camera.stage)}
-          disabled={camera.stage === 'Approved' || camera.stage === 'ICD'}
-          style={{
-            background: (camera.stage === 'Approved' || camera.stage === 'ICD') ? 'var(--gray-4)' : 'var(--bg-primary)',
-            border: '0.5px solid var(--separator)',
-            width: '24px',
-            height: '24px',
-            borderRadius: '6px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: (camera.stage === 'Approved' || camera.stage === 'ICD') ? 'not-allowed' : 'pointer',
-            opacity: (camera.stage === 'Approved' || camera.stage === 'ICD') ? 0.5 : 1,
-            transition: 'all 0.2s ease',
-            flexShrink: 0,
-            alignSelf: 'flex-start',  // Добавлено
-            marginTop: '2px'  // Добавлено для выравнивания
-          }}
-        >
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M5 1v8M1 5h8"/>
-          </svg>
-        </button>
+                  <div key={camera.id} style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px',
+                    background: 'var(--bg-secondary)',
+                    borderRadius: '8px'
+                  }}>
+                    <span style={{
+                      fontSize: '13px',
+                      fontWeight: '500',
+                      color: 'var(--text-tertiary)',
+                      minWidth: '25px'
+                    }}>
+                      {index + 1}.
+                    </span>
+                    <span 
+                      onClick={() => isAdmin && !isArchived && openEditCameraModal(project.id, camera.id, camera.name)}
+                      style={{
+                        flex: 1,
+                        fontSize: '14px',
+                        color: 'var(--text-primary)',
+                        wordWrap: 'break-word',
+                        wordBreak: 'break-word',
+                        overflowWrap: 'break-word',
+                        whiteSpace: 'normal',
+                        cursor: (isAdmin && !isArchived) ? 'pointer' : 'default',
+                        padding: (isAdmin && !isArchived) ? '2px 4px' : '0',
+                        borderRadius: '4px',
+                        transition: 'background 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (isAdmin && !isArchived) {
+                          e.target.style.background = 'var(--bg-primary)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (isAdmin && !isArchived) {
+                          e.target.style.background = 'transparent';
+                        }
+                      }}
+                    >
+                      {camera.name}
+                    </span>
+                    
+                    {!isArchived && (
+                      <>
+                        <button
+                          onClick={() => decrementStage(project.id, camera.id, camera.stage)}
+                          disabled={camera.stage === 'WIP' || camera.stage === 'ICD' || camera.stage === 'R01' || camera.stage === 'Approved'}
+                          style={{
+                            background: (camera.stage === 'WIP' || camera.stage === 'ICD' || camera.stage === 'R01' || camera.stage === 'Approved') ? 'var(--gray-4)' : 'var(--bg-primary)',
+                            border: '0.5px solid var(--separator)',
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '6px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: (camera.stage === 'WIP' || camera.stage === 'ICD' || camera.stage === 'R01' || camera.stage === 'Approved') ? 'not-allowed' : 'pointer',
+                            opacity: (camera.stage === 'WIP' || camera.stage === 'ICD' || camera.stage === 'R01' || camera.stage === 'Approved') ? 0.5 : 1,
+                            transition: 'all 0.2s ease',
+                            flexShrink: 0
+                          }}
+                        >
+                          <svg width="10" height="2" viewBox="0 0 10 2" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M1 1h8"/>
+                          </svg>
+                        </button>
+                      </>
+                    )}
+                    
+                    <div
+                      onClick={() => !isArchived && openStageModal(project.id, camera.id, camera.stage)}
+                      style={{
+                        background: getStageColor(camera.stage),
+                        color: 'white',
+                        padding: '4px 12px',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        cursor: isArchived ? 'default' : 'pointer',
+                        minWidth: '60px',
+                        textAlign: 'center',
+                        transition: 'all 0.2s ease',
+                        opacity: isArchived ? 0.7 : 1,
+                        flexShrink: 0
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isArchived) {
+                          e.target.style.transform = 'scale(1.05)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isArchived) {
+                          e.target.style.transform = 'scale(1)';
+                        }
+                      }}
+                    >
+                      {camera.stage}
+                    </div>
+                    
+                    {!isArchived && (
+                      <>
+                        <button
+                          onClick={() => incrementStage(project.id, camera.id, camera.stage)}
+                          disabled={camera.stage === 'Approved' || camera.stage === 'ICD'}
+                          style={{
+                            background: (camera.stage === 'Approved' || camera.stage === 'ICD') ? 'var(--gray-4)' : 'var(--bg-primary)',
+                            border: '0.5px solid var(--separator)',
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '6px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: (camera.stage === 'Approved' || camera.stage === 'ICD') ? 'not-allowed' : 'pointer',
+                            opacity: (camera.stage === 'Approved' || camera.stage === 'ICD') ? 0.5 : 1,
+                            transition: 'all 0.2s ease',
+                            flexShrink: 0
+                          }}
+                        >
+                          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M5 1v8M1 5h8"/>
+                          </svg>
+                        </button>
 
-        {isAdmin && (
-          <button
-            onClick={() => openDeleteCameraModal(project.id, camera.id, camera.name)}
-            style={{
-              background: 'var(--danger)',
-              border: 'none',
-              color: 'white',
-              width: '24px',
-              height: '24px',
-              borderRadius: '6px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              fontSize: '16px',
-              transition: 'all 0.2s ease',
-              flexShrink: 0,
-              alignSelf: 'flex-start',  // Добавлено
-              marginTop: '2px'  // Добавлено для выравнивания
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.background = '#D70015';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.background = 'var(--danger)';
-            }}
-          >
-            ×
-          </button>
-        )}
-      </>
-    )}
-  </div>
-))}
+                        {isAdmin && (
+                          <button
+                            onClick={() => openDeleteCameraModal(project.id, camera.id, camera.name)}
+                            style={{
+                              background: 'var(--danger)',
+                              border: 'none',
+                              color: 'white',
+                              width: '24px',
+                              height: '24px',
+                              borderRadius: '6px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              fontSize: '16px',
+                              transition: 'all 0.2s ease',
+                              flexShrink: 0
+                            }}
+                            onMouseEnter={(e) => {
+                              e.target.style.background = '#D70015';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.target.style.background = 'var(--danger)';
+                            }}
+                          >
+                            ×
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
             ) : (
               <div style={{
                 textAlign: 'center',
@@ -3162,7 +3155,7 @@ const ProjectStatusDashboard = () => {
         </div>
       )}
 
-      {editCameraNameModal.open && (
+      {editCameraModal.open && (
         <div style={{
           position: 'fixed',
           top: 0,
@@ -3186,8 +3179,8 @@ const ProjectStatusDashboard = () => {
             <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Edit Camera Name</h3>
             <input
               type="text"
-              value={editCameraNameModal.cameraName}
-              onChange={(e) => setEditCameraNameModal({ ...editCameraNameModal, cameraName: e.target.value })}
+              value={editCameraModal.cameraName}
+              onChange={(e) => setEditCameraModal({ ...editCameraModal, cameraName: e.target.value })}
               placeholder="Enter camera name"
               style={{
                 width: '100%',
@@ -3202,7 +3195,7 @@ const ProjectStatusDashboard = () => {
             />
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
               <button
-                onClick={closeEditCameraNameModal}
+                onClick={closeEditCameraModal}
                 style={{
                   background: 'var(--bg-secondary)',
                   color: 'var(--text-primary)',
