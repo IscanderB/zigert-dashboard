@@ -826,8 +826,8 @@ const ProjectStatusDashboard = () => {
     } else if (currentStage.startsWith('WIP')) {
       const num = parseInt(currentStage.substring(3)) || 0;
       newStage = `WIP${String(num + 1).padStart(2, '0')}`;
-    } else if (currentStage === 'R') {
-      newStage = 'R01';
+    } else if (currentStage === 'R01') {
+      newStage = 'R02';
     } else if (currentStage.startsWith('R')) {
       const num = parseInt(currentStage.substring(1)) || 0;
       newStage = `R${String(num + 1).padStart(2, '0')}`;
@@ -839,7 +839,7 @@ const ProjectStatusDashboard = () => {
   }
 
   function decrementStage(projectId, cameraId, currentStage) {
-    if (currentStage === 'WIP' || currentStage === 'ICD' || currentStage === 'R' || currentStage === 'R01' || currentStage === 'Approved') return;
+    if (currentStage === 'WIP' || currentStage === 'ICD' || currentStage === 'R01' || currentStage === 'Approved') return;
     
     let newStage;
     if (currentStage.startsWith('WIP')) {
@@ -1353,7 +1353,7 @@ const ProjectStatusDashboard = () => {
         
         ::-webkit-scrollbar-thumb {
           background: var(--gray-2);
-          border-radius: 3px;
+          borderRadius: 3px;
         }
         
         ::-webkit-scrollbar-thumb:hover {
@@ -1365,8 +1365,7 @@ const ProjectStatusDashboard = () => {
           outline-offset: 2px;
         }
       `}</style>
-
-      {error && (
+	{error && (
         <div style={{
           position: 'fixed',
           top: '10px',
@@ -1867,7 +1866,8 @@ const ProjectStatusDashboard = () => {
                         background: 'rgba(52, 199, 89, 0.9)',
                         borderRadius: '4px',
                         padding: '1px 3px',
-                        fontSize: '6px',
+                        fontSize: '
+fontSize: '6px',
                         fontWeight: '500',
                         color: 'white'
                       }}>
@@ -2545,9 +2545,9 @@ const ProjectStatusDashboard = () => {
                           
                           <button
                             onClick={() => decrementStage(project.id, camera.id, camera.stage)}
-                            disabled={camera.stage === 'WIP' || camera.stage === 'ICD' || camera.stage === 'R' || camera.stage === 'R01' || camera.stage === 'Approved' || camera.stage === 'WIP02'}
+                            disabled={camera.stage === 'WIP' || camera.stage === 'ICD' || camera.stage === 'R01' || camera.stage === 'Approved'}
                             style={{
-                              background: (camera.stage === 'WIP' || camera.stage === 'ICD' || camera.stage === 'R' || camera.stage === 'R01' || camera.stage === 'Approved' || camera.stage === 'WIP02') ? 'var(--gray-4)' : 'var(--bg-primary)',
+                              background: (camera.stage === 'WIP' || camera.stage === 'ICD' || camera.stage === 'R01' || camera.stage === 'Approved') ? 'var(--gray-4)' : 'var(--bg-primary)',
                               border: '0.5px solid var(--separator)',
                               width: '24px',
                               height: '24px',
@@ -2555,8 +2555,8 @@ const ProjectStatusDashboard = () => {
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              cursor: (camera.stage === 'WIP' || camera.stage === 'ICD' || camera.stage === 'R' || camera.stage === 'R01' || camera.stage === 'Approved' || camera.stage === 'WIP02') ? 'not-allowed' : 'pointer',
-                              opacity: (camera.stage === 'WIP' || camera.stage === 'ICD' || camera.stage === 'R' || camera.stage === 'R01' || camera.stage === 'Approved' || camera.stage === 'WIP02') ? 0.5 : 1,
+                              cursor: (camera.stage === 'WIP' || camera.stage === 'ICD' || camera.stage === 'R01' || camera.stage === 'Approved') ? 'not-allowed' : 'pointer',
+                              opacity: (camera.stage === 'WIP' || camera.stage === 'ICD' || camera.stage === 'R01' || camera.stage === 'Approved') ? 0.5 : 1,
                               transition: 'all 0.2s ease'
                             }}
                           >
@@ -2658,6 +2658,7 @@ const ProjectStatusDashboard = () => {
           ))}
         </div>
       </div>
+
 {isAddModalOpen && (
         <div style={{
           position: 'fixed',
@@ -3019,10 +3020,11 @@ const ProjectStatusDashboard = () => {
           }}>
             <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600', textAlign: 'center' }}>Select Stage</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {['WIP', 'ICD', 'R', 'Approved'].map(stage => {
+              {['WIP', 'ICD', 'R01', 'Approved'].map(stage => {
                 const currentBase = stageModal.currentStage.match(/^[A-Z]+/)?.[0] || stageModal.currentStage;
                 const isCurrentStage = (stage === 'Approved' && stageModal.currentStage === 'Approved') || 
-                                      (stage !== 'Approved' && currentBase === stage);
+                                      (stage === 'R01' && (stageModal.currentStage === 'R01' || stageModal.currentStage.startsWith('R'))) ||
+                                      (stage !== 'Approved' && stage !== 'R01' && currentBase === stage);
                 
                 return (
                   <button
@@ -3416,7 +3418,7 @@ const ProjectStatusDashboard = () => {
         </div>
       )}
 
-      {historyForId && (
+{historyForId && (
         <div style={{
           position: 'fixed',
           top: 0,
