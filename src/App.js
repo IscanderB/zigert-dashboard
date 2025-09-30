@@ -91,6 +91,7 @@ const ProjectStatusDashboard = () => {
   const [error, setError] = useState(null);
   const [holidayDays, setHolidayDays] = useState(new Set());
   const [workingWeekends, setWorkingWeekends] = useState(new Set());
+  const [isArchiveExpanded, setIsArchiveExpanded] = useState(false);
 
   const [commentsForId, setCommentsForId] = useState(null);
   const [draft, setDraft] = useState('');
@@ -424,6 +425,18 @@ const ProjectStatusDashboard = () => {
   const busy = state.projects.reduce((s, p) => s + (p.status === 'Completed' ? 0 : p.busy), 0);
   const free = total - busy;
   const freePct = Math.round((free / total) * 100);
+
+  // Разделение проектов на активные и архивные
+  const activeProjects = state.projects.filter(p => p.status !== 'Completed');
+  const archivedProjects = state.projects.filter(p => p.status === 'Completed');
+
+  // Сортировка активных проектов по приоритету и алфавиту
+  const sortedActiveProjects = [...activeProjects].sort((a, b) => {
+    const priorityOrder = { 'High': 1, 'Medium': 2, 'Low': 3 };
+    const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
+    if (priorityDiff !== 0) return priorityDiff;
+    return a.name.localeCompare(b.name);
+  });
 
   function showAlert(message) {
     setAlertMessage(message);
@@ -843,15 +856,14 @@ const ProjectStatusDashboard = () => {
     
     let newStage;
     if (currentStage.startsWith('WIP')) {
-  const num = parseInt(currentStage.substring(3)) || 2;
-  if (num === 2) {
-    newStage = 'WIP';
-  } else if (num > 2) {
-    newStage = `WIP${String(num - 1).padStart(2, '0')}`;
-  } else {
-    return;
-  }
-
+      const num = parseInt(currentStage.substring(3)) || 2;
+      if (num === 2) {
+        newStage = 'WIP';
+      } else if (num > 2) {
+        newStage = `WIP${String(num - 1).padStart(2, '0')}`;
+      } else {
+        return;
+      }
     } else if (currentStage.startsWith('R')) {
       const num = parseInt(currentStage.substring(1)) || 1;
       if (num > 1) {
@@ -1284,6 +1296,779 @@ const ProjectStatusDashboard = () => {
     }
     
     setNewProject({ ...newProject, busy: newBusy, status: newStatus });
+  }
+
+  // Функция рендеринга карточки проекта
+  function renderProjectCard(project, isArchived = false) {
+    return (
+      <div key={project.id}>
+        <div
+          style={{
+            background: 'var(--bg-primary)',
+            borderRadius: expandedImages[project.id] ? '20px 20px 0 0' : '20px',
+            boxShadow: 'var(--shadow)',
+            padding: '20px',
+            transition: 'all 0.3s ease',
+            border: '0.5px solid var(--separator)',
+            opacity: isArchived ? 0.85 : 1
+          }}
+          onMouseEnter={(e) => {
+            if (!expandedImages[project.id]) {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 8px 30px rgba(0, 0, 0, 0.12)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!expandedImages[project.id]) {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = 'var(--shadow)';
+            }
+          }}
+        >
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            marginBottom: '16px',
+            gap: '12px'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              flex: 1,
+              minWidth: 0
+            }}>
+              <div style={{
+                width: '12px',
+                height: '12px',
+                borderRadius: '50%',
+                backgroundColor: getProjectColor(project),
+                flexShrink: 0
+              }}></div>
+              <h3 style={{
+                margin: 0,
+                fontSize: '18px',
+                fontWeight: '600',
+                color: 'var(--text-primary)',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                flex: 1,
+                minWidth: 0
+              }}>
+                {project.name}
+              </h3>
+            </div>
+            {isAdmin && !isArchived && (
+              <button
+                onClick={() => openProjectNameModal(project.id, project.name)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--gray-1)',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  borderRadius: '6px',
+                  transition: 'all 0.2s ease',
+                  flexShrink: 0
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = 'var(--bg-secondary)';
+                  e.target.style.color = 'var(--text-primary)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = 'none';
+                  e.target.style.color = 'var(--gray-1)';
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </button>
+            )}
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '12px',
+            marginBottom: '16px'
+          }}>
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px'
+            }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <span style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>Status:</span>
+                <select
+                  value={project.status}
+                  disabled={!isAdmin && !isArchived}
+                  onChange={(e) => updateProject(project.id, { status: e.target.value }, `${new Date().toLocaleString()}: Status changed to ${e.target.value}`)}
+                  style={{
+                    background: statusColors[project.status] || 'var(--bg-secondary)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '4px 8px',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    cursor: (isAdmin || isArchived) ? 'pointer' : 'not-allowed',
+                    outline: 'none',
+                    width: '120px',
+                    textAlign: 'center',
+                    opacity: (isAdmin || isArchived) ? 1 : 0.7
+                  }}
+                >
+                  {Object.keys(statusColors).map(status => (
+                    <option key={status} value={status} style={{ background: 'white', color: 'black' }}>
+                      {status}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <span style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>Priority:</span>
+                <select
+                  value={project.priority}
+                  disabled={isArchived}
+                  onChange={(e) => updateProject(project.id, { priority: e.target.value }, `${new Date().toLocaleString()}: Priority changed to ${e.target.value}`)}
+                  style={{
+                    background: priorityColors[project.priority] || 'var(--bg-secondary)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '4px 8px',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    cursor: isArchived ? 'not-allowed' : 'pointer',
+                    outline: 'none',
+                    width: '120px',
+                    textAlign: 'center',
+                    opacity: isArchived ? 0.5 : 1
+                  }}
+                >
+                  {Object.keys(priorityColors).map(priority => (
+                    <option key={priority} value={priority} style={{ background: 'white', color: 'black' }}>
+                      {priority}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px'
+            }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <span style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>Start:</span>
+                <input
+                  type="date"
+                  value={project.startDate}
+                  disabled={!isAdmin || isArchived}
+                  onChange={(e) => {
+                    const newStartDate = e.target.value;
+                    const newDueDate = new Date(newStartDate) > new Date(project.dueDate) ? newStartDate : project.dueDate;
+                    
+                    if (new Date(newStartDate) > new Date(newDueDate)) {
+                      showDateValidationModal(
+                        "Start date cannot be after due date! Adjusting due date.",
+                        () => updateProject(
+                          project.id, 
+                          { startDate: newStartDate, dueDate: newStartDate }, 
+                          `${new Date().toLocaleString()}: Dates changed to ${formatDateForDisplay(newStartDate)}`
+                        )
+                      );
+                    } else {
+                      updateProject(
+                        project.id, 
+                        { startDate: newStartDate, dueDate: newDueDate }, 
+                        `${new Date().toLocaleString()}: Dates changed to ${formatDateForDisplay(newStartDate)} - ${formatDateForDisplay(newDueDate)}`
+                      );
+                    }
+                  }}
+                  style={{
+                    border: '0.5px solid var(--separator)',
+                    padding: '4px 8px',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    outline: 'none',
+                    width: '120px',
+                    background: 'var(--bg-primary)',
+                    cursor: (isAdmin && !isArchived) ? 'pointer' : 'not-allowed',
+                    opacity: (isAdmin && !isArchived) ? 1 : 0.5
+                  }}
+                />
+              </div>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <span style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>Due:</span>
+                <input
+                  type="date"
+                  value={project.dueDate}
+                  disabled={isArchived}
+                  onChange={(e) => {
+                    const newDueDate = e.target.value;
+                    if (new Date(newDueDate) < new Date(project.startDate)) {
+                      showDateValidationModal(
+                        "Due date cannot be before start date!",
+                        null
+                      );
+                    } else {
+                      updateProject(
+                        project.id, 
+                        { dueDate: newDueDate }, 
+                        `${new Date().toLocaleString()}: Due date changed to ${formatDateForDisplay(newDueDate)}`
+                      );
+                    }
+                  }}
+                  style={{
+                    border: '0.5px solid var(--separator)',
+                    padding: '4px 8px',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    outline: 'none',
+                    width: '120px',
+                    background: 'var(--bg-primary)',
+                    cursor: isArchived ? 'not-allowed' : 'pointer',
+                    opacity: isArchived ? 0.5 : 1
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '16px'
+          }}>
+            <span style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>Busy:</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                onClick={() => updateProject(project.id, { busy: Math.max(0, project.busy - 1) }, `${new Date().toLocaleString()}: Busy decreased to ${Math.max(0, project.busy - 1)}`)}
+                disabled={project.busy <= 0 || !isAdmin || isArchived}
+                style={{
+                  background: (project.busy <= 0 || !isAdmin || isArchived) ? 'var(--gray-4)' : 'var(--bg-secondary)',
+                  border: 'none',
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: (project.busy <= 0 || !isAdmin || isArchived) ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease',
+                  opacity: (project.busy <= 0 || !isAdmin || isArchived) ? 0.5 : 1
+                }}
+                onMouseEnter={(e) => {
+                  if (project.busy > 0 && isAdmin && !isArchived) {
+                    e.target.style.background = 'var(--gray-3)';
+                    e.target.style.transform = 'translateY(-1px)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (project.busy > 0 && isAdmin && !isArchived) {
+                    e.target.style.background = 'var(--bg-secondary)';
+                    e.target.style.transform = 'translateY(0)';
+                  }
+                }}
+              >
+                <svg width="12" height="2" viewBox="0 0 12 2" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M1 1h10"/>
+                </svg>
+              </button>
+              <span style={{
+                fontSize: '16px',
+                fontWeight: '600',
+                color: 'var(--text-primary)',
+                minWidth: '20px',
+                textAlign: 'center'
+              }}>
+                {project.busy}
+              </span>
+              <button
+                onClick={() => updateProject(project.id, { busy: project.busy + 1 }, `${new Date().toLocaleString()}: Busy increased to ${project.busy + 1}`)}
+                disabled={busy >= total || !isAdmin || isArchived}
+                style={{
+                  background: (busy >= total || !isAdmin || isArchived) ? 'var(--gray-4)' : 'var(--bg-secondary)',
+                  border: 'none',
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: (busy >= total || !isAdmin || isArchived) ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease',
+                  opacity: (busy >= total || !isAdmin || isArchived) ? 0.5 : 1
+                }}
+                onMouseEnter={(e) => {
+                  if (busy < total && isAdmin && !isArchived) {
+                    e.target.style.background = 'var(--gray-3)';
+                    e.target.style.transform = 'translateY(-1px)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (busy < total && isAdmin && !isArchived) {
+                    e.target.style.background = 'var(--bg-secondary)';
+                    e.target.style.transform = 'translateY(0)';
+                  }
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M6 1v10M1 6h10"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div style={{
+            display: 'flex',
+            gap: '8px',
+            justifyContent: 'space-between'
+          }}>
+            <button
+              onClick={() => openComments(project.id)}
+              style={{
+                flex: 1,
+                background: 'var(--bg-secondary)',
+                color: 'var(--text-primary)',
+                border: 'none',
+                padding: '8px 12px',
+                borderRadius: '10px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                outline: 'none'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = 'var(--gray-3)';
+                e.target.style.transform = 'translateY(-1px)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = 'var(--bg-secondary)';
+                e.target.style.transform = 'translateY(0)';
+              }}
+            >
+              Comments ({project.comments?.filter(c => !c.ignored && !c.deleted).length || 0})
+            </button>
+            <button
+              onClick={() => openHistory(project.id)}
+              style={{
+                flex: 1,
+                background: 'var(--bg-secondary)',
+                color: 'var(--text-primary)',
+                border: 'none',
+                padding: '8px 12px',
+                borderRadius: '10px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                outline: 'none'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = 'var(--gray-3)';
+                e.target.style.transform = 'translateY(-1px)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = 'var(--bg-secondary)';
+                e.target.style.transform = 'translateY(0)';
+              }}
+            >
+              History
+            </button>
+          </div>
+
+          {isAdmin && !isArchived && (
+            <div style={{
+              display: 'flex',
+              gap: '8px',
+              marginTop: '12px',
+              paddingTop: '12px',
+              borderTop: '0.5px solid var(--separator)'
+            }}>
+              <button
+                onClick={() => openColorPickerModal(project.id)}
+                style={{
+                  flex: 1,
+                  background: 'var(--bg-secondary)',
+                  color: 'var(--text-primary)',
+                  border: 'none',
+                  padding: '6px 12px',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = 'var(--gray-3)';
+                  e.target.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = 'var(--bg-secondary)';
+                  e.target.style.transform = 'translateY(0)';
+                }}
+              >
+                Color
+              </button>
+              <button
+                onClick={() => showConfirmCompleteModal(project.id)}
+                disabled={project.status === 'Completed'}
+                style={{
+                  flex: 1,
+                  background: project.status === 'Completed' ? 'var(--gray-4)' : 'var(--success)',
+                  color: project.status === 'Completed' ? 'var(--text-tertiary)' : 'white',
+                  border: 'none',
+                  padding: '6px 12px',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  fontWeight: '500',
+                  cursor: project.status === 'Completed' ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease',
+                  opacity: project.status === 'Completed' ? 0.6 : 1
+                }}
+                onMouseEnter={(e) => {
+                  if (project.status !== 'Completed') {
+                    e.target.style.background = '#2AA44F';
+                    e.target.style.transform = 'translateY(-1px)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (project.status !== 'Completed') {
+                    e.target.style.background = 'var(--success)';
+                    e.target.style.transform = 'translateY(0)';
+                  }
+                }}
+              >
+                Complete
+              </button>
+              <button
+                onClick={() => showConfirmDeleteModal(project.id)}
+                style={{
+                  flex: 1,
+                  background: 'var(--danger)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '6px 12px',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = '#D70015';
+                  e.target.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = 'var(--danger)';
+                  e.target.style.transform = 'translateY(0)';
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          )}
+
+          {isAdmin && isArchived && (
+            <div style={{
+              display: 'flex',
+              gap: '8px',
+              marginTop: '12px',
+              paddingTop: '12px',
+              borderTop: '0.5px solid var(--separator)'
+            }}>
+              <button
+                onClick={() => showConfirmDeleteModal(project.id)}
+                style={{
+                  flex: 1,
+                  background: 'var(--danger)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '6px 12px',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = '#D70015';
+                  e.target.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = 'var(--danger)';
+                  e.target.style.transform = 'translateY(0)';
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          )}
+
+          <div style={{
+            borderTop: '0.5px solid var(--separator)',
+            marginTop: '12px',
+            paddingTop: '12px'
+          }}>
+            <button
+              onClick={() => toggleImagesExpanded(project.id)}
+              style={{
+                width: '100%',
+                background: 'var(--bg-secondary)',
+                color: 'var(--text-primary)',
+                border: 'none',
+                padding: '8px 12px',
+                borderRadius: '10px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                outline: 'none',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = 'var(--gray-3)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = 'var(--bg-secondary)';
+              }}
+            >
+              <span>Images ({project.cameras?.length || 0})</span>
+              <svg 
+                width="16" 
+                height="16" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2"
+                style={{
+                  transform: expandedImages[project.id] ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.3s ease'
+                }}
+              >
+                <path d="M6 9l6 6 6-6"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {expandedImages[project.id] && (
+          <div style={{
+            background: 'var(--bg-primary)',
+            borderRadius: '0 0 20px 20px',
+            boxShadow: 'var(--shadow)',
+            padding: '16px 20px',
+            border: '0.5px solid var(--separator)',
+            borderTop: 'none',
+            maxHeight: '400px',
+            overflowY: 'auto'
+          }}>
+            {isAdmin && !isArchived && (
+              <button
+                onClick={() => openAddCameraModal(project.id)}
+                style={{
+                  width: '100%',
+                  background: 'var(--primary)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '8px 12px',
+                  borderRadius: '10px',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  marginBottom: '12px'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = '#0056CC';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = 'var(--primary)';
+                }}
+              >
+                + Add Camera
+              </button>
+            )}
+
+            {project.cameras && project.cameras.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {project.cameras.map((camera, index) => (
+                  <div key={camera.id} style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px',
+                    background: 'var(--bg-secondary)',
+                    borderRadius: '8px'
+                  }}>
+                    <span style={{
+                      fontSize: '13px',
+                      fontWeight: '500',
+                      color: 'var(--text-tertiary)',
+                      minWidth: '25px'
+                    }}>
+                      {index + 1}.
+                    </span>
+                    <span style={{
+                      flex: 1,
+                      fontSize: '14px',
+                      color: 'var(--text-primary)'
+                    }}>
+                      {camera.name}
+                    </span>
+                    
+                    {!isArchived && (
+                      <>
+                        <button
+                          onClick={() => decrementStage(project.id, camera.id, camera.stage)}
+                          disabled={camera.stage === 'WIP' || camera.stage === 'ICD' || camera.stage === 'R01' || camera.stage === 'Approved'}
+                          style={{
+                            background: (camera.stage === 'WIP' || camera.stage === 'ICD' || camera.stage === 'R01' || camera.stage === 'Approved') ? 'var(--gray-4)' : 'var(--bg-primary)',
+                            border: '0.5px solid var(--separator)',
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '6px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: (camera.stage === 'WIP' || camera.stage === 'ICD' || camera.stage === 'R01' || camera.stage === 'Approved') ? 'not-allowed' : 'pointer',
+                            opacity: (camera.stage === 'WIP' || camera.stage === 'ICD' || camera.stage === 'R01' || camera.stage === 'Approved') ? 0.5 : 1,
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
+                          <svg width="10" height="2" viewBox="0 0 10 2" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M1 1h8"/>
+                          </svg>
+                        </button>
+                      </>
+                    )}
+                    
+                    <div
+                      onClick={() => !isArchived && openStageModal(project.id, camera.id, camera.stage)}
+                      style={{
+                        background: getStageColor(camera.stage),
+                        color: 'white',
+                        padding: '4px 12px',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        cursor: isArchived ? 'default' : 'pointer',
+                        minWidth: '60px',
+                        textAlign: 'center',
+                        transition: 'all 0.2s ease',
+                        opacity: isArchived ? 0.7 : 1
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isArchived) {
+                          e.target.style.transform = 'scale(1.05)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isArchived) {
+                          e.target.style.transform = 'scale(1)';
+                        }
+                      }}
+                    >
+                      {camera.stage}
+                    </div>
+                    
+                    {!isArchived && (
+                      <>
+                        <button
+                          onClick={() => incrementStage(project.id, camera.id, camera.stage)}
+                          disabled={camera.stage === 'Approved' || camera.stage === 'ICD'}
+                          style={{
+                            background: (camera.stage === 'Approved' || camera.stage === 'ICD') ? 'var(--gray-4)' : 'var(--bg-primary)',
+                            border: '0.5px solid var(--separator)',
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '6px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: (camera.stage === 'Approved' || camera.stage === 'ICD') ? 'not-allowed' : 'pointer',
+                            opacity: (camera.stage === 'Approved' || camera.stage === 'ICD') ? 0.5 : 1,
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
+                          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M5 1v8M1 5h8"/>
+                          </svg>
+                        </button>
+
+                        {isAdmin && (
+                          <button
+                            onClick={() => openDeleteCameraModal(project.id, camera.id, camera.name)}
+                            style={{
+                              background: 'var(--danger)',
+                              border: 'none',
+                              color: 'white',
+                              width: '24px',
+                              height: '24px',
+                              borderRadius: '6px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              fontSize: '16px',
+                              transition: 'all 0.2s ease'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.target.style.background = '#D70015';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.target.style.background = 'var(--danger)';
+                            }}
+                          >
+                            ×
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{
+                textAlign: 'center',
+                color: 'var(--text-tertiary)',
+                fontSize: '14px',
+                fontStyle: 'italic',
+                padding: '20px'
+              }}>
+                No cameras yet
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
   }
 
   if (loading) {
@@ -1908,7 +2693,7 @@ const ProjectStatusDashboard = () => {
             margin: 0,
             color: 'var(--text-primary)'
           }}>
-            Projects ({state.projects.length})
+            Projects ({sortedActiveProjects.length})
           </h2>
           {isAdmin && (
             <button
@@ -1945,723 +2730,84 @@ const ProjectStatusDashboard = () => {
           gap: '16px',
           marginBottom: '24px'
         }}>
-          {state.projects.map(project => (
-            <div key={project.id}>
-              <div
+          {sortedActiveProjects.map(project => renderProjectCard(project, false))}
+        </div>
+
+        {archivedProjects.length > 0 && (
+          <>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '16px',
+              marginTop: '32px'
+            }}>
+              <h2 style={{
+                fontSize: '22px',
+                fontWeight: '600',
+                margin: 0,
+                color: 'var(--text-primary)'
+              }}>
+                Archive ({archivedProjects.length})
+              </h2>
+              <button
+                onClick={() => setIsArchiveExpanded(!isArchiveExpanded)}
                 style={{
-                  background: 'var(--bg-primary)',
-                  borderRadius: expandedImages[project.id] ? '20px 20px 0 0' : '20px',
-                  boxShadow: 'var(--shadow)',
-                  padding: '20px',
-                  transition: 'all 0.3s ease',
-                  border: '0.5px solid var(--separator)'
+                  background: 'var(--bg-secondary)',
+                  color: 'var(--text-primary)',
+                  border: 'none',
+                  padding: '8px 16px',
+                  borderRadius: '18px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
                 }}
                 onMouseEnter={(e) => {
-                  if (!expandedImages[project.id]) {
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = '0 8px 30px rgba(0, 0, 0, 0.12)';
-                  }
+                  e.target.style.background = 'var(--gray-3)';
+                  e.target.style.transform = 'translateY(-1px)';
                 }}
                 onMouseLeave={(e) => {
-                  if (!expandedImages[project.id]) {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = 'var(--shadow)';
-                  }
+                  e.target.style.background = 'var(--bg-secondary)';
+                  e.target.style.transform = 'translateY(0)';
                 }}
               >
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start',
-                  marginBottom: '16px',
-                  gap: '12px'
-                }}>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    flex: 1,
-                    minWidth: 0
-                  }}>
-                    <div style={{
-                      width: '12px',
-                      height: '12px',
-                      borderRadius: '50%',
-                      backgroundColor: getProjectColor(project),
-                      flexShrink: 0
-                    }}></div>
-                    <h3 style={{
-                      margin: 0,
-                      fontSize: '18px',
-                      fontWeight: '600',
-                      color: 'var(--text-primary)',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      flex: 1,
-                      minWidth: 0
-                    }}>
-                      {project.name}
-                    </h3>
-                  </div>
-                  {isAdmin && (
-                    <button
-                      onClick={() => openProjectNameModal(project.id, project.name)}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: 'var(--gray-1)',
-                        cursor: 'pointer',
-                        padding: '4px',
-                        borderRadius: '6px',
-                        transition: 'all 0.2s ease',
-                        flexShrink: 0
-                      }}
-                      onMouseEnter={(e) => {
-                        e.target.style.background = 'var(--bg-secondary)';
-                        e.target.style.color = 'var(--text-primary)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.background = 'none';
-                        e.target.style.color = 'var(--gray-1)';
-                      }}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                      </svg>
-                    </button>
-                  )}
-                </div>
-
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: '12px',
-                  marginBottom: '16px'
-                }}>
-                  <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '8px'
-                  }}>
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}>
-                      <span style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>Status:</span>
-                      <select
-                        value={project.status}
-                        disabled={!isAdmin}
-                        onChange={(e) => updateProject(project.id, { status: e.target.value }, `${new Date().toLocaleString()}: Status changed to ${e.target.value}`)}
-                        style={{
-                          background: statusColors[project.status] || 'var(--bg-secondary)',
-                          color: 'white',
-                          border: 'none',
-                          padding: '4px 8px',
-                          borderRadius: '8px',
-                          fontSize: '12px',
-                          fontWeight: '500',
-                          cursor: isAdmin ? 'pointer' : 'not-allowed',
-                          outline: 'none',
-                          width: '120px',
-                          textAlign: 'center',
-                          opacity: isAdmin ? 1 : 0.7
-                        }}
-                      >
-                        {Object.keys(statusColors).map(status => (
-                          <option key={status} value={status} style={{ background: 'white', color: 'black' }}>
-                            {status}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}>
-                      <span style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>Priority:</span>
-                      <select
-                        value={project.priority}
-                        onChange={(e) => updateProject(project.id, { priority: e.target.value }, `${new Date().toLocaleString()}: Priority changed to ${e.target.value}`)}
-                        style={{
-                          background: priorityColors[project.priority] || 'var(--bg-secondary)',
-                          color: 'white',
-                          border: 'none',
-                          padding: '4px 8px',
-                          borderRadius: '8px',
-                          fontSize: '12px',
-                          fontWeight: '500',
-                          cursor: 'pointer',
-                          outline: 'none',
-                          width: '120px',
-                          textAlign: 'center'
-                        }}
-                      >
-                        {Object.keys(priorityColors).map(priority => (
-                          <option key={priority} value={priority} style={{ background: 'white', color: 'black' }}>
-                            {priority}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '8px'
-                  }}>
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}>
-                      <span style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>Start:</span>
-                      <input
-                        type="date"
-                        value={project.startDate}
-                        disabled={!isAdmin}
-                        onChange={(e) => {
-                          const newStartDate = e.target.value;
-                          const newDueDate = new Date(newStartDate) > new Date(project.dueDate) ? newStartDate : project.dueDate;
-                          
-                          if (new Date(newStartDate) > new Date(newDueDate)) {
-                            showDateValidationModal(
-                              "Start date cannot be after due date! Adjusting due date.",
-                              () => updateProject(
-                                project.id, 
-                                { startDate: newStartDate, dueDate: newStartDate }, 
-                                `${new Date().toLocaleString()}: Dates changed to ${formatDateForDisplay(newStartDate)}`
-                              )
-                            );
-                          } else {
-                            updateProject(
-                              project.id, 
-                              { startDate: newStartDate, dueDate: newDueDate }, 
-                              `${new Date().toLocaleString()}: Dates changed to ${formatDateForDisplay(newStartDate)} - ${formatDateForDisplay(newDueDate)}`
-                            );
-                          }
-                        }}
-                        style={{
-                          border: '0.5px solid var(--separator)',
-                          padding: '4px 8px',
-                          borderRadius: '6px',
-                          fontSize: '12px',
-                          outline: 'none',
-                          width: '120px',
-                          background: 'var(--bg-primary)',
-                          cursor: isAdmin ? 'pointer' : 'not-allowed',
-                          opacity: isAdmin ? 1 : 0.7
-                        }}
-                      />
-                    </div>
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}>
-                      <span style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>Due:</span>
-                      <input
-                        type="date"
-                        value={project.dueDate}
-                        onChange={(e) => {
-                          const newDueDate = e.target.value;
-                          if (new Date(newDueDate) < new Date(project.startDate)) {
-                            showDateValidationModal(
-                              "Due date cannot be before start date!",
-                              null
-                            );
-                          } else {
-                            updateProject(
-                              project.id, 
-                              { dueDate: newDueDate }, 
-                              `${new Date().toLocaleString()}: Due date changed to ${formatDateForDisplay(newDueDate)}`
-                            );
-                          }
-                        }}
-                        style={{
-                          border: '0.5px solid var(--separator)',
-                          padding: '4px 8px',
-                          borderRadius: '6px',
-                          fontSize: '12px',
-                          outline: 'none',
-                          width: '120px',
-                          background: 'var(--bg-primary)'
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '16px'
-                }}>
-                  <span style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>Busy:</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <button
-                      onClick={() => updateProject(project.id, { busy: Math.max(0, project.busy - 1) }, `${new Date().toLocaleString()}: Busy decreased to ${Math.max(0, project.busy - 1)}`)}
-                      disabled={project.busy <= 0 || !isAdmin}
-                      style={{
-                        background: (project.busy <= 0 || !isAdmin) ? 'var(--gray-4)' : 'var(--bg-secondary)',
-                        border: 'none',
-                        width: '28px',
-                        height: '28px',
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: (project.busy <= 0 || !isAdmin) ? 'not-allowed' : 'pointer',
-                        transition: 'all 0.2s ease',
-                        opacity: (project.busy <= 0 || !isAdmin) ? 0.5 : 1
-                      }}
-                      onMouseEnter={(e) => {
-                        if (project.busy > 0 && isAdmin) {
-                          e.target.style.background = 'var(--gray-3)';
-                          e.target.style.transform = 'translateY(-1px)';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (project.busy > 0 && isAdmin) {
-                          e.target.style.background = 'var(--bg-secondary)';
-                          e.target.style.transform = 'translateY(0)';
-                        }
-                      }}
-                    >
-                      <svg width="12" height="2" viewBox="0 0 12 2" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M1 1h10"/>
-                      </svg>
-                    </button>
-                    <span style={{
-                      fontSize: '16px',
-                      fontWeight: '600',
-                      color: 'var(--text-primary)',
-                      minWidth: '20px',
-                      textAlign: 'center'
-                    }}>
-                      {project.busy}
-                    </span>
-                    <button
-                      onClick={() => updateProject(project.id, { busy: project.busy + 1 }, `${new Date().toLocaleString()}: Busy increased to ${project.busy + 1}`)}
-                      disabled={busy >= total || !isAdmin}
-                      style={{
-                        background: (busy >= total || !isAdmin) ? 'var(--gray-4)' : 'var(--bg-secondary)',
-                        border: 'none',
-                        width: '28px',
-                        height: '28px',
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: (busy >= total || !isAdmin) ? 'not-allowed' : 'pointer',
-                        transition: 'all 0.2s ease',
-                        opacity: (busy >= total || !isAdmin) ? 0.5 : 1
-                      }}
-                      onMouseEnter={(e) => {
-                        if (busy < total && isAdmin) {
-                          e.target.style.background = 'var(--gray-3)';
-                          e.target.style.transform = 'translateY(-1px)';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (busy < total && isAdmin) {
-                          e.target.style.background = 'var(--bg-secondary)';
-                          e.target.style.transform = 'translateY(0)';
-                        }
-                      }}
-                    >
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M6 1v10M1 6h10"/>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-
-                <div style={{
-                  display: 'flex',
-                  gap: '8px',
-                  justifyContent: 'space-between'
-                }}>
-                  <button
-                    onClick={() => openComments(project.id)}
-                    style={{
-                      flex: 1,
-                      background: 'var(--bg-secondary)',
-                      color: 'var(--text-primary)',
-                      border: 'none',
-                      padding: '8px 12px',
-                      borderRadius: '10px',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      outline: 'none'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.target.style.background = 'var(--gray-3)';
-                      e.target.style.transform = 'translateY(-1px)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.style.background = 'var(--bg-secondary)';
-                      e.target.style.transform = 'translateY(0)';
-                    }}
-                  >
-                    Comments ({project.comments?.filter(c => !c.ignored && !c.deleted).length || 0})
-                  </button>
-                  <button
-                    onClick={() => openHistory(project.id)}
-                    style={{
-                      flex: 1,
-                      background: 'var(--bg-secondary)',
-                      color: 'var(--text-primary)',
-                      border: 'none',
-                      padding: '8px 12px',
-                      borderRadius: '10px',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      outline: 'none'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.target.style.background = 'var(--gray-3)';
-                      e.target.style.transform = 'translateY(-1px)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.style.background = 'var(--bg-secondary)';
-                      e.target.style.transform = 'translateY(0)';
-                    }}
-                  >
-                    History
-                  </button>
-                </div>
-
-                {isAdmin && (
-                  <div style={{
-                    display: 'flex',
-                    gap: '8px',
-                    marginTop: '12px',
-                    paddingTop: '12px',
-                    borderTop: '0.5px solid var(--separator)'
-                  }}>
-                    <button
-                      onClick={() => openColorPickerModal(project.id)}
-                      style={{
-                        flex: 1,
-                        background: 'var(--bg-secondary)',
-                        color: 'var(--text-primary)',
-                        border: 'none',
-                        padding: '6px 12px',
-                        borderRadius: '8px',
-                        fontSize: '12px',
-                        fontWeight: '500',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.target.style.background = 'var(--gray-3)';
-                        e.target.style.transform = 'translateY(-1px)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.background = 'var(--bg-secondary)';
-                        e.target.style.transform = 'translateY(0)';
-                      }}
-                    >
-                      Color
-                    </button>
-                    <button
-                      onClick={() => showConfirmCompleteModal(project.id)}
-                      disabled={project.status === 'Completed'}
-                      style={{
-                        flex: 1,
-                        background: project.status === 'Completed' ? 'var(--gray-4)' : 'var(--success)',
-                        color: project.status === 'Completed' ? 'var(--text-tertiary)' : 'white',
-                        border: 'none',
-                        padding: '6px 12px',
-                        borderRadius: '8px',
-                        fontSize: '12px',
-                        fontWeight: '500',
-                        cursor: project.status === 'Completed' ? 'not-allowed' : 'pointer',
-                        transition: 'all 0.2s ease',
-                        opacity: project.status === 'Completed' ? 0.6 : 1
-                      }}
-                      onMouseEnter={(e) => {
-                        if (project.status !== 'Completed') {
-                          e.target.style.background = '#2AA44F';
-                          e.target.style.transform = 'translateY(-1px)';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (project.status !== 'Completed') {
-                          e.target.style.background = 'var(--success)';
-                          e.target.style.transform = 'translateY(0)';
-                        }
-                      }}
-                    >
-                      Complete
-                    </button>
-                    <button
-                      onClick={() => showConfirmDeleteModal(project.id)}
-                      style={{
-                        flex: 1,
-                        background: 'var(--danger)',
-                        color: 'white',
-                        border: 'none',
-                        padding: '6px 12px',
-                        borderRadius: '8px',
-                        fontSize: '12px',
-                        fontWeight: '500',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.target.style.background = '#D70015';
-                        e.target.style.transform = 'translateY(-1px)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.background = 'var(--danger)';
-                        e.target.style.transform = 'translateY(0)';
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                )}
-
-                <div style={{
-                  borderTop: '0.5px solid var(--separator)',
-                  marginTop: '12px',
-                  paddingTop: '12px'
-                }}>
-                  <button
-                    onClick={() => toggleImagesExpanded(project.id)}
-                    style={{
-                      width: '100%',
-                      background: 'var(--bg-secondary)',
-                      color: 'var(--text-primary)',
-                      border: 'none',
-                      padding: '8px 12px',
-                      borderRadius: '10px',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      outline: 'none',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.target.style.background = 'var(--gray-3)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.style.background = 'var(--bg-secondary)';
-                    }}
-                  >
-                    <span>Images ({project.cameras?.length || 0})</span>
-                    <svg 
-                      width="16" 
-                      height="16" 
-                      viewBox="0 0 24 24" 
-                      fill="none" 
-                      stroke="currentColor" 
-                      strokeWidth="2"
-                      style={{
-                        transform: expandedImages[project.id] ? 'rotate(180deg)' : 'rotate(0deg)',
-                        transition: 'transform 0.3s ease'
-                      }}
-                    >
-                      <path d="M6 9l6 6 6-6"/>
-                    </svg>
-                  </button>
-                </div>
-              </div>
-
-              {expandedImages[project.id] && (
-                <div style={{
-                  background: 'var(--bg-primary)',
-                  borderRadius: '0 0 20px 20px',
-                  boxShadow: 'var(--shadow)',
-                  padding: '16px 20px',
-                  border: '0.5px solid var(--separator)',
-                  borderTop: 'none',
-                  maxHeight: '400px',
-                  overflowY: 'auto'
-                }}>
-                  {isAdmin && (
-                    <button
-                      onClick={() => openAddCameraModal(project.id)}
-                      style={{
-                        width: '100%',
-                        background: 'var(--primary)',
-                        color: 'white',
-                        border: 'none',
-                        padding: '8px 12px',
-                        borderRadius: '10px',
-                        fontSize: '13px',
-                        fontWeight: '500',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        marginBottom: '12px'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.target.style.background = '#0056CC';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.background = 'var(--primary)';
-                      }}
-                    >
-                      + Add Camera
-                    </button>
-                  )}
-
-                  {project.cameras && project.cameras.length > 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {project.cameras.map((camera, index) => (
-                        <div key={camera.id} style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          padding: '8px',
-                          background: 'var(--bg-secondary)',
-                          borderRadius: '8px'
-                        }}>
-                          <span style={{
-                            fontSize: '13px',
-                            fontWeight: '500',
-                            color: 'var(--text-tertiary)',
-                            minWidth: '25px'
-                          }}>
-                            {index + 1}.
-                          </span>
-                          <span style={{
-                            flex: 1,
-                            fontSize: '14px',
-                            color: 'var(--text-primary)'
-                          }}>
-                            {camera.name}
-                          </span>
-                          
-                          <button
-                            onClick={() => decrementStage(project.id, camera.id, camera.stage)}
-                            disabled={camera.stage === 'WIP' || camera.stage === 'ICD' || camera.stage === 'R01' || camera.stage === 'Approved'}
-                            style={{
-                              background: (camera.stage === 'WIP' || camera.stage === 'ICD' || camera.stage === 'R01' || camera.stage === 'Approved') ? 'var(--gray-4)' : 'var(--bg-primary)',
-                              border: '0.5px solid var(--separator)',
-                              width: '24px',
-                              height: '24px',
-                              borderRadius: '6px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              cursor: (camera.stage === 'WIP' || camera.stage === 'ICD' || camera.stage === 'R01' || camera.stage === 'Approved') ? 'not-allowed' : 'pointer',
-                              opacity: (camera.stage === 'WIP' || camera.stage === 'ICD' || camera.stage === 'R01' || camera.stage === 'Approved') ? 0.5 : 1,
-                              transition: 'all 0.2s ease'
-                            }}
-                          >
-                            <svg width="10" height="2" viewBox="0 0 10 2" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M1 1h8"/>
-                            </svg>
-                          </button>
-                          
-                          <div
-                            onClick={() => openStageModal(project.id, camera.id, camera.stage)}
-                            style={{
-                              background: getStageColor(camera.stage),
-                              color: 'white',
-                              padding: '4px 12px',
-                              borderRadius: '8px',
-                              fontSize: '12px',
-                              fontWeight: '600',
-                              cursor: 'pointer',
-                              minWidth: '60px',
-                              textAlign: 'center',
-                              transition: 'all 0.2s ease'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.target.style.transform = 'scale(1.05)';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.target.style.transform = 'scale(1)';
-                            }}
-                          >
-                            {camera.stage}
-                          </div>
-                          
-                          <button
-                            onClick={() => incrementStage(project.id, camera.id, camera.stage)}
-                            disabled={camera.stage === 'Approved' || camera.stage === 'ICD'}
-                            style={{
-                              background: (camera.stage === 'Approved' || camera.stage === 'ICD') ? 'var(--gray-4)' : 'var(--bg-primary)',
-                              border: '0.5px solid var(--separator)',
-                              width: '24px',
-                              height: '24px',
-                              borderRadius: '6px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              cursor: (camera.stage === 'Approved' || camera.stage === 'ICD') ? 'not-allowed' : 'pointer',
-                              opacity: (camera.stage === 'Approved' || camera.stage === 'ICD') ? 0.5 : 1,
-                              transition: 'all 0.2s ease'
-                            }}
-                          >
-                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M5 1v8M1 5h8"/>
-                            </svg>
-                          </button>
-
-                          {isAdmin && (
-                            <button
-                              onClick={() => openDeleteCameraModal(project.id, camera.id, camera.name)}
-                              style={{
-                                background: 'var(--danger)',
-                                border: 'none',
-                                color: 'white',
-                                width: '24px',
-                                height: '24px',
-                                borderRadius: '6px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer',
-                                fontSize: '16px',
-                                transition: 'all 0.2s ease'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.target.style.background = '#D70015';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.target.style.background = 'var(--danger)';
-                              }}
-                            >
-                              ×
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div style={{
-                      textAlign: 'center',
-                      color: 'var(--text-tertiary)',
-                      fontSize: '14px',
-                      fontStyle: 'italic',
-                      padding: '20px'
-                    }}>
-                      No cameras yet
-                    </div>
-                  )}
-                </div>
-              )}
+                <span>{isArchiveExpanded ? 'Collapse' : 'Expand'}</span>
+                <svg 
+                  width="14" 
+                  height="14" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  strokeWidth="2"
+                  style={{
+                    transform: isArchiveExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.3s ease'
+                  }}
+                >
+                  <path d="M6 9l6 6 6-6"/>
+                </svg>
+              </button>
             </div>
-          ))}
-        </div>
+
+            {isArchiveExpanded && (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+                gap: '16px',
+                marginBottom: '24px'
+              }}>
+                {archivedProjects.map(project => renderProjectCard(project, true))}
+              </div>
+            )}
+          </>
+        )}
       </div>
-{isAddModalOpen && (
+
+      {isAddModalOpen && (
         <div style={{
           position: 'fixed',
           top: 0,
