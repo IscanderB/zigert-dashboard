@@ -134,6 +134,7 @@ const ProjectStatusDashboard = () => {
   const [addCameraModal, setAddCameraModal] = useState({ open: false, projectId: null, cameraName: '' });
   const [deleteCameraModal, setDeleteCameraModal] = useState({ open: false, projectId: null, cameraId: null, cameraName: '' });
   const [stageModal, setStageModal] = useState({ open: false, projectId: null, cameraId: null, currentStage: 'WIP' });
+  const [editCameraNameModal, setEditCameraNameModal] = useState({ open: false, projectId: null, cameraId: null, cameraName: '' });
 
   async function loadInitialData() {
     try {
@@ -779,6 +780,47 @@ const ProjectStatusDashboard = () => {
     } catch (err) {
       setError(`Failed to delete camera: ${err.message}`);
       console.error('Delete camera error:', err);
+    }
+  }
+
+  function openEditCameraNameModal(projectId, cameraId, currentName) {
+    setEditCameraNameModal({ open: true, projectId, cameraId, cameraName: currentName });
+  }
+
+  function closeEditCameraNameModal() {
+    setEditCameraNameModal({ open: false, projectId: null, cameraId: null, cameraName: '' });
+  }
+
+  async function saveCameraName() {
+    try {
+      if (!editCameraNameModal.cameraName.trim()) {
+        showAlert("Specify camera name!");
+        return;
+      }
+
+      const project = state.projects.find(p => p.id === editCameraNameModal.projectId);
+      const camera = project?.cameras.find(c => c.id === editCameraNameModal.cameraId);
+      
+      if (!camera) return;
+
+      const updatedCamera = { ...camera, name: editCameraNameModal.cameraName.trim() };
+      await saveCamera(editCameraNameModal.projectId, updatedCamera);
+      await addHistoryEntry(editCameraNameModal.projectId, `${new Date().toLocaleString()}: Camera name changed to "${updatedCamera.name}" [Admin]`);
+
+      setState(prev => ({
+        ...prev,
+        projects: prev.projects.map(p => p.id === editCameraNameModal.projectId ? ({
+          ...p,
+          cameras: (p.cameras || []).map(c => c.id === editCameraNameModal.cameraId ? updatedCamera : c).sort((a, b) => a.name.localeCompare(b.name)),
+          history: [`${new Date().toLocaleString()}: Camera name changed to "${updatedCamera.name}" [Admin]`, ...(p.history || [])]
+        }) : p)
+      }));
+
+      setLastSync(new Date());
+      closeEditCameraNameModal();
+    } catch (err) {
+      setError(`Failed to update camera name: ${err.message}`);
+      console.error('Update camera name error:', err);
     }
   }
 
@@ -1935,11 +1977,29 @@ const ProjectStatusDashboard = () => {
                     }}>
                       {index + 1}.
                     </span>
-                    <span style={{
-                      flex: 1,
-                      fontSize: '14px',
-                      color: 'var(--text-primary)'
-                    }}>
+                    <span 
+                      onClick={() => isAdmin && !isArchived && openEditCameraNameModal(project.id, camera.id, camera.name)}
+                      style={{
+                        flex: 1,
+                        fontSize: '14px',
+                        color: 'var(--text-primary)',
+                        wordWrap: 'break-word',
+                        overflowWrap: 'break-word',
+                        whiteSpace: 'normal',
+                        cursor: (isAdmin && !isArchived) ? 'pointer' : 'default',
+                        transition: 'color 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (isAdmin && !isArchived) {
+                          e.target.style.color = 'var(--primary)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (isAdmin && !isArchived) {
+                          e.target.style.color = 'var(--text-primary)';
+                        }
+                      }}
+                    >
                       {camera.name}
                     </span>
                     
@@ -1959,7 +2019,8 @@ const ProjectStatusDashboard = () => {
                             justifyContent: 'center',
                             cursor: (camera.stage === 'WIP' || camera.stage === 'ICD' || camera.stage === 'R01' || camera.stage === 'Approved') ? 'not-allowed' : 'pointer',
                             opacity: (camera.stage === 'WIP' || camera.stage === 'ICD' || camera.stage === 'R01' || camera.stage === 'Approved') ? 0.5 : 1,
-                            transition: 'all 0.2s ease'
+                            transition: 'all 0.2s ease',
+                            flexShrink: 0
                           }}
                         >
                           <svg width="10" height="2" viewBox="0 0 10 2" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1982,7 +2043,8 @@ const ProjectStatusDashboard = () => {
                         minWidth: '60px',
                         textAlign: 'center',
                         transition: 'all 0.2s ease',
-                        opacity: isArchived ? 0.7 : 1
+                        opacity: isArchived ? 0.7 : 1,
+                        flexShrink: 0
                       }}
                       onMouseEnter={(e) => {
                         if (!isArchived) {
@@ -2014,7 +2076,8 @@ const ProjectStatusDashboard = () => {
                             justifyContent: 'center',
                             cursor: (camera.stage === 'Approved' || camera.stage === 'ICD') ? 'not-allowed' : 'pointer',
                             opacity: (camera.stage === 'Approved' || camera.stage === 'ICD') ? 0.5 : 1,
-                            transition: 'all 0.2s ease'
+                            transition: 'all 0.2s ease',
+                            flexShrink: 0
                           }}
                         >
                           <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2">
@@ -2037,7 +2100,8 @@ const ProjectStatusDashboard = () => {
                               justifyContent: 'center',
                               cursor: 'pointer',
                               fontSize: '16px',
-                              transition: 'all 0.2s ease'
+                              transition: 'all 0.2s ease',
+                              flexShrink: 0
                             }}
                             onMouseEnter={(e) => {
                               e.target.style.background = '#D70015';
@@ -3080,6 +3144,78 @@ const ProjectStatusDashboard = () => {
                 }}
               >
                 Add
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editCameraNameModal.open && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1100
+        }}>
+          <div style={{
+            background: 'var(--bg-primary)',
+            borderRadius: '20px',
+            padding: '24px',
+            width: '90%',
+            maxWidth: '400px',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.2)'
+          }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Edit Camera Name</h3>
+            <input
+              type="text"
+              value={editCameraNameModal.cameraName}
+              onChange={(e) => setEditCameraNameModal({ ...editCameraNameModal, cameraName: e.target.value })}
+              placeholder="Enter camera name"
+              style={{
+                width: '100%',
+                padding: '12px',
+                border: '0.5px solid var(--separator)',
+                borderRadius: '10px',
+                fontSize: '16px',
+                outline: 'none',
+                marginBottom: '20px',
+                background: 'var(--bg-primary)'
+              }}
+            />
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={closeEditCameraNameModal}
+                style={{
+                  background: 'var(--bg-secondary)',
+                  color: 'var(--text-primary)',
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: '14px',
+                  fontSize: '16px',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveCameraName}
+                style={{
+                  background: 'var(--primary)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: '14px',
+                  fontSize: '16px',
+                  cursor: 'pointer'
+                }}
+              >
+                Save
               </button>
             </div>
           </div>
