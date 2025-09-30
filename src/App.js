@@ -826,8 +826,8 @@ const ProjectStatusDashboard = () => {
     } else if (currentStage.startsWith('WIP')) {
       const num = parseInt(currentStage.substring(3)) || 0;
       newStage = `WIP${String(num + 1).padStart(2, '0')}`;
-    } else if (currentStage === 'R01') {
-      newStage = 'R02';
+    } else if (currentStage === 'R') {
+      newStage = 'R01';
     } else if (currentStage.startsWith('R')) {
       const num = parseInt(currentStage.substring(1)) || 0;
       newStage = `R${String(num + 1).padStart(2, '0')}`;
@@ -1353,7 +1353,7 @@ const ProjectStatusDashboard = () => {
         
         ::-webkit-scrollbar-thumb {
           background: var(--gray-2);
-          borderRadius: 3px;
+          border-radius: 3px;
         }
         
         ::-webkit-scrollbar-thumb:hover {
@@ -1365,7 +1365,8 @@ const ProjectStatusDashboard = () => {
           outline-offset: 2px;
         }
       `}</style>
-	{error && (
+
+      {error && (
         <div style={{
           position: 'fixed',
           top: '10px',
@@ -1866,8 +1867,7 @@ const ProjectStatusDashboard = () => {
                         background: 'rgba(52, 199, 89, 0.9)',
                         borderRadius: '4px',
                         padding: '1px 3px',
-                        fontSize: '
-fontSize: '6px',
+                        fontSize: '6px',
                         fontWeight: '500',
                         color: 'white'
                       }}>
@@ -2658,7 +2658,6 @@ fontSize: '6px',
           ))}
         </div>
       </div>
-
 {isAddModalOpen && (
         <div style={{
           position: 'fixed',
@@ -3023,8 +3022,7 @@ fontSize: '6px',
               {['WIP', 'ICD', 'R01', 'Approved'].map(stage => {
                 const currentBase = stageModal.currentStage.match(/^[A-Z]+/)?.[0] || stageModal.currentStage;
                 const isCurrentStage = (stage === 'Approved' && stageModal.currentStage === 'Approved') || 
-                                      (stage === 'R01' && (stageModal.currentStage === 'R01' || stageModal.currentStage.startsWith('R'))) ||
-                                      (stage !== 'Approved' && stage !== 'R01' && currentBase === stage);
+                                      (stage !== 'Approved' && currentBase === stage);
                 
                 return (
                   <button
@@ -3418,7 +3416,7 @@ fontSize: '6px',
         </div>
       )}
 
-{historyForId && (
+      {historyForId && (
         <div style={{
           position: 'fixed',
           top: 0,
