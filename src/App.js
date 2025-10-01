@@ -80,6 +80,13 @@ const ProjectStatusDashboard = () => {
     return '#8E8E93';
   }
 
+  // Состояния для авторизации
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loginMode, setLoginMode] = useState('login'); // 'login' или 'register'
+  const [loginUsername, setLoginUsername] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+
   const [state, setState] = useState({
     totalArtists: 6,
     projects: []
@@ -135,6 +142,100 @@ const ProjectStatusDashboard = () => {
   const [deleteCameraModal, setDeleteCameraModal] = useState({ open: false, projectId: null, cameraId: null, cameraName: '' });
   const [stageModal, setStageModal] = useState({ open: false, projectId: null, cameraId: null, currentStage: 'WIP' });
   const [editCameraModal, setEditCameraModal] = useState({ open: false, projectId: null, cameraId: null, cameraName: '' });
+
+  // Функции для авторизации
+  async function handleLogin() {
+    try {
+      setLoginError('');
+      
+      if (!loginUsername.trim() || !loginPassword.trim()) {
+        setLoginError('Please enter username and password');
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('username', loginUsername)
+        .eq('password', loginPassword)
+        .single();
+
+      if (error || !data) {
+        setLoginError('Invalid username or password');
+        return;
+      }
+
+      setCurrentUser(data);
+      localStorage.setItem('currentUser', JSON.stringify(data));
+      setLoginUsername('');
+      setLoginPassword('');
+      setLoading(true);
+      await loadInitialData();
+    } catch (err) {
+      setLoginError('Login failed. Please try again.');
+      console.error('Login error:', err);
+    }
+  }
+
+  async function handleRegister() {
+    try {
+      setLoginError('');
+      
+      if (!loginUsername.trim() || !loginPassword.trim()) {
+        setLoginError('Please enter username and password');
+        return;
+      }
+
+      if (loginUsername.length < 3) {
+        setLoginError('Username must be at least 3 characters');
+        return;
+      }
+
+      if (loginPassword.length < 4) {
+        setLoginError('Password must be at least 4 characters');
+        return;
+      }
+
+      // Проверяем, существует ли пользователь
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('*')
+        .eq('username', loginUsername)
+        .single();
+
+      if (existingUser) {
+        setLoginError('Username already exists');
+        return;
+      }
+
+      // Создаем нового пользователя
+      const { data, error } = await supabase
+        .from('users')
+        .insert([
+          { username: loginUsername, password: loginPassword }
+        ])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setCurrentUser(data);
+      localStorage.setItem('currentUser', JSON.stringify(data));
+      setLoginUsername('');
+      setLoginPassword('');
+      setLoading(true);
+      await loadInitialData();
+    } catch (err) {
+      setLoginError('Registration failed. Please try again.');
+      console.error('Register error:', err);
+    }
+  }
+
+  function handleLogout() {
+    setCurrentUser(null);
+    localStorage.removeItem('currentUser');
+    setIsAdmin(false);
+  }
 
   async function loadInitialData() {
     try {
@@ -401,7 +502,20 @@ const ProjectStatusDashboard = () => {
   }
 
   useEffect(() => {
-    loadInitialData();
+    // Проверяем сохраненного пользователя
+    const savedUser = localStorage.getItem('currentUser');
+    if (savedUser) {
+      try {
+        const user = JSON.parse(savedUser);
+        setCurrentUser(user);
+        loadInitialData();
+      } catch (err) {
+        console.error('Error loading saved user:', err);
+        setLoading(false);
+      }
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -427,11 +541,9 @@ const ProjectStatusDashboard = () => {
   const free = total - busy;
   const freePct = Math.round((free / total) * 100);
 
-  // Разделение проектов на активные и архивные
   const activeProjects = state.projects.filter(p => p.status !== 'Completed');
   const archivedProjects = state.projects.filter(p => p.status === 'Completed');
 
-  // Сортировка активных проектов по приоритету и алфавиту
   const sortedActiveProjects = [...activeProjects].sort((a, b) => {
     const priorityOrder = { 'High': 1, 'Medium': 2, 'Low': 3 };
     const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
@@ -599,7 +711,8 @@ const ProjectStatusDashboard = () => {
       await saveProject(updatedProject);
 
       if (historyEntry) {
-        const entry = isAdmin ? `${historyEntry} [Admin]` : historyEntry;
+        const username = currentUser?.username || 'Unknown';
+        const entry = isAdmin ? `${historyEntry} [${username} - Admin]` : `${historyEntry} [${username}]`;
         await addHistoryEntry(id, entry);
       }
 
@@ -608,7 +721,7 @@ const ProjectStatusDashboard = () => {
         projects: prev.projects.map(p => p.id === id ? ({
           ...p,
           ...changes,
-          history: historyEntry ? [isAdmin ? `${historyEntry} [Admin]` : historyEntry, ...(p.history || [])] : p.history
+          history: historyEntry ? [(isAdmin ? `${historyEntry} [${currentUser?.username || 'Unknown'} - Admin]` : `${historyEntry} [${currentUser?.username || 'Unknown'}]`), ...(p.history || [])] : p.history
         }) : p)
       }));
 
@@ -648,7 +761,8 @@ const ProjectStatusDashboard = () => {
       };
 
       await saveProject(newP);
-      const historyEntry = `${new Date().toLocaleString()}: Project created${isAdmin ? ' [Admin]' : ''}`;
+      const username = currentUser?.username || 'Unknown';
+      const historyEntry = `${new Date().toLocaleString()}: Project created${isAdmin ? ` [${username} - Admin]` : ` [${username}]`}`;
       await addHistoryEntry(newP.id, historyEntry);
 
       setState(prev => ({ 
@@ -734,14 +848,15 @@ const ProjectStatusDashboard = () => {
       };
 
       await saveCamera(addCameraModal.projectId, camera);
-      await addHistoryEntry(addCameraModal.projectId, `${new Date().toLocaleString()}: Camera "${camera.name}" added [Admin]`);
+      const username = currentUser?.username || 'Unknown';
+      await addHistoryEntry(addCameraModal.projectId, `${new Date().toLocaleString()}: Camera "${camera.name}" added [${username} - Admin]`);
 
       setState(prev => ({
         ...prev,
         projects: prev.projects.map(p => p.id === addCameraModal.projectId ? ({
           ...p,
           cameras: [...(p.cameras || []), camera].sort((a, b) => a.name.localeCompare(b.name)),
-          history: [`${new Date().toLocaleString()}: Camera "${camera.name}" added [Admin]`, ...(p.history || [])]
+          history: [`${new Date().toLocaleString()}: Camera "${camera.name}" added [${username} - Admin]`, ...(p.history || [])]
         }) : p)
       }));
 
@@ -764,14 +879,15 @@ const ProjectStatusDashboard = () => {
   async function deleteCamera() {
     try {
       await deleteCameraFromDB(deleteCameraModal.cameraId);
-      await addHistoryEntry(deleteCameraModal.projectId, `${new Date().toLocaleString()}: Camera "${deleteCameraModal.cameraName}" deleted [Admin]`);
+      const username = currentUser?.username || 'Unknown';
+      await addHistoryEntry(deleteCameraModal.projectId, `${new Date().toLocaleString()}: Camera "${deleteCameraModal.cameraName}" deleted [${username} - Admin]`);
 
       setState(prev => ({
         ...prev,
         projects: prev.projects.map(p => p.id === deleteCameraModal.projectId ? ({
           ...p,
           cameras: (p.cameras || []).filter(c => c.id !== deleteCameraModal.cameraId),
-          history: [`${new Date().toLocaleString()}: Camera "${deleteCameraModal.cameraName}" deleted [Admin]`, ...(p.history || [])]
+          history: [`${new Date().toLocaleString()}: Camera "${deleteCameraModal.cameraName}" deleted [${username} - Admin]`, ...(p.history || [])]
         }) : p)
       }));
 
@@ -807,14 +923,15 @@ const ProjectStatusDashboard = () => {
       const updatedCamera = { ...camera, name: editCameraModal.cameraName.trim() };
       
       await saveCamera(editCameraModal.projectId, updatedCamera);
-      await addHistoryEntry(editCameraModal.projectId, `${new Date().toLocaleString()}: Camera renamed from "${oldName}" to "${updatedCamera.name}" [Admin]`);
+      const username = currentUser?.username || 'Unknown';
+      await addHistoryEntry(editCameraModal.projectId, `${new Date().toLocaleString()}: Camera renamed from "${oldName}" to "${updatedCamera.name}" [${username} - Admin]`);
 
       setState(prev => ({
         ...prev,
         projects: prev.projects.map(p => p.id === editCameraModal.projectId ? ({
           ...p,
           cameras: (p.cameras || []).map(c => c.id === editCameraModal.cameraId ? updatedCamera : c).sort((a, b) => a.name.localeCompare(b.name)),
-          history: [`${new Date().toLocaleString()}: Camera renamed from "${oldName}" to "${updatedCamera.name}" [Admin]`, ...(p.history || [])]
+          history: [`${new Date().toLocaleString()}: Camera renamed from "${oldName}" to "${updatedCamera.name}" [${username} - Admin]`, ...(p.history || [])]
         }) : p)
       }));
 
@@ -856,14 +973,15 @@ const ProjectStatusDashboard = () => {
 
       const updatedCamera = { ...camera, stage: newStage };
       await saveCamera(projectId, updatedCamera);
-      await addHistoryEntry(projectId, `${new Date().toLocaleString()}: Camera "${camera.name}" stage changed to ${newStage}`);
+      const username = currentUser?.username || 'Unknown';
+      await addHistoryEntry(projectId, `${new Date().toLocaleString()}: Camera "${camera.name}" stage changed to ${newStage} [${username}]`);
 
       setState(prev => ({
         ...prev,
         projects: prev.projects.map(p => p.id === projectId ? ({
           ...p,
           cameras: (p.cameras || []).map(c => c.id === cameraId ? updatedCamera : c),
-          history: [`${new Date().toLocaleString()}: Camera "${camera.name}" stage changed to ${newStage}`, ...(p.history || [])]
+          history: [`${new Date().toLocaleString()}: Camera "${camera.name}" stage changed to ${newStage} [${username}]`, ...(p.history || [])]
         }) : p)
       }));
 
@@ -953,14 +1071,15 @@ const ProjectStatusDashboard = () => {
       };
 
       await saveComment(commentsForId, comment);
-      await addHistoryEntry(commentsForId, `${new Date().toLocaleString()}: Comment added${isAdmin ? ' [Admin]' : ''}`);
+      const username = currentUser?.username || 'Unknown';
+      await addHistoryEntry(commentsForId, `${new Date().toLocaleString()}: Comment added${isAdmin ? ` [${username} - Admin]` : ` [${username}]`}`);
 
       setState(prev => ({
         ...prev,
         projects: prev.projects.map(p => p.id === commentsForId ? ({
           ...p,
           comments: [comment, ...p.comments],
-          history: [`${new Date().toLocaleString()}: Comment added${isAdmin ? ' [Admin]' : ''}`, ...(p.history || [])]
+          history: [`${new Date().toLocaleString()}: Comment added${isAdmin ? ` [${username} - Admin]` : ` [${username}]`}`, ...(p.history || [])]
         }) : p)
       }));
       
@@ -998,7 +1117,8 @@ const ProjectStatusDashboard = () => {
 
       await saveComment(commentsForId, updatedComment);
       const historyMessage = trimmed === '' ? 'Comment ignored' : 'Comment edited';
-      await addHistoryEntry(commentsForId, `${new Date().toLocaleString()}: ${historyMessage}${isAdmin ? ' [Admin]' : ''}`);
+      const username = currentUser?.username || 'Unknown';
+      await addHistoryEntry(commentsForId, `${new Date().toLocaleString()}: ${historyMessage}${isAdmin ? ` [${username} - Admin]` : ` [${username}]`}`);
 
       setState(prev => ({
         ...prev,
@@ -1011,7 +1131,7 @@ const ProjectStatusDashboard = () => {
           return { 
             ...p, 
             comments: newComments, 
-            history: [`${new Date().toLocaleString()}: ${historyMessage}${isAdmin ? ' [Admin]' : ''}`, ...(p.history || [])]
+            history: [`${new Date().toLocaleString()}: ${historyMessage}${isAdmin ? ` [${username} - Admin]` : ` [${username}]`}`, ...(p.history || [])]
           };
         })
       }));
@@ -1051,7 +1171,8 @@ const ProjectStatusDashboard = () => {
       };
 
       await saveComment(projectId, updatedComment);
-      await addHistoryEntry(projectId, `${new Date().toLocaleString()}: Comment ignored${isAdmin ? ' [Admin]' : ''}`);
+      const username = currentUser?.username || 'Unknown';
+      await addHistoryEntry(projectId, `${new Date().toLocaleString()}: Comment ignored${isAdmin ? ` [${username} - Admin]` : ` [${username}]`}`);
 
       setState(prev => ({
         ...prev,
@@ -1061,7 +1182,7 @@ const ProjectStatusDashboard = () => {
           return { 
             ...p, 
             comments: newComments, 
-            history: [`${new Date().toLocaleString()}: Comment ignored${isAdmin ? ' [Admin]' : ''}`, ...(p.history || [])]
+            history: [`${new Date().toLocaleString()}: Comment ignored${isAdmin ? ` [${username} - Admin]` : ` [${username}]`}`, ...(p.history || [])]
           };
         })
       }));
@@ -1095,14 +1216,15 @@ const ProjectStatusDashboard = () => {
           .eq('id', comment.id);
       }
 
-      await addHistoryEntry(projectId, `${new Date().toLocaleString()}: All comments cleared [Admin]`);
+      const username = currentUser?.username || 'Unknown';
+      await addHistoryEntry(projectId, `${new Date().toLocaleString()}: All comments cleared [${username} - Admin]`);
 
       setState(prev => ({
         ...prev,
         projects: prev.projects.map(p => p.id === projectId ? ({
           ...p,
           comments: [],
-          history: [`${new Date().toLocaleString()}: All comments cleared [Admin]`, ...(p.history || [])]
+          history: [`${new Date().toLocaleString()}: All comments cleared [${username} - Admin]`, ...(p.history || [])]
         }) : p)
       }));
 
@@ -1342,7 +1464,6 @@ const ProjectStatusDashboard = () => {
     setNewProject({ ...newProject, busy: newBusy, status: newStatus });
   }
 
-  // Функция рендеринга карточки проекта
   function renderProjectCard(project, isArchived = false) {
     return (
       <div key={project.id}>
@@ -2140,6 +2261,216 @@ const ProjectStatusDashboard = () => {
     );
   }
 
+  // Экран входа
+  if (!currentUser) {
+    if (loading) {
+      return (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
+          fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif',
+          background: '#F2F2F7'
+        }}>
+          <div style={{
+            fontSize: '18px',
+            color: '#007AFF'
+          }}>
+            Loading...
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{
+        fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px'
+      }}>
+        <style>{`
+          :root {
+            --primary: #007AFF;
+            --danger: #FF3B30;
+            --text-primary: #000000;
+            --text-secondary: #8E8E93;
+            --bg-primary: #FFFFFF;
+            --separator: rgba(60, 60, 67, 0.12);
+          }
+        `}</style>
+
+        <div style={{
+          background: 'white',
+          borderRadius: '20px',
+          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+          padding: '40px',
+          width: '100%',
+          maxWidth: '400px'
+        }}>
+          <div style={{
+            textAlign: 'center',
+            marginBottom: '32px'
+          }}>
+            <div style={{
+              fontSize: '32px',
+              marginBottom: '8px',
+              color: '#8E8E93'
+            }}>
+              ☁️
+            </div>
+            <h2 style={{
+              margin: 0,
+              fontSize: '28px',
+              fontWeight: '600',
+              color: '#000000'
+            }}>
+              Login
+            </h2>
+          </div>
+
+          {loginError && (
+            <div style={{
+              background: '#FFEBEE',
+              color: '#D32F2F',
+              padding: '12px',
+              borderRadius: '10px',
+              fontSize: '14px',
+              marginBottom: '20px',
+              textAlign: 'center'
+            }}>
+              {loginError}
+            </div>
+          )}
+
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px'
+          }}>
+            <div style={{
+              position: 'relative'
+            }}>
+              <div style={{
+                position: 'absolute',
+                left: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: '#8E8E93',
+                fontSize: '18px'
+              }}>
+                👤
+              </div>
+              <input
+                type="text"
+                value={loginUsername}
+                onChange={(e) => setLoginUsername(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && (loginMode === 'login' ? handleLogin() : handleRegister())}
+                placeholder="Username"
+                style={{
+                  width: 'calc(100% - 50px)',
+                  padding: '14px 14px 14px 40px',
+                  border: '1px solid #E0E0E0',
+                  borderRadius: '10px',
+                  fontSize: '16px',
+                  outline: 'none',
+                  transition: 'border 0.2s ease'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#007AFF'}
+                onBlur={(e) => e.target.style.borderColor = '#E0E0E0'}
+              />
+            </div>
+
+            <div style={{
+              position: 'relative'
+            }}>
+              <div style={{
+                position: 'absolute',
+                left: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: '#8E8E93',
+                fontSize: '18px'
+              }}>
+                🔒
+              </div>
+              <input
+                type="password"
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && (loginMode === 'login' ? handleLogin() : handleRegister())}
+                placeholder="Password"
+                style={{
+                  width: 'calc(100% - 50px)',
+                  padding: '14px 14px 14px 40px',
+                  border: '1px solid #E0E0E0',
+                  borderRadius: '10px',
+                  fontSize: '16px',
+                  outline: 'none',
+                  transition: 'border 0.2s ease'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#007AFF'}
+                onBlur={(e) => e.target.style.borderColor = '#E0E0E0'}
+              />
+            </div>
+
+            <button
+              onClick={loginMode === 'login' ? handleLogin : handleRegister}
+              style={{
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: 'white',
+                border: 'none',
+                padding: '14px',
+                borderRadius: '10px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                marginTop: '8px'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'translateY(-2px)';
+                e.target.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = 'none';
+              }}
+            >
+              {loginMode === 'login' ? 'Sign In' : 'Sign Up'}
+            </button>
+
+            <div style={{
+              textAlign: 'center',
+              marginTop: '8px'
+            }}>
+              <button
+                onClick={() => {
+                  setLoginMode(loginMode === 'login' ? 'register' : 'login');
+                  setLoginError('');
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#007AFF',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  textDecoration: 'underline'
+                }}
+              >
+                {loginMode === 'login' ? 'Need an account? Sign Up' : 'Already have an account? Sign In'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div style={{
@@ -2299,9 +2630,16 @@ const ProjectStatusDashboard = () => {
           margin: '0 auto',
           padding: '16px 24px',
           display: 'flex',
-          justifyContent: 'flex-end',
+          justifyContent: 'space-between',
           alignItems: 'center'
         }}>
+          <div style={{
+            fontSize: '14px',
+            color: 'var(--text-secondary)',
+            fontWeight: '500'
+          }}>
+            Welcome, {currentUser.username}
+          </div>
           <div style={{
             display: 'flex',
             gap: '12px',
@@ -2356,6 +2694,31 @@ const ProjectStatusDashboard = () => {
               }}
             >
               {isAdmin ? 'Admin Mode' : 'Admin'}
+            </button>
+            <button
+              onClick={handleLogout}
+              style={{
+                background: 'var(--danger)',
+                color: 'white',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '18px',
+                fontSize: '15px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                outline: 'none'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = '#D70015';
+                e.target.style.transform = 'translateY(-1px)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = 'var(--danger)';
+                e.target.style.transform = 'translateY(0)';
+              }}
+            >
+              Logout
             </button>
           </div>
         </div>
@@ -2875,6 +3238,9 @@ const ProjectStatusDashboard = () => {
           </>
         )}
       </div>
+
+      {/* ВСЕ ОСТАЛЬНЫЕ МОДАЛЬНЫЕ ОКНА ОСТАЮТСЯ БЕЗ ИЗМЕНЕНИЙ */}
+      {/* ... (код модальных окон) ... */}
 
       {isAddModalOpen && (
         <div style={{
