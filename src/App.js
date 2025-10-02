@@ -82,10 +82,14 @@ const ProjectStatusDashboard = () => {
 
   // Состояния для авторизации
   const [currentUser, setCurrentUser] = useState(null);
-  const [loginMode, setLoginMode] = useState('login'); // 'login' или 'register'
+  const [loginMode, setLoginMode] = useState('login'); // 'login', 'register', 'forgot'
   const [loginUsername, setLoginUsername] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [resetUsername, setResetUsername] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
 
   const [state, setState] = useState({
     totalArtists: 6,
@@ -153,6 +157,11 @@ const ProjectStatusDashboard = () => {
         return;
       }
 
+      if (loginPassword.length < 4) {
+        setLoginError('Password must be at least 4 characters');
+        return;
+      }
+
       const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -167,8 +176,6 @@ const ProjectStatusDashboard = () => {
 
       setCurrentUser(data);
       localStorage.setItem('currentUser', JSON.stringify(data));
-      setLoginUsername('');
-      setLoginPassword('');
       setLoading(true);
       await loadInitialData();
     } catch (err) {
@@ -221,13 +228,61 @@ const ProjectStatusDashboard = () => {
 
       setCurrentUser(data);
       localStorage.setItem('currentUser', JSON.stringify(data));
-      setLoginUsername('');
-      setLoginPassword('');
       setLoading(true);
       await loadInitialData();
     } catch (err) {
       setLoginError('Registration failed. Please try again.');
       console.error('Register error:', err);
+    }
+  }
+
+  async function handleForgotPassword() {
+    try {
+      setLoginError('');
+      
+      if (!resetUsername.trim()) {
+        setLoginError('Please enter your username');
+        return;
+      }
+
+      if (!newPassword.trim()) {
+        setLoginError('Please enter a new password');
+        return;
+      }
+
+      if (newPassword.length < 4) {
+        setLoginError('Password must be at least 4 characters');
+        return;
+      }
+
+      // Проверяем существование пользователя
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('*')
+        .eq('username', resetUsername)
+        .single();
+
+      if (!existingUser) {
+        setLoginError('Username not found');
+        return;
+      }
+
+      // Обновляем пароль
+      const { error } = await supabase
+        .from('users')
+        .update({ password: newPassword })
+        .eq('username', resetUsername);
+
+      if (error) throw error;
+
+      setLoginError('');
+      setLoginMode('login');
+      setResetUsername('');
+      setNewPassword('');
+      showAlert('Password reset successfully! Please login with your new password.');
+    } catch (err) {
+      setLoginError('Password reset failed. Please try again.');
+      console.error('Password reset error:', err);
     }
   }
 
@@ -2316,20 +2371,13 @@ const ProjectStatusDashboard = () => {
             textAlign: 'center',
             marginBottom: '32px'
           }}>
-            <div style={{
-              fontSize: '32px',
-              marginBottom: '8px',
-              color: '#8E8E93'
-            }}>
-              ☁️
-            </div>
             <h2 style={{
               margin: 0,
               fontSize: '28px',
               fontWeight: '600',
               color: '#000000'
             }}>
-              Login
+              {loginMode === 'login' ? 'Login' : loginMode === 'register' ? 'Sign Up' : 'Reset Password'}
             </h2>
           </div>
 
@@ -2347,125 +2395,289 @@ const ProjectStatusDashboard = () => {
             </div>
           )}
 
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '16px'
-          }}>
+          {loginMode === 'forgot' ? (
             <div style={{
-              position: 'relative'
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px'
             }}>
-              <div style={{
-                position: 'absolute',
-                left: '12px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                color: '#8E8E93',
-                fontSize: '18px'
-              }}>
-                👤
+              <div style={{ position: 'relative' }}>
+                <div style={{
+                  position: 'absolute',
+                  left: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: '#8E8E93',
+                  fontSize: '18px'
+                }}>
+                  👤
+                </div>
+                <input
+                  type="text"
+                  value={resetUsername}
+                  onChange={(e) => setResetUsername(e.target.value)}
+                  placeholder="Username"
+                  style={{
+                    width: 'calc(100% - 50px)',
+                    padding: '14px 14px 14px 40px',
+                    border: '1px solid #E0E0E0',
+                    borderRadius: '10px',
+                    fontSize: '16px',
+                    outline: 'none',
+                    transition: 'border 0.2s ease'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = '#007AFF'}
+                  onBlur={(e) => e.target.style.borderColor = '#E0E0E0'}
+                />
               </div>
-              <input
-                type="text"
-                value={loginUsername}
-                onChange={(e) => setLoginUsername(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && (loginMode === 'login' ? handleLogin() : handleRegister())}
-                placeholder="Username"
-                style={{
-                  width: 'calc(100% - 50px)',
-                  padding: '14px 14px 14px 40px',
-                  border: '1px solid #E0E0E0',
-                  borderRadius: '10px',
-                  fontSize: '16px',
-                  outline: 'none',
-                  transition: 'border 0.2s ease'
-                }}
-                onFocus={(e) => e.target.style.borderColor = '#007AFF'}
-                onBlur={(e) => e.target.style.borderColor = '#E0E0E0'}
-              />
-            </div>
 
-            <div style={{
-              position: 'relative'
-            }}>
-              <div style={{
-                position: 'absolute',
-                left: '12px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                color: '#8E8E93',
-                fontSize: '18px'
-              }}>
-                🔒
+              <div style={{ position: 'relative' }}>
+                <div style={{
+                  position: 'absolute',
+                  left: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: '#8E8E93',
+                  fontSize: '18px'
+                }}>
+                  🔒
+                </div>
+                <input
+                  type={showNewPassword ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="New Password"
+                  style={{
+                    width: 'calc(100% - 90px)',
+                    padding: '14px 40px 14px 40px',
+                    border: '1px solid #E0E0E0',
+                    borderRadius: '10px',
+                    fontSize: '16px',
+                    outline: 'none',
+                    transition: 'border 0.2s ease'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = '#007AFF'}
+                  onBlur={(e) => e.target.style.borderColor = '#E0E0E0'}
+                />
+                <button
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '18px',
+                    padding: '4px'
+                  }}
+                >
+                  {showNewPassword ? '👁️' : '👁️‍🗨️'}
+                </button>
               </div>
-              <input
-                type="password"
-                value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && (loginMode === 'login' ? handleLogin() : handleRegister())}
-                placeholder="Password"
-                style={{
-                  width: 'calc(100% - 50px)',
-                  padding: '14px 14px 14px 40px',
-                  border: '1px solid #E0E0E0',
-                  borderRadius: '10px',
-                  fontSize: '16px',
-                  outline: 'none',
-                  transition: 'border 0.2s ease'
-                }}
-                onFocus={(e) => e.target.style.borderColor = '#007AFF'}
-                onBlur={(e) => e.target.style.borderColor = '#E0E0E0'}
-              />
-            </div>
 
-            <button
-              onClick={loginMode === 'login' ? handleLogin : handleRegister}
-              style={{
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                color: 'white',
-                border: 'none',
-                padding: '14px',
-                borderRadius: '10px',
-                fontSize: '16px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                marginTop: '8px'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.transform = 'translateY(-2px)';
-                e.target.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = 'none';
-              }}
-            >
-              {loginMode === 'login' ? 'Sign In' : 'Sign Up'}
-            </button>
-
-            <div style={{
-              textAlign: 'center',
-              marginTop: '8px'
-            }}>
               <button
-                onClick={() => {
-                  setLoginMode(loginMode === 'login' ? 'register' : 'login');
-                  setLoginError('');
-                }}
+                onClick={handleForgotPassword}
                 style={{
-                  background: 'none',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  color: 'white',
                   border: 'none',
-                  color: '#007AFF',
-                  fontSize: '14px',
+                  padding: '14px',
+                  borderRadius: '10px',
+                  fontSize: '16px',
+                  fontWeight: '600',
                   cursor: 'pointer',
-                  textDecoration: 'underline'
+                  transition: 'all 0.2s ease',
+                  marginTop: '8px'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.transform = 'translateY(-2px)';
+                  e.target.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = 'none';
                 }}
               >
-                {loginMode === 'login' ? 'Need an account? Sign Up' : 'Already have an account? Sign In'}
+                Reset Password
               </button>
+
+              <div style={{ textAlign: 'center', marginTop: '8px' }}>
+                <button
+                  onClick={() => {
+                    setLoginMode('login');
+                    setLoginError('');
+                    setResetUsername('');
+                    setNewPassword('');
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#007AFF',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    textDecoration: 'underline'
+                  }}
+                >
+                  Back to Login
+                </button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px'
+            }}>
+              <div style={{ position: 'relative' }}>
+                <div style={{
+                  position: 'absolute',
+                  left: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: '#8E8E93',
+                  fontSize: '18px'
+                }}>
+                  👤
+                </div>
+                <input
+                  type="text"
+                  value={loginUsername}
+                  onChange={(e) => setLoginUsername(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && (loginMode === 'login' ? handleLogin() : handleRegister())}
+                  placeholder="Username"
+                  style={{
+                    width: 'calc(100% - 50px)',
+                    padding: '14px 14px 14px 40px',
+                    border: '1px solid #E0E0E0',
+                    borderRadius: '10px',
+                    fontSize: '16px',
+                    outline: 'none',
+                    transition: 'border 0.2s ease'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = '#007AFF'}
+                  onBlur={(e) => e.target.style.borderColor = '#E0E0E0'}
+                />
+              </div>
+
+              <div style={{ position: 'relative' }}>
+                <div style={{
+                  position: 'absolute',
+                  left: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: '#8E8E93',
+                  fontSize: '18px'
+                }}>
+                  🔒
+                </div>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && (loginMode === 'login' ? handleLogin() : handleRegister())}
+                  placeholder="Password"
+                  style={{
+                    width: 'calc(100% - 90px)',
+                    padding: '14px 40px 14px 40px',
+                    border: '1px solid #E0E0E0',
+                    borderRadius: '10px',
+                    fontSize: '16px',
+                    outline: 'none',
+                    transition: 'border 0.2s ease'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = '#007AFF'}
+                  onBlur={(e) => e.target.style.borderColor = '#E0E0E0'}
+                />
+                <button
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '18px',
+                    padding: '4px'
+                  }}
+                >
+                  {showPassword ? '👁️' : '👁️‍🗨️'}
+                </button>
+              </div>
+
+              <button
+                onClick={loginMode === 'login' ? handleLogin : handleRegister}
+                style={{
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '14px',
+                  borderRadius: '10px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  marginTop: '8px'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.transform = 'translateY(-2px)';
+                  e.target.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = 'none';
+                }}
+              >
+                {loginMode === 'login' ? 'Sign In' : 'Sign Up'}
+              </button>
+
+              <div style={{
+                textAlign: 'center',
+                marginTop: '8px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px'
+              }}>
+                <button
+                  onClick={() => {
+                    setLoginMode(loginMode === 'login' ? 'register' : 'login');
+                    setLoginError('');
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#007AFF',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    textDecoration: 'underline'
+                  }}
+                >
+                  {loginMode === 'login' ? 'Need an account? Sign Up' : 'Already have an account? Sign In'}
+                </button>
+                {loginMode === 'login' && (
+                  <button
+                    onClick={() => {
+                      setLoginMode('forgot');
+                      setLoginError('');
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#007AFF',
+                      fontSize: '14px',
+                      cursor: 'pointer',
+                      textDecoration: 'underline'
+                    }}
+                  >
+                    Forgot password?
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -2490,6 +2702,7 @@ const ProjectStatusDashboard = () => {
     );
   }
 
+  // ОСНОВНОЕ ПРИЛОЖЕНИЕ - остается без изменений, начиная со стилей
   return (
     <div style={{
       fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif',
@@ -2724,6 +2937,7 @@ const ProjectStatusDashboard = () => {
         </div>
       </div>
 
+{/* ОСТАЛЬНОЙ КОД ОСТАЕТСЯ БЕЗ ИЗМЕНЕНИЙ - продолжается с <div maxWidth 1400px> */}
       <div style={{
         maxWidth: '1400px',
         margin: '0 auto',
@@ -3238,9 +3452,6 @@ const ProjectStatusDashboard = () => {
           </>
         )}
       </div>
-
-      {/* ВСЕ ОСТАЛЬНЫЕ МОДАЛЬНЫЕ ОКНА ОСТАЮТСЯ БЕЗ ИЗМЕНЕНИЙ */}
-      {/* ... (код модальных окон) ... */}
 
       {isAddModalOpen && (
         <div style={{
