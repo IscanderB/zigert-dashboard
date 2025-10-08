@@ -2438,7 +2438,7 @@ const ProjectStatusDashboard = () => {
                     style={{
                       width: 'calc(100% - 24px)',
                       padding: '12px',
-                      paddingRight: '40px',
+                      //paddingRight: '40px',
                       border: '0.5px solid var(--separator)',
                       borderRadius: '10px',
                       fontSize: '16px',
@@ -2590,7 +2590,7 @@ const ProjectStatusDashboard = () => {
                     style={{
                       width: 'calc(100% - 24px)',
                       padding: '12px',
-                      paddingRight: '40px',
+                      //paddingRight: '40px',
                       border: '0.5px solid var(--separator)',
                       borderRadius: '10px',
                       fontSize: '16px',
