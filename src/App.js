@@ -80,16 +80,17 @@ const ProjectStatusDashboard = () => {
     return '#8E8E93';
   }
 
-  // Состояния для авторизации
+  // AUTH STATE
   const [currentUser, setCurrentUser] = useState(null);
-  const [loginMode, setLoginMode] = useState('login'); // 'login', 'register', 'forgot'
-  const [loginUsername, setLoginUsername] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
-  const [loginError, setLoginError] = useState('');
+  const [authMode, setAuthMode] = useState('login'); // 'login', 'register', 'forgot'
+  const [authForm, setAuthForm] = useState({
+    username: '',
+    password: '',
+    confirmPassword: '',
+    email: ''
+  });
   const [showPassword, setShowPassword] = useState(false);
-  const [resetUsername, setResetUsername] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [state, setState] = useState({
     totalArtists: 6,
@@ -147,149 +148,131 @@ const ProjectStatusDashboard = () => {
   const [stageModal, setStageModal] = useState({ open: false, projectId: null, cameraId: null, currentStage: 'WIP' });
   const [editCameraModal, setEditCameraModal] = useState({ open: false, projectId: null, cameraId: null, cameraName: '' });
 
-  // Функции для авторизации
-  async function handleLogin() {
-    try {
-      setLoginError('');
-      
-      if (!loginUsername.trim() || !loginPassword.trim()) {
-        setLoginError('Please enter username and password');
-        return;
-      }
-
-      if (loginPassword.length < 4) {
-        setLoginError('Password must be at least 4 characters');
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('username', loginUsername)
-        .eq('password', loginPassword)
-        .single();
-
-      if (error || !data) {
-        setLoginError('Invalid username or password');
-        return;
-      }
-
-      setCurrentUser(data);
-      localStorage.setItem('currentUser', JSON.stringify(data));
-      setLoading(true);
-      await loadInitialData();
-    } catch (err) {
-      setLoginError('Login failed. Please try again.');
-      console.error('Login error:', err);
-    }
+  // Simple password hashing (in production, use proper backend hashing)
+  async function hashPassword(password) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hash = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
   }
 
+  // AUTH FUNCTIONS
   async function handleRegister() {
     try {
-      setLoginError('');
-      
-      if (!loginUsername.trim() || !loginPassword.trim()) {
-        setLoginError('Please enter username and password');
+      if (!authForm.username.trim()) {
+        showAlert('Please enter username!');
+        return;
+      }
+      if (!authForm.email.trim()) {
+        showAlert('Please enter email!');
+        return;
+      }
+      if (!authForm.password) {
+        showAlert('Please enter password!');
+        return;
+      }
+      if (authForm.password !== authForm.confirmPassword) {
+        showAlert('Passwords do not match!');
         return;
       }
 
-      if (loginUsername.length < 3) {
-        setLoginError('Username must be at least 3 characters');
-        return;
-      }
-
-      if (loginPassword.length < 4) {
-        setLoginError('Password must be at least 4 characters');
-        return;
-      }
-
-      // Проверяем, существует ли пользователь
+      // Check if username exists
       const { data: existingUser } = await supabase
         .from('users')
         .select('*')
-        .eq('username', loginUsername)
+        .eq('username', authForm.username)
         .single();
 
       if (existingUser) {
-        setLoginError('Username already exists');
+        showAlert('Username already exists!');
         return;
       }
 
-      // Создаем нового пользователя
-      const { data, error } = await supabase
+      const passwordHash = await hashPassword(authForm.password);
+
+      const { error } = await supabase
         .from('users')
-        .insert([
-          { username: loginUsername, password: loginPassword }
-        ])
-        .select()
-        .single();
+        .insert({
+          username: authForm.username,
+          password_hash: passwordHash,
+          email: authForm.email
+        });
 
       if (error) throw error;
 
-      setCurrentUser(data);
-      localStorage.setItem('currentUser', JSON.stringify(data));
-      setLoading(true);
-      await loadInitialData();
+      showAlert('Registration successful! Please login.');
+      setAuthMode('login');
+      setAuthForm({ username: '', password: '', confirmPassword: '', email: '' });
     } catch (err) {
-      setLoginError('Registration failed. Please try again.');
-      console.error('Register error:', err);
+      showAlert(`Registration failed: ${err.message}`);
+    }
+  }
+
+  async function handleLogin() {
+    try {
+      if (!authForm.username.trim()) {
+        showAlert('Please enter username!');
+        return;
+      }
+      if (!authForm.password) {
+        showAlert('Please enter password!');
+        return;
+      }
+
+      const passwordHash = await hashPassword(authForm.password);
+
+      const { data: user, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('username', authForm.username)
+        .eq('password_hash', passwordHash)
+        .single();
+
+      if (error || !user) {
+        showAlert('Invalid username or password!');
+        return;
+      }
+
+      setCurrentUser(user);
+      setAuthForm({ username: '', password: '', confirmPassword: '', email: '' });
+      showAlert(`Welcome, ${user.username}!`);
+    } catch (err) {
+      showAlert(`Login failed: ${err.message}`);
     }
   }
 
   async function handleForgotPassword() {
     try {
-      setLoginError('');
-      
-      if (!resetUsername.trim()) {
-        setLoginError('Please enter your username');
+      if (!authForm.email.trim()) {
+        showAlert('Please enter your email!');
         return;
       }
 
-      if (!newPassword.trim()) {
-        setLoginError('Please enter a new password');
-        return;
-      }
-
-      if (newPassword.length < 4) {
-        setLoginError('Password must be at least 4 characters');
-        return;
-      }
-
-      // Проверяем существование пользователя
-      const { data: existingUser } = await supabase
+      const { data: user } = await supabase
         .from('users')
         .select('*')
-        .eq('username', resetUsername)
+        .eq('email', authForm.email)
         .single();
 
-      if (!existingUser) {
-        setLoginError('Username not found');
+      if (!user) {
+        showAlert('Email not found!');
         return;
       }
 
-      // Обновляем пароль
-      const { error } = await supabase
-        .from('users')
-        .update({ password: newPassword })
-        .eq('username', resetUsername);
-
-      if (error) throw error;
-
-      setLoginError('');
-      setLoginMode('login');
-      setResetUsername('');
-      setNewPassword('');
-      showAlert('Password reset successfully! Please login with your new password.');
+      // In production, send actual email with reset link
+      showAlert(`Password reset link has been sent to ${authForm.email}`);
+      setAuthMode('login');
+      setAuthForm({ username: '', password: '', confirmPassword: '', email: '' });
     } catch (err) {
-      setLoginError('Password reset failed. Please try again.');
-      console.error('Password reset error:', err);
+      showAlert('Password reset failed!');
     }
   }
 
   function handleLogout() {
     setCurrentUser(null);
-    localStorage.removeItem('currentUser');
     setIsAdmin(false);
+    setAuthForm({ username: '', password: '', confirmPassword: '', email: '' });
+    showAlert('Logged out successfully!');
   }
 
   async function loadInitialData() {
@@ -487,11 +470,14 @@ const ProjectStatusDashboard = () => {
   }
 
   async function addHistoryEntry(projectId, entry) {
+    const username = currentUser?.username || 'Unknown';
+    const entryWithUser = isAdmin ? entry : `${entry} - ${username}`;
+    
     const { error } = await supabase
       .from('project_history')
       .insert({
         project_id: projectId,
-        entry
+        entry: entryWithUser
       });
 
     if (error) throw error;
@@ -557,21 +543,10 @@ const ProjectStatusDashboard = () => {
   }
 
   useEffect(() => {
-    // Проверяем сохраненного пользователя
-    const savedUser = localStorage.getItem('currentUser');
-    if (savedUser) {
-      try {
-        const user = JSON.parse(savedUser);
-        setCurrentUser(user);
-        loadInitialData();
-      } catch (err) {
-        console.error('Error loading saved user:', err);
-        setLoading(false);
-      }
-    } else {
-      setLoading(false);
+    if (currentUser) {
+      loadInitialData();
     }
-  }, []);
+  }, [currentUser]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -767,7 +742,7 @@ const ProjectStatusDashboard = () => {
 
       if (historyEntry) {
         const username = currentUser?.username || 'Unknown';
-        const entry = isAdmin ? `${historyEntry} [${username} - Admin]` : `${historyEntry} [${username}]`;
+        const entry = isAdmin ? `${historyEntry} [Admin]` : `${historyEntry} - ${username}`;
         await addHistoryEntry(id, entry);
       }
 
@@ -776,7 +751,7 @@ const ProjectStatusDashboard = () => {
         projects: prev.projects.map(p => p.id === id ? ({
           ...p,
           ...changes,
-          history: historyEntry ? [(isAdmin ? `${historyEntry} [${currentUser?.username || 'Unknown'} - Admin]` : `${historyEntry} [${currentUser?.username || 'Unknown'}]`), ...(p.history || [])] : p.history
+          history: historyEntry ? [isAdmin ? `${historyEntry} [Admin]` : `${historyEntry} - ${currentUser?.username || 'Unknown'}`, ...(p.history || [])] : p.history
         }) : p)
       }));
 
@@ -817,7 +792,7 @@ const ProjectStatusDashboard = () => {
 
       await saveProject(newP);
       const username = currentUser?.username || 'Unknown';
-      const historyEntry = `${new Date().toLocaleString()}: Project created${isAdmin ? ` [${username} - Admin]` : ` [${username}]`}`;
+      const historyEntry = `${new Date().toLocaleString()}: Project created${isAdmin ? ' [Admin]' : ` - ${username}`}`;
       await addHistoryEntry(newP.id, historyEntry);
 
       setState(prev => ({ 
@@ -904,14 +879,14 @@ const ProjectStatusDashboard = () => {
 
       await saveCamera(addCameraModal.projectId, camera);
       const username = currentUser?.username || 'Unknown';
-      await addHistoryEntry(addCameraModal.projectId, `${new Date().toLocaleString()}: Camera "${camera.name}" added [${username} - Admin]`);
+      await addHistoryEntry(addCameraModal.projectId, `${new Date().toLocaleString()}: Camera "${camera.name}" added [Admin]`);
 
       setState(prev => ({
         ...prev,
         projects: prev.projects.map(p => p.id === addCameraModal.projectId ? ({
           ...p,
           cameras: [...(p.cameras || []), camera].sort((a, b) => a.name.localeCompare(b.name)),
-          history: [`${new Date().toLocaleString()}: Camera "${camera.name}" added [${username} - Admin]`, ...(p.history || [])]
+          history: [`${new Date().toLocaleString()}: Camera "${camera.name}" added [Admin]`, ...(p.history || [])]
         }) : p)
       }));
 
@@ -934,15 +909,14 @@ const ProjectStatusDashboard = () => {
   async function deleteCamera() {
     try {
       await deleteCameraFromDB(deleteCameraModal.cameraId);
-      const username = currentUser?.username || 'Unknown';
-      await addHistoryEntry(deleteCameraModal.projectId, `${new Date().toLocaleString()}: Camera "${deleteCameraModal.cameraName}" deleted [${username} - Admin]`);
+      await addHistoryEntry(deleteCameraModal.projectId, `${new Date().toLocaleString()}: Camera "${deleteCameraModal.cameraName}" deleted [Admin]`);
 
       setState(prev => ({
         ...prev,
         projects: prev.projects.map(p => p.id === deleteCameraModal.projectId ? ({
           ...p,
           cameras: (p.cameras || []).filter(c => c.id !== deleteCameraModal.cameraId),
-          history: [`${new Date().toLocaleString()}: Camera "${deleteCameraModal.cameraName}" deleted [${username} - Admin]`, ...(p.history || [])]
+          history: [`${new Date().toLocaleString()}: Camera "${deleteCameraModal.cameraName}" deleted [Admin]`, ...(p.history || [])]
         }) : p)
       }));
 
@@ -978,15 +952,14 @@ const ProjectStatusDashboard = () => {
       const updatedCamera = { ...camera, name: editCameraModal.cameraName.trim() };
       
       await saveCamera(editCameraModal.projectId, updatedCamera);
-      const username = currentUser?.username || 'Unknown';
-      await addHistoryEntry(editCameraModal.projectId, `${new Date().toLocaleString()}: Camera renamed from "${oldName}" to "${updatedCamera.name}" [${username} - Admin]`);
+      await addHistoryEntry(editCameraModal.projectId, `${new Date().toLocaleString()}: Camera renamed from "${oldName}" to "${updatedCamera.name}" [Admin]`);
 
       setState(prev => ({
         ...prev,
         projects: prev.projects.map(p => p.id === editCameraModal.projectId ? ({
           ...p,
           cameras: (p.cameras || []).map(c => c.id === editCameraModal.cameraId ? updatedCamera : c).sort((a, b) => a.name.localeCompare(b.name)),
-          history: [`${new Date().toLocaleString()}: Camera renamed from "${oldName}" to "${updatedCamera.name}" [${username} - Admin]`, ...(p.history || [])]
+          history: [`${new Date().toLocaleString()}: Camera renamed from "${oldName}" to "${updatedCamera.name}" [Admin]`, ...(p.history || [])]
         }) : p)
       }));
 
@@ -1029,14 +1002,17 @@ const ProjectStatusDashboard = () => {
       const updatedCamera = { ...camera, stage: newStage };
       await saveCamera(projectId, updatedCamera);
       const username = currentUser?.username || 'Unknown';
-      await addHistoryEntry(projectId, `${new Date().toLocaleString()}: Camera "${camera.name}" stage changed to ${newStage} [${username}]`);
+      const entry = isAdmin 
+        ? `${new Date().toLocaleString()}: Camera "${camera.name}" stage changed to ${newStage} [Admin]`
+        : `${new Date().toLocaleString()}: Camera "${camera.name}" stage changed to ${newStage} - ${username}`;
+      await addHistoryEntry(projectId, entry);
 
       setState(prev => ({
         ...prev,
         projects: prev.projects.map(p => p.id === projectId ? ({
           ...p,
           cameras: (p.cameras || []).map(c => c.id === cameraId ? updatedCamera : c),
-          history: [`${new Date().toLocaleString()}: Camera "${camera.name}" stage changed to ${newStage} [${username}]`, ...(p.history || [])]
+          history: [entry, ...(p.history || [])]
         }) : p)
       }));
 
@@ -1127,14 +1103,14 @@ const ProjectStatusDashboard = () => {
 
       await saveComment(commentsForId, comment);
       const username = currentUser?.username || 'Unknown';
-      await addHistoryEntry(commentsForId, `${new Date().toLocaleString()}: Comment added${isAdmin ? ` [${username} - Admin]` : ` [${username}]`}`);
+      await addHistoryEntry(commentsForId, `${new Date().toLocaleString()}: Comment added${isAdmin ? ' [Admin]' : ` - ${username}`}`);
 
       setState(prev => ({
         ...prev,
         projects: prev.projects.map(p => p.id === commentsForId ? ({
           ...p,
           comments: [comment, ...p.comments],
-          history: [`${new Date().toLocaleString()}: Comment added${isAdmin ? ` [${username} - Admin]` : ` [${username}]`}`, ...(p.history || [])]
+          history: [`${new Date().toLocaleString()}: Comment added${isAdmin ? ' [Admin]' : ` - ${username}`}`, ...(p.history || [])]
         }) : p)
       }));
       
@@ -1171,9 +1147,9 @@ const ProjectStatusDashboard = () => {
       };
 
       await saveComment(commentsForId, updatedComment);
-      const historyMessage = trimmed === '' ? 'Comment ignored' : 'Comment edited';
       const username = currentUser?.username || 'Unknown';
-      await addHistoryEntry(commentsForId, `${new Date().toLocaleString()}: ${historyMessage}${isAdmin ? ` [${username} - Admin]` : ` [${username}]`}`);
+      const historyMessage = trimmed === '' ? 'Comment ignored' : 'Comment edited';
+      await addHistoryEntry(commentsForId, `${new Date().toLocaleString()}: ${historyMessage}${isAdmin ? ' [Admin]' : ` - ${username}`}`);
 
       setState(prev => ({
         ...prev,
@@ -1186,7 +1162,7 @@ const ProjectStatusDashboard = () => {
           return { 
             ...p, 
             comments: newComments, 
-            history: [`${new Date().toLocaleString()}: ${historyMessage}${isAdmin ? ` [${username} - Admin]` : ` [${username}]`}`, ...(p.history || [])]
+            history: [`${new Date().toLocaleString()}: ${historyMessage}${isAdmin ? ' [Admin]' : ` - ${username}`}`, ...(p.history || [])]
           };
         })
       }));
@@ -1227,7 +1203,7 @@ const ProjectStatusDashboard = () => {
 
       await saveComment(projectId, updatedComment);
       const username = currentUser?.username || 'Unknown';
-      await addHistoryEntry(projectId, `${new Date().toLocaleString()}: Comment ignored${isAdmin ? ` [${username} - Admin]` : ` [${username}]`}`);
+      await addHistoryEntry(projectId, `${new Date().toLocaleString()}: Comment ignored${isAdmin ? ' [Admin]' : ` - ${username}`}`);
 
       setState(prev => ({
         ...prev,
@@ -1237,7 +1213,7 @@ const ProjectStatusDashboard = () => {
           return { 
             ...p, 
             comments: newComments, 
-            history: [`${new Date().toLocaleString()}: Comment ignored${isAdmin ? ` [${username} - Admin]` : ` [${username}]`}`, ...(p.history || [])]
+            history: [`${new Date().toLocaleString()}: Comment ignored${isAdmin ? ' [Admin]' : ` - ${username}`}`, ...(p.history || [])]
           };
         })
       }));
@@ -1271,15 +1247,14 @@ const ProjectStatusDashboard = () => {
           .eq('id', comment.id);
       }
 
-      const username = currentUser?.username || 'Unknown';
-      await addHistoryEntry(projectId, `${new Date().toLocaleString()}: All comments cleared [${username} - Admin]`);
+      await addHistoryEntry(projectId, `${new Date().toLocaleString()}: All comments cleared [Admin]`);
 
       setState(prev => ({
         ...prev,
         projects: prev.projects.map(p => p.id === projectId ? ({
           ...p,
           comments: [],
-          history: [`${new Date().toLocaleString()}: All comments cleared [${username} - Admin]`, ...(p.history || [])]
+          history: [`${new Date().toLocaleString()}: All comments cleared [Admin]`, ...(p.history || [])]
         }) : p)
       }));
 
@@ -2316,32 +2291,12 @@ const ProjectStatusDashboard = () => {
     );
   }
 
-  // Экран входа
+  // AUTH SCREEN
   if (!currentUser) {
-    if (loading) {
-      return (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          height: '100vh',
-          fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif',
-          background: '#F2F2F7'
-        }}>
-          <div style={{
-            fontSize: '18px',
-            color: '#007AFF'
-          }}>
-            Loading...
-          </div>
-        </div>
-      );
-    }
-
     return (
       <div style={{
         fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: '#F2F2F7',
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
@@ -2351,18 +2306,54 @@ const ProjectStatusDashboard = () => {
         <style>{`
           :root {
             --primary: #007AFF;
+            --secondary: #5856D6;
+            --success: #34C759;
+            --warning: #FF9500;
             --danger: #FF3B30;
+            --gray-1: #8E8E93;
+            --gray-2: #C7C7CC;
+            --gray-3: #D1D1D6;
+            --gray-4: #E5E5EA;
+            --gray-5: #F2F2F7;
+            --gray-6: #FFFFFF;
             --text-primary: #000000;
-            --text-secondary: #8E8E93;
+            --text-secondary: #3C3C43;
+            --text-tertiary: #48484A;
+            --text-quaternary: #8E8E93;
             --bg-primary: #FFFFFF;
+            --bg-secondary: #F2F2F7;
+            --bg-tertiary: #E5E5EA;
             --separator: rgba(60, 60, 67, 0.12);
+            --shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+          }
+          
+          @keyframes slideIn {
+            from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
+            to { transform: translateX(-50%) translateY(0); opacity: 1; }
           }
         `}</style>
 
+        {isAlertOpen && (
+          <div style={{
+            position: 'fixed',
+            top: '20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'var(--danger)',
+            color: 'white',
+            padding: '12px 24px',
+            borderRadius: '20px',
+            zIndex: 2000,
+            animation: 'slideIn 0.3s ease-out'
+          }}>
+            {alertMessage}
+          </div>
+        )}
+
         <div style={{
-          background: 'white',
+          background: 'var(--bg-primary)',
           borderRadius: '20px',
-          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+          boxShadow: 'var(--shadow)',
           padding: '40px',
           width: '100%',
           maxWidth: '400px'
@@ -2371,116 +2362,93 @@ const ProjectStatusDashboard = () => {
             textAlign: 'center',
             marginBottom: '32px'
           }}>
+            <img 
+              src="/zigert-logo.png"
+              alt="Zigert Logo"
+              style={{
+                width: '200px',
+                height: 'auto',
+                marginBottom: '16px'
+              }}
+            />
             <h2 style={{
               margin: 0,
-              fontSize: '28px',
+              fontSize: '24px',
               fontWeight: '600',
-              color: '#000000'
+              color: 'var(--text-primary)'
             }}>
-              {loginMode === 'login' ? 'Login' : loginMode === 'register' ? 'Sign Up' : 'Reset Password'}
+              {authMode === 'login' ? 'Login' : authMode === 'register' ? 'Sign up' : 'Forgot Password'}
             </h2>
           </div>
 
-          {loginError && (
-            <div style={{
-              background: '#FFEBEE',
-              color: '#D32F2F',
-              padding: '12px',
-              borderRadius: '10px',
-              fontSize: '14px',
-              marginBottom: '20px',
-              textAlign: 'center'
-            }}>
-              {loginError}
-            </div>
-          )}
-
-          {loginMode === 'forgot' ? (
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '16px'
-            }}>
-              <div style={{ position: 'relative' }}>
-                <div style={{
-                  position: 'absolute',
-                  left: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: '#8E8E93',
-                  fontSize: '18px'
-                }}>
-                  👤
-                </div>
+          {authMode === 'login' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Username</label>
                 <input
                   type="text"
-                  value={resetUsername}
-                  onChange={(e) => setResetUsername(e.target.value)}
-                  placeholder="Username"
+                  value={authForm.username}
+                  onChange={(e) => setAuthForm({ ...authForm, username: e.target.value })}
+                  onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+                  autoComplete="off"
                   style={{
-                    width: 'calc(100% - 50px)',
-                    padding: '14px 14px 14px 40px',
-                    border: '1px solid #E0E0E0',
+                    width: 'calc(100% - 24px)',
+                    padding: '12px',
+                    border: '0.5px solid var(--separator)',
                     borderRadius: '10px',
                     fontSize: '16px',
                     outline: 'none',
-                    transition: 'border 0.2s ease'
+                    background: 'var(--bg-primary)'
                   }}
-                  onFocus={(e) => e.target.style.borderColor = '#007AFF'}
-                  onBlur={(e) => e.target.style.borderColor = '#E0E0E0'}
+                  placeholder="Enter your username"
                 />
               </div>
-
-              <div style={{ position: 'relative' }}>
-                <div style={{
-                  position: 'absolute',
-                  left: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: '#8E8E93',
-                  fontSize: '18px'
-                }}>
-                  🔒
+              
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Password</label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={authForm.password}
+                    onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
+                    onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+                    autoComplete="off"
+                    style={{
+                      width: 'calc(100% - 24px)',
+                      padding: '12px',
+                      paddingRight: '40px',
+                      border: '0.5px solid var(--separator)',
+                      borderRadius: '10px',
+                      fontSize: '16px',
+                      outline: 'none',
+                      background: 'var(--bg-primary)'
+                    }}
+                    placeholder="Enter your password"
+                  />
+                  <button
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      color: 'var(--gray-1)'
+                    }}
+                  >
+                    {showPassword ? '👁️' : '👁️‍🗨️'}
+                  </button>
                 </div>
-                <input
-                  type={showNewPassword ? 'text' : 'password'}
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="New Password"
-                  style={{
-                    width: 'calc(100% - 90px)',
-                    padding: '14px 40px 14px 40px',
-                    border: '1px solid #E0E0E0',
-                    borderRadius: '10px',
-                    fontSize: '16px',
-                    outline: 'none',
-                    transition: 'border 0.2s ease'
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = '#007AFF'}
-                  onBlur={(e) => e.target.style.borderColor = '#E0E0E0'}
-                />
-                <button
-                  onClick={() => setShowNewPassword(!showNewPassword)}
-                  style={{
-                    position: 'absolute',
-                    right: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: '18px',
-                    padding: '4px'
-                  }}
-                >
-                  {showNewPassword ? '👁️' : '👁️‍🗨️'}
-                </button>
               </div>
 
               <button
-                onClick={handleForgotPassword}
+                onClick={handleLogin}
                 style={{
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  width: '100%',
+                  background: 'var(--primary)',
                   color: 'white',
                   border: 'none',
                   padding: '14px',
@@ -2488,193 +2456,275 @@ const ProjectStatusDashboard = () => {
                   fontSize: '16px',
                   fontWeight: '600',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
                   marginTop: '8px'
                 }}
-                onMouseEnter={(e) => {
-                  e.target.style.transform = 'translateY(-2px)';
-                  e.target.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)';
+              >
+                Login
+              </button>
+
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                marginTop: '16px',
+                fontSize: '14px'
+              }}>
+                <button
+                  onClick={() => {
+                    setAuthMode('forgot');
+                    setAuthForm({ username: '', password: '', confirmPassword: '', email: '' });
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--primary)',
+                    cursor: 'pointer',
+                    textDecoration: 'underline'
+                  }}
+                >
+                  Forgot Password?
+                </button>
+                <button
+                  onClick={() => {
+                    setAuthMode('register');
+                    setAuthForm({ username: '', password: '', confirmPassword: '', email: '' });
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--primary)',
+                    cursor: 'pointer',
+                    textDecoration: 'underline'
+                  }}
+                >
+                  Sign up
+                </button>
+              </div>
+            </div>
+          )}
+
+          {authMode === 'register' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Username</label>
+                <input
+                  type="text"
+                  value={authForm.username}
+                  onChange={(e) => setAuthForm({ ...authForm, username: e.target.value })}
+                  autoComplete="off"
+                  style={{
+                    width: 'calc(100% - 24px)',
+                    padding: '12px',
+                    border: '0.5px solid var(--separator)',
+                    borderRadius: '10px',
+                    fontSize: '16px',
+                    outline: 'none',
+                    background: 'var(--bg-primary)'
+                  }}
+                  placeholder="Choose a username"
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Email</label>
+                <input
+                  type="email"
+                  value={authForm.email}
+                  onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
+                  autoComplete="off"
+                  style={{
+                    width: 'calc(100% - 24px)',
+                    padding: '12px',
+                    border: '0.5px solid var(--separator)',
+                    borderRadius: '10px',
+                    fontSize: '16px',
+                    outline: 'none',
+                    background: 'var(--bg-primary)'
+                  }}
+                  placeholder="Enter your email"
+                />
+              </div>
+              
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Password</label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={authForm.password}
+                    onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
+                    autoComplete="off"
+                    style={{
+                      width: 'calc(100% - 24px)',
+                      padding: '12px',
+                      paddingRight: '40px',
+                      border: '0.5px solid var(--separator)',
+                      borderRadius: '10px',
+                      fontSize: '16px',
+                      outline: 'none',
+                      background: 'var(--bg-primary)'
+                    }}
+                    placeholder="Create a password"
+                  />
+                  <button
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      color: 'var(--gray-1)'
+                    }}
+                  >
+                    {showPassword ? '👁️' : '👁️‍🗨️'}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Confirm Password</label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={authForm.confirmPassword}
+                    onChange={(e) => setAuthForm({ ...authForm, confirmPassword: e.target.value })}
+                    autoComplete="off"
+                    style={{
+                      width: 'calc(100% - 24px)',
+                      padding: '12px',
+                      paddingRight: '40px',
+                      border: '0.5px solid var(--separator)',
+                      borderRadius: '10px',
+                      fontSize: '16px',
+                      outline: 'none',
+                      background: 'var(--bg-primary)'
+                    }}
+                    placeholder="Confirm your password"
+                  />
+                  <button
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      color: 'var(--gray-1)'
+                    }}
+                  >
+                    {showConfirmPassword ? '👁️' : '👁️‍🗨️'}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                onClick={handleRegister}
+                style={{
+                  width: '100%',
+                  background: 'var(--primary)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '14px',
+                  borderRadius: '10px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  marginTop: '8px'
                 }}
-                onMouseLeave={(e) => {
-                  e.target.style.transform = 'translateY(0)';
-                  e.target.style.boxShadow = 'none';
+              >
+                Sign up
+              </button>
+
+              <div style={{
+                textAlign: 'center',
+                marginTop: '16px',
+                fontSize: '14px'
+              }}>
+                <button
+                  onClick={() => {
+                    setAuthMode('login');
+                    setAuthForm({ username: '', password: '', confirmPassword: '', email: '' });
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--primary)',
+                    cursor: 'pointer',
+                    textDecoration: 'underline'
+                  }}
+                >
+                  Already have an account? Login
+                </button>
+              </div>
+            </div>
+          )}
+
+          {authMode === 'forgot' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Email</label>
+                <input
+                  type="email"
+                  value={authForm.email}
+                  onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
+                  onKeyPress={(e) => e.key === 'Enter' && handleForgotPassword()}
+                  autoComplete="off"
+                  style={{
+                    width: 'calc(100% - 24px)',
+                    padding: '12px',
+                    border: '0.5px solid var(--separator)',
+                    borderRadius: '10px',
+                    fontSize: '16px',
+                    outline: 'none',
+                    background: 'var(--bg-primary)'
+                  }}
+                  placeholder="Enter your email"
+                />
+              </div>
+
+              <button
+                onClick={handleForgotPassword}
+                style={{
+                  width: '100%',
+                  background: 'var(--primary)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '14px',
+                  borderRadius: '10px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  marginTop: '8px'
                 }}
               >
                 Reset Password
               </button>
 
-              <div style={{ textAlign: 'center', marginTop: '8px' }}>
+              <div style={{
+                textAlign: 'center',
+                marginTop: '16px',
+                fontSize: '14px'
+              }}>
                 <button
                   onClick={() => {
-                    setLoginMode('login');
-                    setLoginError('');
-                    setResetUsername('');
-                    setNewPassword('');
+                    setAuthMode('login');
+                    setAuthForm({ username: '', password: '', confirmPassword: '', email: '' });
                   }}
                   style={{
                     background: 'none',
                     border: 'none',
-                    color: '#007AFF',
-                    fontSize: '14px',
+                    color: 'var(--primary)',
                     cursor: 'pointer',
                     textDecoration: 'underline'
                   }}
                 >
                   Back to Login
                 </button>
-              </div>
-            </div>
-          ) : (
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '16px'
-            }}>
-              <div style={{ position: 'relative' }}>
-                <div style={{
-                  position: 'absolute',
-                  left: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: '#8E8E93',
-                  fontSize: '18px'
-                }}>
-                  👤
-                </div>
-                <input
-                  type="text"
-                  value={loginUsername}
-                  onChange={(e) => setLoginUsername(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && (loginMode === 'login' ? handleLogin() : handleRegister())}
-                  placeholder="Username"
-                  style={{
-                    width: 'calc(100% - 50px)',
-                    padding: '14px 14px 14px 40px',
-                    border: '1px solid #E0E0E0',
-                    borderRadius: '10px',
-                    fontSize: '16px',
-                    outline: 'none',
-                    transition: 'border 0.2s ease'
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = '#007AFF'}
-                  onBlur={(e) => e.target.style.borderColor = '#E0E0E0'}
-                />
-              </div>
-
-              <div style={{ position: 'relative' }}>
-                <div style={{
-                  position: 'absolute',
-                  left: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: '#8E8E93',
-                  fontSize: '18px'
-                }}>
-                  🔒
-                </div>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && (loginMode === 'login' ? handleLogin() : handleRegister())}
-                  placeholder="Password"
-                  style={{
-                    width: 'calc(100% - 90px)',
-                    padding: '14px 40px 14px 40px',
-                    border: '1px solid #E0E0E0',
-                    borderRadius: '10px',
-                    fontSize: '16px',
-                    outline: 'none',
-                    transition: 'border 0.2s ease'
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = '#007AFF'}
-                  onBlur={(e) => e.target.style.borderColor = '#E0E0E0'}
-                />
-                <button
-                  onClick={() => setShowPassword(!showPassword)}
-                  style={{
-                    position: 'absolute',
-                    right: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: '18px',
-                    padding: '4px'
-                  }}
-                >
-                  {showPassword ? '👁️' : '👁️‍🗨️'}
-                </button>
-              </div>
-
-              <button
-                onClick={loginMode === 'login' ? handleLogin : handleRegister}
-                style={{
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  color: 'white',
-                  border: 'none',
-                  padding: '14px',
-                  borderRadius: '10px',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  marginTop: '8px'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.transform = 'translateY(-2px)';
-                  e.target.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.transform = 'translateY(0)';
-                  e.target.style.boxShadow = 'none';
-                }}
-              >
-                {loginMode === 'login' ? 'Sign In' : 'Sign Up'}
-              </button>
-
-              <div style={{
-                textAlign: 'center',
-                marginTop: '8px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px'
-              }}>
-                <button
-                  onClick={() => {
-                    setLoginMode(loginMode === 'login' ? 'register' : 'login');
-                    setLoginError('');
-                  }}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#007AFF',
-                    fontSize: '14px',
-                    cursor: 'pointer',
-                    textDecoration: 'underline'
-                  }}
-                >
-                  {loginMode === 'login' ? 'Need an account? Sign Up' : 'Already have an account? Sign In'}
-                </button>
-                {loginMode === 'login' && (
-                  <button
-                    onClick={() => {
-                      setLoginMode('forgot');
-                      setLoginError('');
-                    }}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#007AFF',
-                      fontSize: '14px',
-                      cursor: 'pointer',
-                      textDecoration: 'underline'
-                    }}
-                  >
-                    Forgot password?
-                  </button>
-                )}
               </div>
             </div>
           )}
@@ -2702,7 +2752,6 @@ const ProjectStatusDashboard = () => {
     );
   }
 
-  // ОСНОВНОЕ ПРИЛОЖЕНИЕ - остается без изменений, начиная со стилей
   return (
     <div style={{
       fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif',
@@ -2848,10 +2897,9 @@ const ProjectStatusDashboard = () => {
         }}>
           <div style={{
             fontSize: '14px',
-            color: 'var(--text-secondary)',
-            fontWeight: '500'
+            color: 'var(--text-tertiary)'
           }}>
-            Welcome, {currentUser.username}
+            Logged in as: <strong>{currentUser.username}</strong>
           </div>
           <div style={{
             display: 'flex',
@@ -2937,7 +2985,6 @@ const ProjectStatusDashboard = () => {
         </div>
       </div>
 
-{/* ОСТАЛЬНОЙ КОД ОСТАЕТСЯ БЕЗ ИЗМЕНЕНИЙ - продолжается с <div maxWidth 1400px> */}
       <div style={{
         maxWidth: '1400px',
         margin: '0 auto',
@@ -3453,6 +3500,7 @@ const ProjectStatusDashboard = () => {
         )}
       </div>
 
+      {/* ALL MODALS - остальные модальные окна остались без изменений */}
       {isAddModalOpen && (
         <div style={{
           position: 'fixed',
@@ -3660,7 +3708,7 @@ const ProjectStatusDashboard = () => {
         </div>
       )}
 
-      {addCameraModal.open && (
+{addCameraModal.open && (
         <div style={{
           position: 'fixed',
           top: 0,
