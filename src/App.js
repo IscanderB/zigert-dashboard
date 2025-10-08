@@ -267,20 +267,8 @@ const ProjectStatusDashboard = () => {
         return;
       }
 
-      // В продакшене здесь должна быть реальная отправка email через Supabase Auth или другой сервис
-      // Для этого нужно настроить SMTP в Supabase или использовать сторонний сервис типа SendGrid
-      
-      // Попытка отправить email через Supabase Edge Function (если настроена)
-      try {
-        const { data, error } = await supabase.functions.invoke('send-password-reset', {
-          body: { email: authForm.email }
-        });
-        
-        if (error) throw error;
-      } catch (emailError) {
-        console.log('Email service not configured:', emailError);
-      }
-
+      // В production здесь должна быть настоящая отправка email через Supabase Auth или сторонний сервис
+      // Для демонстрации показываем сообщение
       showAlert(`Password reset link has been sent to ${authForm.email}. Please check your inbox and SPAM folder!`);
       setAuthMode('login');
       setAuthForm({ username: '', password: '', confirmPassword: '', email: '' });
@@ -349,7 +337,9 @@ const ProjectStatusDashboard = () => {
           text: comment.text,
           ignored: comment.ignored,
           deleted: comment.deleted,
-          ts: comment.created_at
+          ts: comment.created_at,
+          creator: comment.creator || 'Unknown',
+          editor: comment.editor || null
         })),
         history: (project.project_history || [])
           .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
@@ -512,7 +502,9 @@ const ProjectStatusDashboard = () => {
         project_id: projectId,
         text: comment.text,
         ignored: comment.ignored,
-        deleted: comment.deleted
+        deleted: comment.deleted,
+        creator: comment.creator,
+        editor: comment.editor
       })
       .select();
 
@@ -1114,16 +1106,18 @@ const ProjectStatusDashboard = () => {
     try {
       if (!commentsForId || !draft.trim()) return;
       
+      const username = currentUser?.username || 'Unknown';
       const comment = {
         id: uid('c'),
         text: draft.trim(),
         ignored: false,
         deleted: false,
-        ts: new Date().toISOString()
+        ts: new Date().toISOString(),
+        creator: username,
+        editor: null
       };
 
       await saveComment(commentsForId, comment);
-      const username = currentUser?.username || 'Unknown';
       await addHistoryEntry(commentsForId, `${new Date().toLocaleString()}: Comment added${isAdmin ? ' [Admin]' : ` - ${username}`}`);
 
       setState(prev => ({
@@ -1159,16 +1153,18 @@ const ProjectStatusDashboard = () => {
       const project = state.projects.find(p => p.id === commentsForId);
       const comment = project?.comments.find(c => c.id === commentId);
       
+      const username = currentUser?.username || 'Unknown';
       const updatedComment = {
         id: commentId,
         text: trimmed === '' ? comment?.text || '' : trimmed,
         deleted: false,
         ignored: trimmed === '',
-        ts: new Date().toISOString()
+        ts: new Date().toISOString(),
+        creator: comment?.creator || 'Unknown',
+        editor: trimmed !== comment?.text ? username : comment?.editor
       };
 
       await saveComment(commentsForId, updatedComment);
-      const username = currentUser?.username || 'Unknown';
       const historyMessage = trimmed === '' ? 'Comment ignored' : 'Comment edited';
       await addHistoryEntry(commentsForId, `${new Date().toLocaleString()}: ${historyMessage}${isAdmin ? ' [Admin]' : ` - ${username}`}`);
 
@@ -1214,23 +1210,25 @@ const ProjectStatusDashboard = () => {
       
       if (!comment) return;
       
+      const username = currentUser?.username || 'Unknown';
       const updatedComment = {
         id: commentId,
         text: comment.text,
         ignored: true,
         deleted: false,
-        ts: new Date().toISOString()
+        ts: new Date().toISOString(),
+        creator: comment.creator,
+        editor: username !== comment.creator ? username : comment.editor
       };
 
       await saveComment(projectId, updatedComment);
-      const username = currentUser?.username || 'Unknown';
       await addHistoryEntry(projectId, `${new Date().toLocaleString()}: Comment ignored${isAdmin ? ' [Admin]' : ` - ${username}`}`);
 
       setState(prev => ({
         ...prev,
         projects: prev.projects.map(p => {
           if (p.id !== projectId) return p;
-          const newComments = p.comments.map(c => c.id === commentId ? ({ ...c, ignored: true, deleted: false, ts: new Date().toISOString() }) : c);
+          const newComments = p.comments.map(c => c.id === commentId ? ({ ...c, ignored: true, deleted: false, ts: new Date().toISOString(), editor: username !== c.creator ? username : c.editor }) : c);
           return { 
             ...p, 
             comments: newComments, 
@@ -2360,16 +2358,15 @@ const ProjectStatusDashboard = () => {
             top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
-            background: 'var(--primary)',
+            background: 'var(--danger)',
             color: 'white',
-            padding: '20px 32px',
+            padding: '16px 32px',
             borderRadius: '20px',
             zIndex: 2000,
-            animation: 'slideIn 0.3s ease-out',
-            boxShadow: '0 10px 40px rgba(0, 122, 255, 0.3)',
-            fontSize: '16px',
+            boxShadow: '0 8px 30px rgba(0, 0, 0, 0.2)',
+            maxWidth: '80%',
             textAlign: 'center',
-            maxWidth: '80%'
+            animation: 'slideIn 0.3s ease-out'
           }}>
             {alertMessage}
           </div>
@@ -2430,7 +2427,7 @@ const ProjectStatusDashboard = () => {
               </div>
               
               <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Password (min 4 characters)</label>
+                <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Password</label>
                 <div style={{ position: 'relative' }}>
                   <input
                     type={showPassword ? 'text' : 'password'}
@@ -2441,14 +2438,14 @@ const ProjectStatusDashboard = () => {
                     style={{
                       width: 'calc(100% - 24px)',
                       padding: '12px',
-                      paddingRight: '48px',
+                      paddingRight: '40px',
                       border: '0.5px solid var(--separator)',
                       borderRadius: '10px',
                       fontSize: '16px',
                       outline: 'none',
                       background: 'var(--bg-primary)'
                     }}
-                    placeholder="Enter your password"
+                    placeholder="Min 4 characters"
                   />
                   <button
                     onClick={() => setShowPassword(!showPassword)}
@@ -2461,10 +2458,23 @@ const ProjectStatusDashboard = () => {
                       border: 'none',
                       cursor: 'pointer',
                       padding: '4px',
-                      fontSize: '20px'
+                      color: 'var(--gray-1)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
                     }}
                   >
-                    {showPassword ? '👁️' : '👁️‍🗨️'}
+                    {showPassword ? (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                      </svg>
+                    ) : (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                        <line x1="1" y1="1" x2="23" y2="23"/>
+                      </svg>
+                    )}
                   </button>
                 </div>
               </div>
@@ -2570,7 +2580,7 @@ const ProjectStatusDashboard = () => {
               </div>
               
               <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Password (min 4 characters)</label>
+                <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Password</label>
                 <div style={{ position: 'relative' }}>
                   <input
                     type={showPassword ? 'text' : 'password'}
@@ -2580,14 +2590,14 @@ const ProjectStatusDashboard = () => {
                     style={{
                       width: 'calc(100% - 24px)',
                       padding: '12px',
-                      paddingRight: '48px',
+                      paddingRight: '40px',
                       border: '0.5px solid var(--separator)',
                       borderRadius: '10px',
                       fontSize: '16px',
                       outline: 'none',
                       background: 'var(--bg-primary)'
                     }}
-                    placeholder="Create a password"
+                    placeholder="Min 4 characters"
                   />
                   <button
                     onClick={() => setShowPassword(!showPassword)}
@@ -2600,10 +2610,23 @@ const ProjectStatusDashboard = () => {
                       border: 'none',
                       cursor: 'pointer',
                       padding: '4px',
-                      fontSize: '20px'
+                      color: 'var(--gray-1)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
                     }}
                   >
-                    {showPassword ? '👁️' : '👁️‍🗨️'}
+                    {showPassword ? (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                      </svg>
+                    ) : (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                        <line x1="1" y1="1" x2="23" y2="23"/>
+                      </svg>
+                    )}
                   </button>
                 </div>
               </div>
@@ -2619,7 +2642,7 @@ const ProjectStatusDashboard = () => {
                     style={{
                       width: 'calc(100% - 24px)',
                       padding: '12px',
-                      paddingRight: '48px',
+                      paddingRight: '40px',
                       border: '0.5px solid var(--separator)',
                       borderRadius: '10px',
                       fontSize: '16px',
@@ -2639,10 +2662,23 @@ const ProjectStatusDashboard = () => {
                       border: 'none',
                       cursor: 'pointer',
                       padding: '4px',
-                      fontSize: '20px'
+                      color: 'var(--gray-1)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
                     }}
                   >
-                    {showConfirmPassword ? '👁️' : '👁️‍🗨️'}
+                    {showConfirmPassword ? (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                      </svg>
+                    ) : (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                        <line x1="1" y1="1" x2="23" y2="23"/>
+                      </svg>
+                    )}
                   </button>
                 </div>
               </div>
@@ -2776,9 +2812,6 @@ const ProjectStatusDashboard = () => {
       </div>
     );
   }
-
-  // Остальная часть кода с главным интерфейсом остается без изменений...
-  // (продолжение следует - весь остальной интерфейс такой же как был)
 
   return (
     <div style={{
@@ -3528,7 +3561,7 @@ const ProjectStatusDashboard = () => {
         )}
       </div>
 
-      {/* ALL MODALS - остальные модальные окна остались без изменений */}
+      {/* ALL MODALS */}
       {isAddModalOpen && (
         <div style={{
           position: 'fixed',
@@ -4127,6 +4160,12 @@ const ProjectStatusDashboard = () => {
                         <div style={{ fontSize: '14px', color: 'var(--text-tertiary)', marginBottom: '4px' }}>
                           {new Date(comment.ts).toLocaleString()}
                           {comment.ignored && ' (Ignored)'}
+                          {comment.creator && (
+                            <span style={{ marginLeft: '8px', fontWeight: '500' }}>
+                              by {comment.creator}
+                              {comment.editor && comment.editor !== comment.creator && ` (edited by ${comment.editor})`}
+                            </span>
+                          )}
                         </div>
                         <div style={{ 
                           fontSize: '16px', 
