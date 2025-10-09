@@ -82,13 +82,12 @@ const ProjectStatusDashboard = () => {
 
   // AUTH STATE
   const [currentUser, setCurrentUser] = useState(null);
-  const [authMode, setAuthMode] = useState('login'); // 'login', 'register', 'forgot', 'reset'
+  const [authMode, setAuthMode] = useState('login'); // 'login', 'register', 'forgot'
   const [authForm, setAuthForm] = useState({
     username: '',
     password: '',
     confirmPassword: '',
-    email: '',
-    token: ''
+    email: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -207,7 +206,7 @@ const ProjectStatusDashboard = () => {
 
       showAlert('Registration successful! Please login.');
       setAuthMode('login');
-      setAuthForm({ username: '', password: '', confirmPassword: '', email: '', token: '' });
+      setAuthForm({ username: '', password: '', confirmPassword: '', email: '' });
     } catch (err) {
       showAlert(`Registration failed: ${err.message}`);
     }
@@ -243,14 +242,13 @@ const ProjectStatusDashboard = () => {
       }
 
       setCurrentUser(user);
-      setAuthForm({ username: '', password: '', confirmPassword: '', email: '', token: '' });
+      setAuthForm({ username: '', password: '', confirmPassword: '', email: '' });
       showAlert(`Welcome, ${user.username}!`);
     } catch (err) {
       showAlert(`Login failed: ${err.message}`);
     }
   }
 
-  // НОВАЯ ФУНКЦИЯ: Восстановление пароля
   async function handleForgotPassword() {
     try {
       if (!authForm.email.trim()) {
@@ -258,7 +256,6 @@ const ProjectStatusDashboard = () => {
         return;
       }
 
-      // Проверяем существует ли email
       const { data: user } = await supabase
         .from('users')
         .select('*')
@@ -270,76 +267,11 @@ const ProjectStatusDashboard = () => {
         return;
       }
 
-      // Генерируем токен сброса пароля
-      const token = Math.random().toString(36).substring(2, 15) + 
-                    Math.random().toString(36).substring(2, 15);
-      
-      // Сохраняем токен в базе данных
-      const { error } = await supabase
-        .from('users')
-        .update({ reset_token: token })
-        .eq('email', authForm.email);
-
-      if (error) throw error;
-
-      // В реальном приложении здесь должна быть отправка email
-      // Для демонстрации показываем токен в alert
-      showAlert(`Password reset token has been sent to ${authForm.email}. Token: ${token}`);
-      setAuthMode('reset');
-      
-    } catch (err) {
-      showAlert('Password reset failed!');
-    }
-  }
-
-  // НОВАЯ ФУНКЦИЯ: Сброс пароля с токеном
-  async function handleResetPassword() {
-    try {
-      if (!authForm.token || !authForm.password) {
-        showAlert('Please enter token and new password!');
-        return;
-      }
-
-      if (authForm.password.length < 4) {
-        showAlert('Password must be at least 4 characters long!');
-        return;
-      }
-
-      if (authForm.password !== authForm.confirmPassword) {
-        showAlert('Passwords do not match!');
-        return;
-      }
-
-      // Проверяем валидность токена
-      const { data: user } = await supabase
-        .from('users')
-        .select('*')
-        .eq('reset_token', authForm.token)
-        .single();
-
-      if (!user) {
-        showAlert('Invalid reset token!');
-        return;
-      }
-
-      // Хэшируем новый пароль
-      const passwordHash = await hashPassword(authForm.password);
-
-      // Обновляем пароль и очищаем токен
-      const { error } = await supabase
-        .from('users')
-        .update({ 
-          password_hash: passwordHash,
-          reset_token: null 
-        })
-        .eq('reset_token', authForm.token);
-
-      if (error) throw error;
-
-      showAlert('Password reset successfully! Please login with your new password.');
+      // В production здесь должна быть настоящая отправка email через Supabase Auth или сторонний сервис
+      // Для демонстрации показываем сообщение
+      showAlert(`Password reset link has been sent to ${authForm.email}. Please check your inbox and SPAM folder!`);
       setAuthMode('login');
-      setAuthForm({ username: '', password: '', confirmPassword: '', email: '', token: '' });
-      
+      setAuthForm({ username: '', password: '', confirmPassword: '', email: '' });
     } catch (err) {
       showAlert('Password reset failed!');
     }
@@ -348,7 +280,7 @@ const ProjectStatusDashboard = () => {
   function handleLogout() {
     setCurrentUser(null);
     setIsAdmin(false);
-    setAuthForm({ username: '', password: '', confirmPassword: '', email: '', token: '' });
+    setAuthForm({ username: '', password: '', confirmPassword: '', email: '' });
     showAlert('Logged out successfully!');
   }
 
@@ -2467,10 +2399,7 @@ const ProjectStatusDashboard = () => {
               fontWeight: '600',
               color: 'var(--text-primary)'
             }}>
-              {authMode === 'login' ? 'Login' : 
-               authMode === 'register' ? 'Sign up' : 
-               authMode === 'forgot' ? 'Forgot Password' : 
-               'Reset Password'}
+              {authMode === 'login' ? 'Login' : authMode === 'register' ? 'Sign up' : 'Forgot Password'}
             </h2>
           </div>
 
@@ -2576,7 +2505,7 @@ const ProjectStatusDashboard = () => {
                 <button
                   onClick={() => {
                     setAuthMode('forgot');
-                    setAuthForm({ username: '', password: '', confirmPassword: '', email: '', token: '' });
+                    setAuthForm({ username: '', password: '', confirmPassword: '', email: '' });
                   }}
                   style={{
                     background: 'none',
@@ -2591,7 +2520,7 @@ const ProjectStatusDashboard = () => {
                 <button
                   onClick={() => {
                     setAuthMode('register');
-                    setAuthForm({ username: '', password: '', confirmPassword: '', email: '', token: '' });
+                    setAuthForm({ username: '', password: '', confirmPassword: '', email: '' });
                   }}
                   style={{
                     background: 'none',
@@ -2777,7 +2706,7 @@ const ProjectStatusDashboard = () => {
                 <button
                   onClick={() => {
                     setAuthMode('login');
-                    setAuthForm({ username: '', password: '', confirmPassword: '', email: '', token: '' });
+                    setAuthForm({ username: '', password: '', confirmPassword: '', email: '' });
                   }}
                   style={{
                     background: 'none',
@@ -2831,173 +2760,6 @@ const ProjectStatusDashboard = () => {
                   marginTop: '8px'
                 }}
               >
-                Send Reset Token
-              </button>
-
-              <div style={{
-                textAlign: 'center',
-                marginTop: '16px',
-                fontSize: '14px'
-              }}>
-                <button
-                  onClick={() => {
-                    setAuthMode('login');
-                    setAuthForm({ username: '', password: '', confirmPassword: '', email: '', token: '' });
-                  }}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--primary)',
-                    cursor: 'pointer',
-                    textDecoration: 'underline'
-                  }}
-                >
-                  Back to Login
-                </button>
-              </div>
-            </div>
-          )}
-
-          {authMode === 'reset' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Reset Token</label>
-                <input
-                  type="text"
-                  value={authForm.token}
-                  onChange={(e) => setAuthForm({ ...authForm, token: e.target.value })}
-                  onKeyPress={(e) => e.key === 'Enter' && handleResetPassword()}
-                  autoComplete="off"
-                  style={{
-                    width: 'calc(100% - 24px)',
-                    padding: '12px',
-                    border: '0.5px solid var(--separator)',
-                    borderRadius: '10px',
-                    fontSize: '16px',
-                    outline: 'none',
-                    background: 'var(--bg-primary)'
-                  }}
-                  placeholder="Enter reset token from email"
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>New Password</label>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={authForm.password}
-                    onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
-                    autoComplete="off"
-                    style={{
-                      width: 'calc(100% - 24px)',
-                      padding: '12px',
-                      border: '0.5px solid var(--separator)',
-                      borderRadius: '10px',
-                      fontSize: '16px',
-                      outline: 'none',
-                      background: 'var(--bg-primary)'
-                    }}
-                    placeholder="Min 4 characters"
-                  />
-                  <button
-                    onClick={() => setShowPassword(!showPassword)}
-                    style={{
-                      position: 'absolute',
-                      right: '12px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      padding: '4px',
-                      color: 'var(--gray-1)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    {showPassword ? (
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                        <circle cx="12" cy="12" r="3"/>
-                      </svg>
-                    ) : (
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                        <line x1="1" y1="1" x2="23" y2="23"/>
-                      </svg>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Confirm New Password</label>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    value={authForm.confirmPassword}
-                    onChange={(e) => setAuthForm({ ...authForm, confirmPassword: e.target.value })}
-                    autoComplete="off"
-                    style={{
-                      width: 'calc(100% - 24px)',
-                      padding: '12px',
-                      border: '0.5px solid var(--separator)',
-                      borderRadius: '10px',
-                      fontSize: '16px',
-                      outline: 'none',
-                      background: 'var(--bg-primary)'
-                    }}
-                    placeholder="Confirm new password"
-                  />
-                  <button
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    style={{
-                      position: 'absolute',
-                      right: '12px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      padding: '4px',
-                      color: 'var(--gray-1)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    {showConfirmPassword ? (
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                        <circle cx="12" cy="12" r="3"/>
-                      </svg>
-                    ) : (
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                        <line x1="1" y1="1" x2="23" y2="23"/>
-                      </svg>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              <button
-                onClick={handleResetPassword}
-                style={{
-                  width: '100%',
-                  background: 'var(--primary)',
-                  color: 'white',
-                  border: 'none',
-                  padding: '14px',
-                  borderRadius: '10px',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  marginTop: '8px'
-                }}
-              >
                 Reset Password
               </button>
 
@@ -3009,7 +2771,7 @@ const ProjectStatusDashboard = () => {
                 <button
                   onClick={() => {
                     setAuthMode('login');
-                    setAuthForm({ username: '', password: '', confirmPassword: '', email: '', token: '' });
+                    setAuthForm({ username: '', password: '', confirmPassword: '', email: '' });
                   }}
                   style={{
                     background: 'none',
