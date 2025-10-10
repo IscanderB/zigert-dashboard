@@ -306,39 +306,53 @@ const ProjectStatusDashboard = () => {
   }
 
   async function handleResetPassword() {
-    try {
-      if (!authForm.newPassword) {
-        showAlert('Please enter new password!');
-        return;
-      }
-      if (authForm.newPassword.length < 6) {
-        showAlert('Password must be at least 6 characters long!');
-        return;
-      }
-      if (authForm.newPassword !== authForm.confirmNewPassword) {
-        showAlert('Passwords do not match!');
-        return;
-      }
-
-      const { error } = await supabase.auth.updateUser({
-        password: authForm.newPassword
-      });
-
-      if (error) throw error;
-
-      showAlert('Password successfully changed! Please login with your new password.');
-      
-      // Выходим из системы
-      await supabase.auth.signOut();
-      
-      setTimeout(() => {
-        setAuthMode('login');
-        setAuthForm({ username: '', password: '', confirmPassword: '', email: '', newPassword: '', confirmNewPassword: '' });
-      }, 2000);
-    } catch (err) {
-      showAlert(`Password reset failed: ${err.message}`);
+  try {
+    if (!authForm.newPassword) {
+      showAlert('Please enter new password!');
+      return;
     }
+    if (authForm.newPassword.length < 6) {
+      showAlert('Password must be at least 6 characters long!');
+      return;
+    }
+    if (authForm.newPassword !== authForm.confirmNewPassword) {
+      showAlert('Passwords do not match!');
+      return;
+    }
+
+    // Проверяем что сессия установлена
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session) {
+      showAlert('Session expired. Please request a new password reset link.');
+      setAuthMode('forgot');
+      return;
+    }
+
+    // Обновляем пароль
+    const { error } = await supabase.auth.updateUser({
+      password: authForm.newPassword
+    });
+
+    if (error) throw error;
+
+    showAlert('Password successfully changed! Please login with your new password.');
+    
+    // Выходим из системы
+    await supabase.auth.signOut();
+    
+    // Очищаем URL
+    window.history.replaceState({}, document.title, window.location.pathname);
+    
+    setTimeout(() => {
+      setAuthMode('login');
+      setAuthForm({ username: '', password: '', confirmPassword: '', email: '', newPassword: '', confirmNewPassword: '' });
+    }, 2000);
+  } catch (err) {
+    console.error('Password reset error:', err);
+    showAlert(`Password reset failed: ${err.message}`);
   }
+}
 
   function handleLogout() {
     supabase.auth.signOut();
@@ -398,44 +412,65 @@ const ProjectStatusDashboard = () => {
     };
   }, []);
 
-  // Обработка URL параметров для подтверждения email и сброса пароля
-  useEffect(() => {
-    const handleAuthRedirect = async () => {
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const type = hashParams.get('type');
-      
-const error = hashParams.get('error');
-const errorDescription = hashParams.get('error_description');
-
-if (error) {
-  if (error === 'access_denied' && errorDescription?.includes('expired')) {
-    showAlert('Reset link has expired! Please request a new password reset link.');
-    setAuthMode('forgot');
-  } else {
-    showAlert(`Authentication error: ${errorDescription || error}`);
-    setAuthMode('login');
-  }
-  window.history.replaceState({}, document.title, window.location.pathname);
-  return;
-}
-      if (type === 'signup') {
-        // Email подтвержден
-        setAuthMode('email-confirmed');
-        setEmailConfirmedCountdown(7);
+// Обработка URL параметров для подтверждения email и сброса пароля
+useEffect(() => {
+  const handleAuthRedirect = async () => {
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const type = hashParams.get('type');
+    const error = hashParams.get('error');
+    const errorDescription = hashParams.get('error_description');
+    const accessToken = hashParams.get('access_token');
+    const refreshToken = hashParams.get('refresh_token');
+    
+    // Проверяем на ошибки
+    if (error) {
+      if (error === 'access_denied' && errorDescription?.includes('expired')) {
+        showAlert('Reset link has expired! Please request a new password reset link.');
+        setAuthMode('forgot');
+      } else {
+        showAlert(`Authentication error: ${errorDescription || error}`);
+        setAuthMode('login');
+      }
+      window.history.replaceState({}, document.title, window.location.pathname);
+      return;
+    }
+    
+    if (type === 'signup') {
+      // Email подтвержден
+      setAuthMode('email-confirmed');
+      setEmailConfirmedCountdown(7);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (type === 'recovery' && accessToken && refreshToken) {
+      // Переход на сброс пароля
+      try {
+        // ВАЖНО: Устанавливаем сессию из токенов
+        const { data, error: sessionError } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken
+        });
         
-        // Очищаем URL
-        window.history.replaceState({}, document.title, window.location.pathname);
-      } else if (type === 'recovery') {
-        // Переход на сброс пароля
+        if (sessionError) {
+          console.error('Session error:', sessionError);
+          showAlert('Failed to establish session. Please request a new password reset link.');
+          setAuthMode('forgot');
+          window.history.replaceState({}, document.title, window.location.pathname);
+          return;
+        }
+        
+        console.log('Session established for password reset');
         setAuthMode('reset');
-        
-        // Очищаем URL
+        // НЕ очищаем URL - токены нужны для updateUser
+      } catch (err) {
+        console.error('Error setting session:', err);
+        showAlert('Failed to establish session. Please request a new password reset link.');
+        setAuthMode('forgot');
         window.history.replaceState({}, document.title, window.location.pathname);
       }
-    };
+    }
+  };
 
-    handleAuthRedirect();
-  }, []);
+  handleAuthRedirect();
+}, []);
 
   // Таймер обратного отсчета для подтверждения email
   useEffect(() => {
