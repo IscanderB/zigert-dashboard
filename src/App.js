@@ -197,7 +197,7 @@ const ProjectStatusDashboard = () => {
           data: {
             username: authForm.username
           },
-          emailRedirectTo: `${window.location.origin}/auth/confirm`
+          emailRedirectTo: `https://zigert-dashboard.vercel.app/auth/confirm`
         }
       });
 
@@ -292,7 +292,7 @@ const ProjectStatusDashboard = () => {
 
       // Используем встроенную функцию Supabase для сброса пароля
       const { error } = await supabase.auth.resetPasswordForEmail(authForm.email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`
+        redirectTo: `https://zigert-dashboard.vercel.app/auth/reset-password`
       });
 
       if (error) throw error;
