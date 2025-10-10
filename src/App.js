@@ -292,7 +292,7 @@ const ProjectStatusDashboard = () => {
 
       // Используем встроенную функцию Supabase для сброса пароля
       const { error } = await supabase.auth.resetPasswordForEmail(authForm.email, {
-        redirectTo: `https://zigert-dashboard.vercel.app/auth/reset-password`
+        redirectTo: `https://zigert-dashboard.vercel.app/`
       });
 
       if (error) throw error;
@@ -404,6 +404,20 @@ const ProjectStatusDashboard = () => {
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       const type = hashParams.get('type');
       
+const error = hashParams.get('error');
+const errorDescription = hashParams.get('error_description');
+
+if (error) {
+  if (error === 'access_denied' && errorDescription?.includes('expired')) {
+    showAlert('Reset link has expired! Please request a new password reset link.');
+    setAuthMode('forgot');
+  } else {
+    showAlert(`Authentication error: ${errorDescription || error}`);
+    setAuthMode('login');
+  }
+  window.history.replaceState({}, document.title, window.location.pathname);
+  return;
+}
       if (type === 'signup') {
         // Email подтвержден
         setAuthMode('email-confirmed');
