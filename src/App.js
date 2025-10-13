@@ -104,6 +104,7 @@ const ProjectStatusDashboard = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [connected, setConnected] = useState(true);
   const [lastSync, setLastSync] = useState(new Date());
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [holidayDays, setHolidayDays] = useState(new Set());
@@ -327,7 +328,7 @@ const ProjectStatusDashboard = () => {
       if (error) throw error;
 
       showAlert('Password successfully changed! Please login with your new password.');
-      
+      setIsResettingPassword(false);
       // Выходим из системы
       await supabase.auth.signOut();
       
@@ -356,7 +357,7 @@ const ProjectStatusDashboard = () => {
     async function checkSession() {
       const { data: { session } } = await supabase.auth.getSession();
       
-      if (session?.user) {
+      if (session?.user && !isResettingPassword) {
         // Получаем данные пользователя из таблицы users
         const { data: userData } = await supabase
           .from('users')
@@ -376,7 +377,10 @@ const ProjectStatusDashboard = () => {
     // Подписываемся на изменения состояния авторизации
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth event:', event);
-      
+      if (isResettingPassword) {
+        console.log('Password reset in progress - blocking auto login');
+        return;
+      }
       if (event === 'SIGNED_IN' && session?.user) {
         const { data: userData } = await supabase
           .from('users')
@@ -399,7 +403,7 @@ const ProjectStatusDashboard = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [isResettingPassword]);
 
   // Обработка URL параметров для подтверждения email и сброса пароля
   useEffect(() => {
@@ -430,7 +434,8 @@ if (error) {
         window.history.replaceState({}, document.title, window.location.pathname);
       } else if (type === 'recovery') {
         // НЕ очищаем URL сразу - даём Supabase обработать токены
-        setAuthMode('reset');
+         setIsResettingPassword(true);
+         setAuthMode('reset');
         // URL будет очищен после успешного сброса пароля
       }
     };
